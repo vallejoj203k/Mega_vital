@@ -1,8 +1,9 @@
 // lib/services/food_vision_service.dart
 // ─────────────────────────────────────────────────────────────────
-// Analiza fotos de comida con Google Gemini Vision.
-// Llama directamente a la API de Gemini — sin intermediarios.
-// Plan gratuito: 1,500 análisis/día por clave.
+// Analiza fotos de comida con Google Gemini Vision o Groq Vision.
+// Llama directamente a las APIs — sin intermediarios.
+// Plan gratuito Gemini: 1,500 análisis/día por clave.
+// Plan gratuito Groq:   ~7,000 tokens/min, sin límite diario estricto.
 // Usa ApiKeyManager para rotación automática entre múltiples claves.
 // ─────────────────────────────────────────────────────────────────
 
@@ -64,9 +65,14 @@ class VisionAnalysisResult {
 class FoodVisionService {
   FoodVisionService._();
 
-  // URL directa a Gemini — sin proxy
   static const _geminiUrl =
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+
+  static const _groqUrl =
+      'https://api.groq.com/openai/v1/chat/completions';
+
+  // Modelos Groq con soporte de visión (en orden de preferencia)
+  static const _groqModel = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
   static const _prompt = '''
 Analiza la imagen de comida. Identifica CADA alimento visible.
@@ -94,63 +100,92 @@ Reglas:
 ''';
 
   // ── Punto de entrada público ───────────────────────────────────
-  // Intenta cada clave disponible (manager + fallback hardcoded).
-  // Si una clave devuelve 429, la marca como errónea y pasa a la siguiente.
+  // Orden de prioridad:
+  //   1. Claves Gemini del ApiKeyManager (con rotación automática)
+  //   2. Clave Gemini hardcoded en AppConfig (fallback)
+  //   3. Claves Groq del ApiKeyManager (con rotación automática)
   static Future<VisionAnalysisResult> analyzeFood(File imageFile) async {
     final manager = ApiKeyManager.instance;
     await manager.load();
 
+    // Debug: mostrar estado de claves disponibles
+    final gCount  = manager.geminiKeys.length;
+    final grCount = manager.groqKeys.length;
+    print('[FoodVision] Claves Gemini: $gCount, Groq: $grCount');
+    print('[FoodVision] Clave Gemini disponible: ${manager.nextAvailable('gemini')?.label ?? 'ninguna'}');
+    print('[FoodVision] Clave Groq disponible:   ${manager.nextAvailable('groq')?.label ?? 'ninguna'}');
+
     final triedKeys = <String>{};
 
-    // 1. Intentar con claves del ApiKeyManager (con rotación automática)
+    // ── 1. Intentar con claves Gemini del manager ──────────────
     while (true) {
       final managed = manager.nextAvailable('gemini');
       if (managed == null || triedKeys.contains(managed.key)) break;
 
+      print('[FoodVision] Intentando Gemini (manager): ${managed.label}');
       triedKeys.add(managed.key);
-      final result = await _request(imageFile, managed.key);
+      final result = await _requestGemini(imageFile, managed.key);
 
       if (result == null) {
-        // 429: forzar rotación marcando la clave hasta que nextAvailable la salte
+        // 429: forzar rotación marcando la clave como agotada
         while (managed.isFresh) await manager.markError(managed);
+        print('[FoodVision] Gemini 429 — rotando clave...');
         continue;
       }
-
-      if (result.success) {
-        await manager.markUsed(managed);
-      }
+      if (result.success) await manager.markUsed(managed);
       return result;
     }
 
-    // 2. Fallback: clave hardcoded en AppConfig (si no fue ya intentada)
+    // ── 2. Fallback: clave Gemini hardcoded ────────────────────
     final fallback = AppConfig.geminiApiKey;
     if (fallback.isNotEmpty && !triedKeys.contains(fallback)) {
+      print('[FoodVision] Intentando Gemini (hardcoded fallback)...');
       triedKeys.add(fallback);
-      final result = await _request(imageFile, fallback);
+      final result = await _requestGemini(imageFile, fallback);
       if (result != null) return result;
-      // Si también da 429, caemos al mensaje de error final
+      print('[FoodVision] Gemini hardcoded 429 — probando Groq...');
     }
 
-    // 3. Sin claves configuradas
+    // ── 3. Intentar con claves Groq del manager ────────────────
+    while (true) {
+      final managed = manager.nextAvailable('groq');
+      if (managed == null || triedKeys.contains(managed.key)) break;
+
+      print('[FoodVision] Intentando Groq: ${managed.label}');
+      triedKeys.add(managed.key);
+      final result = await _requestGroq(imageFile, managed.key);
+
+      if (result == null) {
+        // 429 en Groq: rotar
+        while (managed.isFresh) await manager.markError(managed);
+        print('[FoodVision] Groq 429 — rotando clave...');
+        continue;
+      }
+      if (result.success) await manager.markUsed(managed);
+      return result;
+    }
+
+    // ── Sin claves configuradas ────────────────────────────────
     if (triedKeys.isEmpty) {
       return const VisionAnalysisResult(
         foods: [],
-        error: 'Agrega tu clave de Gemini en Ajustes → Claves API\n'
+        error: 'Agrega tu clave de Gemini o Groq en Ajustes → Claves API\n'
             'Obtén una gratis en: aistudio.google.com/apikey',
       );
     }
 
-    // 4. Todas las claves agotadas por límite diario
+    // ── Todas las claves agotadas ──────────────────────────────
     return const VisionAnalysisResult(
       foods: [],
-      error: 'Límite diario alcanzado en todas las claves (1,500/día).\n'
+      error: 'Límite diario alcanzado en todas las claves.\n'
           'Intenta mañana o agrega más claves en Ajustes → Claves API.',
     );
   }
 
-  // ── Petición HTTP a Gemini con una clave concreta ──────────────
-  // Devuelve null si la clave recibió 429 (límite), resultado en los demás casos.
-  static Future<VisionAnalysisResult?> _request(File imageFile, String apiKey) async {
+  // ── Petición a Google Gemini ───────────────────────────────────
+  // Devuelve null si recibió 429 (rotar clave), resultado en los demás casos.
+  static Future<VisionAnalysisResult?> _requestGemini(
+      File imageFile, String apiKey) async {
     try {
       final bytes     = await imageFile.readAsBytes();
       final base64Img = base64Encode(bytes);
@@ -158,25 +193,16 @@ Reglas:
           ? 'image/png' : 'image/jpeg';
 
       final url = Uri.parse('$_geminiUrl?key=$apiKey');
-
       final body = jsonEncode({
         'contents': [
           {
             'parts': [
-              {
-                'inline_data': {
-                  'mime_type': mimeType,
-                  'data': base64Img,
-                }
-              },
+              {'inline_data': {'mime_type': mimeType, 'data': base64Img}},
               {'text': _prompt},
             ]
           }
         ],
-        'generationConfig': {
-          'temperature': 0.2,
-          'maxOutputTokens': 1024,
-        },
+        'generationConfig': {'temperature': 0.2, 'maxOutputTokens': 1024},
       });
 
       final response = await http.post(
@@ -185,79 +211,160 @@ Reglas:
         body: body,
       ).timeout(const Duration(seconds: 30));
 
+      print('[FoodVision] Gemini status: ${response.statusCode}');
+
       if (response.statusCode == 400) {
         return const VisionAnalysisResult(
           foods: [],
-          error: 'Clave de API inválida. Verifica tu clave en Ajustes → Claves API.',
+          error: 'Clave Gemini inválida. Verifica tu clave en Ajustes → Claves API.',
         );
       }
       if (response.statusCode == 403) {
         return const VisionAnalysisResult(
           foods: [],
-          error: 'Clave de API sin permisos. Activa Gemini API en Google AI Studio.',
+          error: 'Clave Gemini sin permisos. Activa Gemini API en Google AI Studio.',
         );
       }
-      if (response.statusCode == 429) {
-        return null; // señal de límite alcanzado → rotar clave
-      }
+      if (response.statusCode == 429) return null; // señal de límite → rotar
       if (response.statusCode != 200) {
         String msg = '';
         try {
           final err = jsonDecode(response.body) as Map<String, dynamic>;
           msg = err['error']?['message']?.toString() ?? response.body;
         } catch (_) {
-          msg = response.body.length > 150
-              ? response.body.substring(0, 150)
-              : response.body;
+          msg = response.body.length > 150 ? response.body.substring(0, 150) : response.body;
         }
-        return VisionAnalysisResult(
-          foods: [],
-          error: 'Error ${response.statusCode}: $msg',
-        );
+        return VisionAnalysisResult(foods: [], error: 'Error Gemini ${response.statusCode}: $msg');
       }
 
-      return _parseResponse(response.body);
+      return _parseGeminiResponse(response.body);
 
     } on SocketException {
-      return const VisionAnalysisResult(
-        foods: [],
-        error: 'Sin conexión a internet. Verifica tu red.',
-      );
+      return const VisionAnalysisResult(foods: [], error: 'Sin conexión a internet.');
     } on Exception catch (e) {
       if (e.toString().contains('TimeoutException')) {
-        return const VisionAnalysisResult(
-          foods: [],
-          error: 'Tiempo de espera agotado. Intenta con otra foto.',
-        );
+        return const VisionAnalysisResult(foods: [], error: 'Tiempo de espera agotado. Intenta con otra foto.');
       }
-      return VisionAnalysisResult(
-        foods: [],
-        error: 'Error: ${e.toString().replaceAll('Exception: ', '')}',
-      );
+      return VisionAnalysisResult(foods: [], error: 'Error: ${e.toString().replaceAll('Exception: ', '')}');
     }
   }
 
-  static VisionAnalysisResult _parseResponse(String rawBody) {
+  // ── Petición a Groq Vision ─────────────────────────────────────
+  // Devuelve null si recibió 429 (rotar clave), resultado en los demás casos.
+  static Future<VisionAnalysisResult?> _requestGroq(
+      File imageFile, String apiKey) async {
+    try {
+      final bytes     = await imageFile.readAsBytes();
+      final base64Img = base64Encode(bytes);
+      final mimeType  = imageFile.path.toLowerCase().endsWith('.png')
+          ? 'image/png' : 'image/jpeg';
+
+      final body = jsonEncode({
+        'model': _groqModel,
+        'messages': [
+          {
+            'role': 'user',
+            'content': [
+              {
+                'type': 'image_url',
+                'image_url': {'url': 'data:$mimeType;base64,$base64Img'},
+              },
+              {'type': 'text', 'text': _prompt},
+            ],
+          }
+        ],
+        'temperature': 0.2,
+        'max_tokens': 1024,
+      });
+
+      final response = await http.post(
+        Uri.parse(_groqUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $apiKey',
+        },
+        body: body,
+      ).timeout(const Duration(seconds: 30));
+
+      print('[FoodVision] Groq status: ${response.statusCode}');
+
+      if (response.statusCode == 401) {
+        return const VisionAnalysisResult(
+          foods: [],
+          error: 'Clave Groq inválida. Verifica tu clave en Ajustes → Claves API.',
+        );
+      }
+      if (response.statusCode == 429) return null; // señal de límite → rotar
+      if (response.statusCode != 200) {
+        String msg = '';
+        try {
+          final err = jsonDecode(response.body) as Map<String, dynamic>;
+          msg = err['error']?['message']?.toString() ?? response.body;
+        } catch (_) {
+          msg = response.body.length > 150 ? response.body.substring(0, 150) : response.body;
+        }
+        return VisionAnalysisResult(foods: [], error: 'Error Groq ${response.statusCode}: $msg');
+      }
+
+      return _parseGroqResponse(response.body);
+
+    } on SocketException {
+      return const VisionAnalysisResult(foods: [], error: 'Sin conexión a internet.');
+    } on Exception catch (e) {
+      if (e.toString().contains('TimeoutException')) {
+        return const VisionAnalysisResult(foods: [], error: 'Tiempo de espera agotado. Intenta con otra foto.');
+      }
+      return VisionAnalysisResult(foods: [], error: 'Error: ${e.toString().replaceAll('Exception: ', '')}');
+    }
+  }
+
+  // ── Parser de respuesta Gemini ─────────────────────────────────
+  static VisionAnalysisResult _parseGeminiResponse(String rawBody) {
     try {
       final data  = jsonDecode(rawBody) as Map<String, dynamic>;
       final parts = data['candidates']?[0]?['content']?['parts'] as List?;
-
       if (parts == null || parts.isEmpty) {
         return const VisionAnalysisResult(
             foods: [], error: 'La IA no devolvió respuesta. Intenta de nuevo.');
       }
+      final text = (parts[0]['text'] as String).trim();
+      return _parseJsonResponse(text);
+    } catch (_) {
+      return const VisionAnalysisResult(
+          foods: [], error: 'No se pudo interpretar la respuesta. Intenta de nuevo.');
+    }
+  }
 
-      var text = (parts[0]['text'] as String).trim()
+  // ── Parser de respuesta Groq ───────────────────────────────────
+  static VisionAnalysisResult _parseGroqResponse(String rawBody) {
+    try {
+      final data    = jsonDecode(rawBody) as Map<String, dynamic>;
+      final content = data['choices']?[0]?['message']?['content'] as String?;
+      if (content == null || content.isEmpty) {
+        return const VisionAnalysisResult(
+            foods: [], error: 'La IA no devolvió respuesta. Intenta de nuevo.');
+      }
+      return _parseJsonResponse(content);
+    } catch (_) {
+      return const VisionAnalysisResult(
+          foods: [], error: 'No se pudo interpretar la respuesta. Intenta de nuevo.');
+    }
+  }
+
+  // ── Parser común del JSON de alimentos ────────────────────────
+  static VisionAnalysisResult _parseJsonResponse(String text) {
+    try {
+      var cleaned = text.trim()
           .replaceAll('```json', '').replaceAll('```', '').trim();
 
       // Extraer solo el JSON si viene con texto extra
-      final start = text.indexOf('{');
-      final end   = text.lastIndexOf('}');
+      final start = cleaned.indexOf('{');
+      final end   = cleaned.lastIndexOf('}');
       if (start != -1 && end != -1 && start < end) {
-        text = text.substring(start, end + 1);
+        cleaned = cleaned.substring(start, end + 1);
       }
 
-      final parsed    = jsonDecode(text) as Map<String, dynamic>;
+      final parsed    = jsonDecode(cleaned) as Map<String, dynamic>;
       final foodsList = (parsed['foods'] as List?) ?? [];
 
       final foods = foodsList
@@ -267,19 +374,14 @@ Reglas:
 
       if (foods.isEmpty) {
         return const VisionAnalysisResult(
-          foods: [],
-          error: 'No se detectaron alimentos. Intenta con otra foto.',
+          foods: [], error: 'No se detectaron alimentos. Intenta con otra foto.',
         );
       }
 
-      return VisionAnalysisResult(
-        foods: foods,
-        notes: parsed['notes'] as String?,
-      );
+      return VisionAnalysisResult(foods: foods, notes: parsed['notes'] as String?);
     } catch (_) {
       return const VisionAnalysisResult(
-        foods: [],
-        error: 'No se pudo interpretar la respuesta. Intenta de nuevo.',
+        foods: [], error: 'No se pudo interpretar la respuesta. Intenta de nuevo.',
       );
     }
   }
