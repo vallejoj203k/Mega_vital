@@ -21,6 +21,7 @@ import '../../../services/food_search_service.dart';
 import '../../../services/food_vision_service.dart';
 import '../../widgets/shared_widgets.dart';
 import '../meal_detail/meal_detail_screen.dart';
+import '../api_keys/api_keys_screen.dart';
 
 class NutritionScreen extends StatefulWidget {
   const NutritionScreen({super.key});
@@ -813,8 +814,15 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
             _AnalyzingIndicator(photoFile: _photoFile),
 
           if (_visionError != null)
-            _ErrorCard(message: _visionError!,
-                onDismiss: () => setState(() => _visionError = null)),
+            _ErrorCard(
+              message: _visionError!,
+              onDismiss: () => setState(() => _visionError = null),
+              onAddKey: _visionError!.contains('ímite') || _visionError!.contains('clave')
+                  ? () => Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => const ApiKeysScreen()))
+                      .then((_) => setState(() {}))
+                  : null,
+            ),
 
           if (_visionItems.isNotEmpty && !_isAnalyzingPhoto)
             _VisionResultsCard(
@@ -1353,21 +1361,24 @@ class _PhotoButtons extends StatelessWidget {
       title: Text('Activa el análisis con IA', style: AppTextStyles.headingSmall),
       content: Column(mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Agrega tu clave gratuita de Gemini en:',
+            Text('Agrega tu clave gratuita de Gemini para analizar fotos de comida.',
                 style: AppTextStyles.bodyMedium),
             const SizedBox(height: 8),
-            Container(padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: AppColors.surfaceVariant,
-                    borderRadius: BorderRadius.circular(8)),
-                child: Text('lib/core/config/app_config.dart',
-                    style: AppTextStyles.caption
-                        .copyWith(fontFamily: 'monospace', color: AppColors.primary))),
-            const SizedBox(height: 8),
-            Text('Obtén una gratis en: aistudio.google.com/apikey',
+            Text('Obtén una clave gratis en: aistudio.google.com/apikey',
                 style: AppTextStyles.bodySmall),
           ]),
-      actions: [TextButton(onPressed: () => Navigator.pop(context),
-          child: Text('OK', style: TextStyle(color: AppColors.primary)))],
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar', style: TextStyle(color: AppColors.textMuted))),
+        TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const ApiKeysScreen()))
+                .then((_) => setState(() {}));
+            },
+            child: Text('Agregar clave', style: TextStyle(color: AppColors.primary))),
+      ],
     ));
   }
 }
@@ -1409,7 +1420,8 @@ class _AnalyzingIndicator extends StatelessWidget {
 class _ErrorCard extends StatelessWidget {
   final String message;
   final VoidCallback onDismiss;
-  const _ErrorCard({required this.message, required this.onDismiss});
+  final VoidCallback? onAddKey;
+  const _ErrorCard({required this.message, required this.onDismiss, this.onAddKey});
   @override
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.only(bottom: 12),
@@ -1418,13 +1430,29 @@ class _ErrorCard extends StatelessWidget {
         color: AppColors.error.withOpacity(0.08),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.error.withOpacity(0.3), width: 0.5)),
-    child: Row(children: [
-      const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 18),
-      const SizedBox(width: 10),
-      Expanded(child: Text(message, style: AppTextStyles.bodySmall
-          .copyWith(color: AppColors.error))),
-      GestureDetector(onTap: onDismiss,
-          child: const Icon(Icons.close_rounded, size: 16, color: AppColors.error)),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 18),
+        const SizedBox(width: 10),
+        Expanded(child: Text(message, style: AppTextStyles.bodySmall
+            .copyWith(color: AppColors.error))),
+        GestureDetector(onTap: onDismiss,
+            child: const Icon(Icons.close_rounded, size: 16, color: AppColors.error)),
+      ]),
+      if (onAddKey != null) ...[
+        const SizedBox(height: 10),
+        GestureDetector(
+          onTap: onAddKey,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(8)),
+            child: Text('+ Agregar clave de Gemini',
+                style: AppTextStyles.labelMedium.copyWith(color: Colors.white)),
+          ),
+        ),
+      ],
     ]),
   );
 }
