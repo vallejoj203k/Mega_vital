@@ -1374,8 +1374,7 @@ class _PhotoButtons extends StatelessWidget {
             onPressed: () {
               Navigator.pop(context);
               Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const ApiKeysScreen()))
-                .then((_) => setState(() {}));
+                  MaterialPageRoute(builder: (_) => const ApiKeysScreen()));
             },
             child: Text('Agregar clave', style: TextStyle(color: AppColors.primary))),
       ],
