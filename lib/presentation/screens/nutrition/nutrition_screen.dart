@@ -77,8 +77,9 @@ class _NutritionScreenState extends State<NutritionScreen>
             SliverToBoxAdapter(child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: _CalorieRing(
-                consumed: nutrition.totalCalories,
-                goal:     metaCal,
+                consumed:   nutrition.totalCalories,
+                goal:       metaCal,
+                byMealType: nutrition.byMealType,
               ),
             )),
 
@@ -133,7 +134,35 @@ class _NutritionScreenState extends State<NutritionScreen>
                 }).toList(),
               )),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            // ── Botón "Agregar otra comida" (visible cuando ya hay entradas) ──
+            if (nutrition.log.entries.isNotEmpty)
+              SliverToBoxAdapter(child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: GestureDetector(
+                  onTap: () => _showAddFoodSheet(context, nutrition),
+                  child: Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceVariant,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                          color: AppColors.primary.withOpacity(0.4), width: 1),
+                    ),
+                    child: Row(mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_rounded,
+                              color: AppColors.primary, size: 18),
+                          const SizedBox(width: 8),
+                          Text('Agregar otra comida',
+                              style: TextStyle(fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary)),
+                        ]),
+                  ),
+                ),
+              )),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 32)),
           ],
         ),
       ),
@@ -241,7 +270,22 @@ class _NavBtn extends StatelessWidget {
 // ── Anillo calórico ───────────────────────────────────────────────
 class _CalorieRing extends StatelessWidget {
   final int consumed, goal;
-  const _CalorieRing({required this.consumed, required this.goal});
+  final Map<String, List<FoodEntry>> byMealType;
+  const _CalorieRing({
+    required this.consumed,
+    required this.goal,
+    required this.byMealType,
+  });
+
+  String _mealLabel(String type) {
+    switch (type) {
+      case 'desayuno': return 'Desayuno';
+      case 'almuerzo': return 'Almuerzo';
+      case 'merienda': return 'Merienda';
+      case 'cena':     return 'Cena';
+      default:         return 'Extra';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -249,37 +293,71 @@ class _CalorieRing extends StatelessWidget {
     final remaining = goal - consumed;
     final over      = consumed > goal;
 
-    return DarkCard(child: Row(children: [
-      // Anillo
-      SizedBox(width: 120, height: 120,
-        child: Stack(alignment: Alignment.center, children: [
-          CustomPaint(size: const Size(120, 120),
-              painter: _RingPainter(progress: pct, over: over)),
-          Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Text('$consumed', style: AppTextStyles.statNumber.copyWith(fontSize: 24)),
-            Text('kcal', style: AppTextStyles.caption),
-          ]),
+    final activeMeals = FoodLog.mealOrder
+        .where((m) => (byMealType[m] ?? []).isNotEmpty)
+        .toList();
+
+    return DarkCard(child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(children: [
+          // Anillo
+          SizedBox(width: 120, height: 120,
+            child: Stack(alignment: Alignment.center, children: [
+              CustomPaint(size: const Size(120, 120),
+                  painter: _RingPainter(progress: pct, over: over)),
+              Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Text('$consumed', style: AppTextStyles.statNumber.copyWith(fontSize: 24)),
+                Text('kcal', style: AppTextStyles.caption),
+              ]),
+            ]),
+          ),
+          const SizedBox(width: 20),
+          Expanded(child: Column(children: [
+            _CalRow('Objetivo',   '$goal kcal',          AppColors.textSecondary),
+            const SizedBox(height: 10),
+            _CalRow('Consumidas', '$consumed kcal',       AppColors.primary),
+            const SizedBox(height: 10),
+            _CalRow(over ? 'Exceso' : 'Restantes',
+                '${remaining.abs()} kcal',
+                over ? AppColors.error : AppColors.accentBlue),
+            const SizedBox(height: 12),
+            NeonProgressBar(
+              progress: pct,
+              gradient: over
+                  ? LinearGradient(colors: [AppColors.error, AppColors.error.withOpacity(0.7)])
+                  : AppColors.burnGradient,
+              height: 6,
+            ),
+          ])),
         ]),
-      ),
-      const SizedBox(width: 20),
-      Expanded(child: Column(children: [
-        _CalRow('Objetivo',   '$goal kcal',          AppColors.textSecondary),
-        const SizedBox(height: 10),
-        _CalRow('Consumidas', '$consumed kcal',       AppColors.primary),
-        const SizedBox(height: 10),
-        _CalRow(over ? 'Exceso' : 'Restantes',
-            '${remaining.abs()} kcal',
-            over ? AppColors.error : AppColors.accentBlue),
-        const SizedBox(height: 12),
-        NeonProgressBar(
-          progress: pct,
-          gradient: over
-              ? LinearGradient(colors: [AppColors.error, AppColors.error.withOpacity(0.7)])
-              : AppColors.burnGradient,
-          height: 6,
-        ),
-      ])),
-    ]));
+
+        // ── Desglose por comida ────────────────────────────────
+        if (activeMeals.isNotEmpty) ...[
+          const Divider(height: 20, thickness: 0.5),
+          ...activeMeals.map((mealType) {
+            final entries = byMealType[mealType]!;
+            final cal   = entries.fold(0, (s, e) => s + e.adjustedCalories);
+            final color = entries.first.color;
+            final icon  = entries.first.icon;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(children: [
+                Icon(icon, color: color, size: 14),
+                const SizedBox(width: 8),
+                Text(_mealLabel(mealType),
+                    style: AppTextStyles.bodyMedium
+                        .copyWith(color: AppColors.textSecondary)),
+                const Spacer(),
+                Text('$cal kcal',
+                    style: AppTextStyles.labelLarge
+                        .copyWith(color: color, fontSize: 13)),
+              ]),
+            );
+          }),
+        ],
+      ],
+    ));
   }
 }
 
