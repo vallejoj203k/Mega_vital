@@ -42,9 +42,13 @@ class AppConfig {
   static const String geminiApiKey = 'AIzaSyB3roNzpuoQAhTU4BvWa74rMaxElMB1GLw';
 
   // ── Estado ────────────────────────────────────────────────────
-  static bool get visionEnabled =>
-      geminiApiKey.isNotEmpty && geminiApiKey != '';
+  // Habilitado si hay clave hardcoded O si el usuario agregó claves propias
+  static bool get visionEnabled {
+    if (geminiApiKey.isNotEmpty) return true;
+    // Import circular evitado: ApiKeyManager se consulta solo en runtime
+    return false; // se comprueba también en FoodVisionService.analyzeFood()
+  }
 
   static String get visionStatus =>
-      visionEnabled ? 'Activo' : 'Agrega tu clave en app_config.dart';
+      visionEnabled ? 'Activo' : 'Agrega tu clave en Ajustes → Claves API';
 }

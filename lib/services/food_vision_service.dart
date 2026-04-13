@@ -3,12 +3,14 @@
 // Analiza fotos de comida con Google Gemini Vision.
 // Llama directamente a la API de Gemini — sin intermediarios.
 // Plan gratuito: 1,500 análisis/día por clave.
+// Usa ApiKeyManager para rotación automática entre múltiples claves.
 // ─────────────────────────────────────────────────────────────────
 
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../core/config/app_config.dart';
+import 'api_key_manager.dart';
 
 // ── Alimento detectado en la foto ─────────────────────────────────
 class VisionFoodItem {
@@ -91,22 +93,71 @@ Reglas:
 - Sé específico: "pechuga de pollo a la plancha" no solo "carne"
 ''';
 
+  // ── Punto de entrada público ───────────────────────────────────
+  // Intenta cada clave disponible (manager + fallback hardcoded).
+  // Si una clave devuelve 429, la marca como errónea y pasa a la siguiente.
   static Future<VisionAnalysisResult> analyzeFood(File imageFile) async {
-    if (!AppConfig.visionEnabled) {
+    final manager = ApiKeyManager.instance;
+    await manager.load();
+
+    final triedKeys = <String>{};
+
+    // 1. Intentar con claves del ApiKeyManager (con rotación automática)
+    while (true) {
+      final managed = manager.nextAvailable('gemini');
+      if (managed == null || triedKeys.contains(managed.key)) break;
+
+      triedKeys.add(managed.key);
+      final result = await _request(imageFile, managed.key);
+
+      if (result == null) {
+        // 429: forzar rotación marcando la clave hasta que nextAvailable la salte
+        while (managed.isFresh) await manager.markError(managed);
+        continue;
+      }
+
+      if (result.success) {
+        await manager.markUsed(managed);
+      }
+      return result;
+    }
+
+    // 2. Fallback: clave hardcoded en AppConfig (si no fue ya intentada)
+    final fallback = AppConfig.geminiApiKey;
+    if (fallback.isNotEmpty && !triedKeys.contains(fallback)) {
+      triedKeys.add(fallback);
+      final result = await _request(imageFile, fallback);
+      if (result != null) return result;
+      // Si también da 429, caemos al mensaje de error final
+    }
+
+    // 3. Sin claves configuradas
+    if (triedKeys.isEmpty) {
       return const VisionAnalysisResult(
         foods: [],
-        error: 'Agrega tu clave de Gemini en lib/core/config/app_config.dart\n'
+        error: 'Agrega tu clave de Gemini en Ajustes → Claves API\n'
             'Obtén una gratis en: aistudio.google.com/apikey',
       );
     }
 
+    // 4. Todas las claves agotadas por límite diario
+    return const VisionAnalysisResult(
+      foods: [],
+      error: 'Límite diario alcanzado en todas las claves (1,500/día).\n'
+          'Intenta mañana o agrega más claves en Ajustes → Claves API.',
+    );
+  }
+
+  // ── Petición HTTP a Gemini con una clave concreta ──────────────
+  // Devuelve null si la clave recibió 429 (límite), resultado en los demás casos.
+  static Future<VisionAnalysisResult?> _request(File imageFile, String apiKey) async {
     try {
       final bytes     = await imageFile.readAsBytes();
       final base64Img = base64Encode(bytes);
       final mimeType  = imageFile.path.toLowerCase().endsWith('.png')
           ? 'image/png' : 'image/jpeg';
 
-      final url = Uri.parse('$_geminiUrl?key=${AppConfig.geminiApiKey}');
+      final url = Uri.parse('$_geminiUrl?key=$apiKey');
 
       final body = jsonEncode({
         'contents': [
@@ -137,7 +188,7 @@ Reglas:
       if (response.statusCode == 400) {
         return const VisionAnalysisResult(
           foods: [],
-          error: 'Clave de API inválida. Verifica tu clave en app_config.dart.',
+          error: 'Clave de API inválida. Verifica tu clave en Ajustes → Claves API.',
         );
       }
       if (response.statusCode == 403) {
@@ -147,10 +198,7 @@ Reglas:
         );
       }
       if (response.statusCode == 429) {
-        return const VisionAnalysisResult(
-          foods: [],
-          error: 'Límite diario alcanzado (1,500/día). Intenta mañana o usa otra clave.',
-        );
+        return null; // señal de límite alcanzado → rotar clave
       }
       if (response.statusCode != 200) {
         String msg = '';
