@@ -134,7 +134,35 @@ class _NutritionScreenState extends State<NutritionScreen>
                 }).toList(),
               )),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            // ── Botón "Agregar otra comida" (visible cuando ya hay entradas) ──
+            if (nutrition.log.entries.isNotEmpty)
+              SliverToBoxAdapter(child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: GestureDetector(
+                  onTap: () => _showAddFoodSheet(context, nutrition),
+                  child: Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceVariant,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                          color: AppColors.primary.withOpacity(0.4), width: 1),
+                    ),
+                    child: Row(mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_rounded,
+                              color: AppColors.primary, size: 18),
+                          const SizedBox(width: 8),
+                          Text('Agregar otra comida',
+                              style: TextStyle(fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary)),
+                        ]),
+                  ),
+                ),
+              )),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 32)),
           ],
         ),
       ),
