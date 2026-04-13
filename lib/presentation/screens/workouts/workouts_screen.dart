@@ -10,11 +10,16 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/data/muscle_data.dart';
+import '../../../core/providers/workout_log_provider.dart';
 import '../../../services/routine_service.dart';
+import '../../../services/workout_log_service.dart';
 import '../../widgets/shared_widgets.dart';
+import '../workout_log/active_workout_screen.dart';
+import '../workout_log/workout_history_screen.dart';
 import 'exercise_animations.dart';
 
 class WorkoutsScreen extends StatefulWidget {
@@ -46,7 +51,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 2, vsync: this);
+    _tabCtrl = TabController(length: 3, vsync: this);
     _loadRoutines();
 
     _bodyCtrl = AnimationController(
@@ -256,6 +261,8 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
               await _routineService.deleteRoutine(id);
               _loadRoutines();
             }),
+            // ── Tab Historial ─────────────────────────────────────
+            const _HistorialTab(),
           ],
         )),
       ])),
@@ -884,6 +891,46 @@ class _RoutineCard extends StatelessWidget {
   final SavedRoutine routine; final VoidCallback onDelete;
   const _RoutineCard({required this.routine, required this.onDelete});
 
+  Future<void> _startWorkout(BuildContext context) async {
+    HapticFeedback.mediumImpact();
+    final provider = context.read<WorkoutLogProvider>();
+    if (provider.hasActiveSession) {
+      final resume = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('Entrenamiento en curso',
+              style: AppTextStyles.headingSmall),
+          content: Text(
+              'Ya tienes un entrenamiento activo. ¿Quieres retomarlo?',
+              style: AppTextStyles.bodyMedium),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text('Cancelar',
+                    style: TextStyle(color: AppColors.textSecondary))),
+            TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text('Retomar',
+                    style: TextStyle(color: AppColors.primary,
+                        fontWeight: FontWeight.w700))),
+          ],
+        ),
+      );
+      if (resume == true && context.mounted) {
+        Navigator.push(context, MaterialPageRoute(
+            builder: (_) => const ActiveWorkoutScreen()));
+      }
+      return;
+    }
+    await provider.startSession(routine.name, routine.exercises);
+    if (context.mounted) {
+      Navigator.push(context, MaterialPageRoute(
+          builder: (_) => const ActiveWorkoutScreen()));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final muscle = getMuscleById(routine.muscleId);
@@ -913,7 +960,335 @@ class _RoutineCard extends StatelessWidget {
                     border: Border.all(color: color.withOpacity(0.2), width: 0.5)),
                 child: Text(e.name, style: AppTextStyles.caption.copyWith(color: color)),
               )).toList()),
+          const SizedBox(height: 12),
+          // ── Botón Iniciar ─────────────────────────────────────
+          GestureDetector(
+            onTap: () => _startWorkout(context),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                    colors: [color.withOpacity(0.15), color.withOpacity(0.08)],
+                    begin: Alignment.centerLeft, end: Alignment.centerRight),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: color.withOpacity(0.3), width: 0.8),
+              ),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                Icon(Icons.play_arrow_rounded, color: color, size: 18),
+                const SizedBox(width: 6),
+                Text('Iniciar entrenamiento',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+                        color: color)),
+              ]),
+            ),
+          ),
         ]));
+  }
+}
+
+// ── Tab de Historial (integrado) ──────────────────────────────────
+class _HistorialTab extends StatefulWidget {
+  const _HistorialTab();
+  @override
+  State<_HistorialTab> createState() => _HistorialTabState();
+}
+
+class _HistorialTabState extends State<_HistorialTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  final Set<String> _expandedIds = {};
+
+  String _formatDate(DateTime d) {
+    const days   = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+    const months = ['ene','feb','mar','abr','may','jun',
+      'jul','ago','sep','oct','nov','dic'];
+    return '${days[d.weekday-1]} ${d.day} ${months[d.month-1]}';
+  }
+
+  String _formatDuration(int m) {
+    if (m == 0) return '—';
+    if (m < 60) return '${m}min';
+    final h = m ~/ 60; final r = m % 60;
+    return r == 0 ? '${h}h' : '${h}h ${r}min';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final provider  = context.watch<WorkoutLogProvider>();
+    final completed = provider.history.where((s) => s.isCompleted).toList();
+
+    if (provider.isLoading) {
+      return const Center(child: CircularProgressIndicator(
+          color: AppColors.primary, strokeWidth: 2));
+    }
+
+    if (completed.isEmpty) {
+      return Center(child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(width: 72, height: 72,
+              decoration: const BoxDecoration(
+                  color: AppColors.surfaceVariant, shape: BoxShape.circle),
+              child: const Icon(Icons.history_rounded,
+                  color: AppColors.textMuted, size: 34)),
+          const SizedBox(height: 16),
+          Text('Sin entrenamientos aún',
+              style: AppTextStyles.headingSmall),
+          const SizedBox(height: 8),
+          Text('Inicia una rutina para registrar\ntu progreso aquí',
+              style: AppTextStyles.bodyMedium, textAlign: TextAlign.center),
+        ],
+      ));
+    }
+
+    // Totales rápidos
+    final totalSeries = completed.fold(0, (s, e) => s + e.totalDoneSets);
+    final totalVol    = completed.fold(0.0, (s, e) => s + e.totalVolume);
+
+    return Column(children: [
+      // Resumen compacto
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border, width: 0.5)),
+          child: Row(children: [
+            _MiniStat('${completed.length}', 'Sesiones', AppColors.primary),
+            _VertDiv(),
+            _MiniStat('$totalSeries', 'Series', AppColors.accentBlue),
+            _VertDiv(),
+            _MiniStat(
+              totalVol >= 1000
+                  ? '${(totalVol/1000).toStringAsFixed(1)}t'
+                  : '${totalVol.toStringAsFixed(0)}kg',
+              'Volumen', AppColors.accentOrange),
+          ]),
+        ),
+      ),
+
+      // Lista de sesiones
+      Expanded(child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 80),
+        physics: const BouncingScrollPhysics(),
+        itemCount: completed.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (ctx, i) {
+          final session  = completed[i];
+          final isExpanded = _expandedIds.contains(session.id);
+
+          return Dismissible(
+            key: ValueKey(session.id),
+            direction: DismissDirection.endToStart,
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20),
+              decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(14)),
+              child: const Icon(Icons.delete_outline_rounded,
+                  color: AppColors.error),
+            ),
+            confirmDismiss: (_) async {
+              final ok = await showDialog<bool>(
+                context: ctx,
+                builder: (_) => AlertDialog(
+                  backgroundColor: AppColors.surface,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
+                  title: Text('¿Eliminar sesión?',
+                      style: AppTextStyles.headingSmall),
+                  content: Text('Esta acción no se puede deshacer.',
+                      style: AppTextStyles.bodyMedium),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx, false),
+                        child: Text('Cancelar',
+                            style: TextStyle(color: AppColors.textSecondary))),
+                    TextButton(onPressed: () => Navigator.pop(ctx, true),
+                        child: Text('Eliminar',
+                            style: TextStyle(color: AppColors.error,
+                                fontWeight: FontWeight.w700))),
+                  ],
+                ),
+              );
+              if (ok == true) {
+                await ctx.read<WorkoutLogProvider>().deleteSession(session.id);
+              }
+              return false;
+            },
+            child: GestureDetector(
+              onTap: () => setState(() {
+                if (isExpanded) _expandedIds.remove(session.id);
+                else _expandedIds.add(session.id);
+              }),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                        color: isExpanded
+                            ? AppColors.primary.withOpacity(0.35)
+                            : AppColors.border,
+                        width: isExpanded ? 1.5 : 0.5)),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  // Encabezado
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+                    child: Row(children: [
+                      Container(width: 38, height: 38,
+                          decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                  color: AppColors.primary.withOpacity(0.25),
+                                  width: 0.5)),
+                          child: const Icon(Icons.fitness_center_rounded,
+                              color: AppColors.primary, size: 18)),
+                      const SizedBox(width: 10),
+                      Expanded(child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                        Text(session.name, style: AppTextStyles.labelLarge,
+                            overflow: TextOverflow.ellipsis),
+                        Text(_formatDate(session.date),
+                            style: AppTextStyles.caption),
+                      ])),
+                      Icon(isExpanded
+                          ? Icons.expand_less_rounded
+                          : Icons.expand_more_rounded,
+                          color: AppColors.textMuted, size: 20),
+                    ]),
+                  ),
+
+                  // Chips resumen
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                    child: Wrap(spacing: 6, runSpacing: 6, children: [
+                      _HistChip(Icons.timer_rounded,
+                          _formatDuration(session.durationMinutes),
+                          AppColors.accentBlue),
+                      _HistChip(Icons.fitness_center_rounded,
+                          '${session.completedExercises} ejercicios',
+                          AppColors.accentPurple),
+                      _HistChip(Icons.repeat_rounded,
+                          '${session.totalDoneSets} series',
+                          AppColors.primary),
+                      if (session.totalVolume > 0)
+                        _HistChip(Icons.bar_chart_rounded,
+                            session.totalVolume >= 1000
+                                ? '${(session.totalVolume/1000).toStringAsFixed(1)}t'
+                                : '${session.totalVolume.toStringAsFixed(0)} kg',
+                            AppColors.accentOrange),
+                    ]),
+                  ),
+
+                  // Detalle expandible
+                  if (isExpanded)
+                    _InlineSessionDetail(session: session),
+                ]),
+              ),
+            ),
+          );
+        },
+      )),
+    ]);
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  final String value, label;
+  final Color color;
+  const _MiniStat(this.value, this.label, this.color);
+  @override
+  Widget build(BuildContext context) => Expanded(child: Column(children: [
+    Text(value, style: AppTextStyles.headingMedium.copyWith(color: color)),
+    Text(label, style: AppTextStyles.caption),
+  ]));
+}
+
+class _VertDiv extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) =>
+      Container(width: 0.5, height: 28, color: AppColors.border,
+          margin: const EdgeInsets.symmetric(horizontal: 4));
+}
+
+class _HistChip extends StatelessWidget {
+  final IconData icon; final String label; final Color color;
+  const _HistChip(this.icon, this.label, this.color);
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: color.withOpacity(0.2), width: 0.5)),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: 9, color: color),
+      const SizedBox(width: 3),
+      Text(label, style: TextStyle(
+          fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+    ]),
+  );
+}
+
+class _InlineSessionDetail extends StatelessWidget {
+  final WorkoutSession session;
+  const _InlineSessionDetail({required this.session});
+
+  String _bestSet(LoggedExercise ex) {
+    final done = ex.sets.where((s) => s.isDone).toList();
+    if (done.isEmpty) return '—';
+    done.sort((a, b) => (b.weight * b.reps).compareTo(a.weight * a.reps));
+    final best = done.first;
+    final w = best.weight > 0
+        ? (best.weight == best.weight.truncateToDouble()
+            ? '${best.weight.toInt()} kg'
+            : '${best.weight.toStringAsFixed(1)} kg')
+        : 'Corporal';
+    return '$w × ${best.reps} reps';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final exDone = session.exercises.where((e) => e.doneSets > 0).toList();
+    if (exDone.isEmpty) {
+      return Padding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+          child: Text('Sin series completadas', style: AppTextStyles.caption));
+    }
+    return Container(
+      margin: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+          color: AppColors.surfaceVariant,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.border, width: 0.5)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: exDone.map((ex) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(children: [
+            Expanded(child: Text(ex.exerciseName,
+                style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textPrimary, fontSize: 11),
+                overflow: TextOverflow.ellipsis)),
+            Text('${ex.doneSets} series  ·  ${_bestSet(ex)}',
+                style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary, fontSize: 10)),
+          ]),
+        )).toList(),
+      ),
+    );
   }
 }
 
@@ -937,7 +1312,11 @@ class _WorkoutTabBar extends StatelessWidget {
           unselectedLabelColor: AppColors.textSecondary,
           labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
           dividerColor: Colors.transparent,
-          tabs: const [Tab(text: 'Cuerpo'), Tab(text: 'Mis Rutinas')],
+          tabs: const [
+            Tab(text: 'Cuerpo'),
+            Tab(text: 'Rutinas'),
+            Tab(text: 'Historial'),
+          ],
         )),
   );
 }
