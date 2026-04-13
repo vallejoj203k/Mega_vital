@@ -9,7 +9,9 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../core/mock/mock_data.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/nutrition_provider.dart';
+import '../../../core/providers/workout_log_provider.dart';
 import '../../../services/fitness_calculator.dart';
+import '../../../services/workout_log_service.dart';
 import '../../widgets/shared_widgets.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -456,9 +458,98 @@ class _CirclePainter extends CustomPainter {
 }
 
 // ── Entrenamiento del día ──────────────────────────────────────────
+// ── Entrenamiento del día (datos reales) ──────────────────────────
 class _WorkoutOfDay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<WorkoutLogProvider>();
+    final today    = provider.todaySessions;
+
+    // Si hay sesión activa, mostrar estado "en curso"
+    if (provider.hasActiveSession) {
+      final active = provider.activeSession!;
+      return DarkCard(
+        padding: const EdgeInsets.all(16),
+        gradient: const LinearGradient(
+            colors: [Color(0xFF0F1F0A), Color(0xFF081208)],
+            begin: Alignment.topLeft, end: Alignment.bottomRight),
+        borderColor: AppColors.primary.withOpacity(0.4),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            _Pill(label: 'En curso',
+                icon: Icons.circle, color: AppColors.primary),
+            const Spacer(),
+            Text('${provider.currentDurationMinutes} min',
+                style: AppTextStyles.caption),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            BoxedIcon(icon: Icons.fitness_center_rounded,
+                color: AppColors.primary, size: 48),
+            const SizedBox(width: 14),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+              Text(active.name, style: AppTextStyles.headingSmall),
+              const SizedBox(height: 4),
+              Text('${active.exercises.length} ejercicios · '
+                  '${active.totalDoneSets} series hechas',
+                  style: AppTextStyles.caption),
+            ])),
+            GestureDetector(
+              onTap: () {},
+              child: Container(width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    gradient: AppColors.primaryGradient,
+                    shape: BoxShape.circle,
+                    boxShadow: [BoxShadow(
+                        color: AppColors.primary.withOpacity(0.3),
+                        blurRadius: 8)],
+                  ),
+                  child: const Icon(Icons.arrow_forward_rounded,
+                      color: AppColors.background, size: 20)),
+            ),
+          ]),
+        ]),
+      );
+    }
+
+    // Si ya entrenó hoy
+    if (today.isNotEmpty) {
+      final lastToday = today.first;
+      return DarkCard(
+        padding: const EdgeInsets.all(16),
+        gradient: const LinearGradient(
+            colors: [Color(0xFF0F1F0A), Color(0xFF081208)],
+            begin: Alignment.topLeft, end: Alignment.bottomRight),
+        borderColor: AppColors.primary.withOpacity(0.25),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            _Pill(label: 'Completado hoy',
+                icon: Icons.check_circle_rounded, color: AppColors.primary),
+            const Spacer(),
+            Text('${today.length} sesión${today.length > 1 ? "es" : ""}',
+                style: AppTextStyles.caption),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            BoxedIcon(icon: Icons.fitness_center_rounded,
+                color: AppColors.primary, size: 48),
+            const SizedBox(width: 14),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+              Text(lastToday.name, style: AppTextStyles.headingSmall),
+              const SizedBox(height: 4),
+              Text('${lastToday.durationMinutes} min  ·  '
+                  '${lastToday.totalDoneSets} series  ·  '
+                  '${lastToday.totalVolume > 0 ? "${lastToday.totalVolume.toStringAsFixed(0)} kg" : "—"}',
+                  style: AppTextStyles.caption),
+            ])),
+          ]),
+        ]),
+      );
+    }
+
+    // Sin entrenamiento hoy — estado vacío motivacional
     final w = MockData.workouts.first;
     return DarkCard(
       padding: const EdgeInsets.all(16),
@@ -514,29 +605,77 @@ class _WorkoutOfDay extends StatelessWidget {
   }
 }
 
-// ── Último entrenamiento ───────────────────────────────────────────
+// ── Último entrenamiento (datos reales) ───────────────────────────
 class _LastWorkout extends StatelessWidget {
+  String _timeAgo(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 60)   return 'Hace ${diff.inMinutes} min';
+    if (diff.inHours   < 24)   return 'Hace ${diff.inHours}h';
+    if (diff.inDays    == 1)   return 'Ayer';
+    if (diff.inDays    <= 6)   return 'Hace ${diff.inDays} días';
+    return 'Hace ${(diff.inDays / 7).floor()} semana(s)';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final w = MockData.workouts[1];
+    final provider  = context.watch<WorkoutLogProvider>();
+    final completed = provider.history.where((s) => s.isCompleted).toList();
+
+    // Sin historial real: mostrar mock
+    if (completed.isEmpty) {
+      final w = MockData.workouts[1];
+      return DarkCard(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(children: [
+          BoxedIcon(icon: w.icon, color: w.color, size: 42),
+          const SizedBox(width: 14),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Último entrenamiento', style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textMuted, fontSize: 11)),
+              const SizedBox(height: 2),
+              Text(w.name, style: AppTextStyles.labelLarge),
+              const SizedBox(height: 3),
+              Text('¡Registra tu primer entrenamiento!',
+                  style: AppTextStyles.caption),
+            ],
+          )),
+        ]),
+      );
+    }
+
+    final last = completed.first;
+    final vol  = last.totalVolume;
+    final volStr = vol > 0
+        ? (vol >= 1000
+            ? '${(vol / 1000).toStringAsFixed(1)}t'
+            : '${vol.toStringAsFixed(0)} kg')
+        : null;
+
     return DarkCard(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(children: [
-        BoxedIcon(icon: w.icon, color: w.color, size: 42),
+        BoxedIcon(icon: Icons.fitness_center_rounded,
+            color: AppColors.primary, size: 42),
         const SizedBox(width: 14),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Último entrenamiento', style: AppTextStyles.caption
                 .copyWith(color: AppColors.textMuted, fontSize: 11)),
             const SizedBox(height: 2),
-            Text(w.name, style: AppTextStyles.labelLarge),
+            Text(last.name, style: AppTextStyles.labelLarge,
+                overflow: TextOverflow.ellipsis),
             const SizedBox(height: 3),
             Row(children: [
               const Icon(Icons.access_time_rounded,
                   size: 12, color: AppColors.textMuted),
               const SizedBox(width: 4),
               Flexible(child: Text(
-                'Hace 2 días  •  ${w.durationMinutes} min  •  ${w.calories} kcal',
+                [
+                  _timeAgo(last.date),
+                  if (last.durationMinutes > 0) '${last.durationMinutes} min',
+                  if (volStr != null) volStr,
+                ].join('  ·  '),
                 style: AppTextStyles.caption,
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
@@ -548,9 +687,9 @@ class _LastWorkout extends StatelessWidget {
           _Pill(label: 'Completado',
               icon: Icons.check_circle_rounded, color: AppColors.primary),
           const SizedBox(height: 6),
-          GestureDetector(onTap: () {},
-              child: Text('Ver detalle', style: AppTextStyles.caption
-                  .copyWith(color: AppColors.accentBlue))),
+          Text('${last.totalDoneSets} series',
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textSecondary)),
         ]),
       ]),
     );

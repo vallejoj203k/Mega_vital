@@ -1,0 +1,727 @@
+// lib/presentation/screens/workout_log/active_workout_screen.dart
+// ─────────────────────────────────────────────────────────────────
+// Pantalla de entrenamiento activo.
+// - Cronómetro en tiempo real
+// - Lista de ejercicios con series, pesos y reps editables
+// - Marca series como completadas
+// - Añadir / eliminar series extra
+// - Guarda automáticamente el último peso usado
+// ─────────────────────────────────────────────────────────────────
+
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_text_styles.dart';
+import '../../../core/providers/workout_log_provider.dart';
+import '../../../services/workout_log_service.dart';
+
+class ActiveWorkoutScreen extends StatefulWidget {
+  const ActiveWorkoutScreen({super.key});
+  @override
+  State<ActiveWorkoutScreen> createState() => _ActiveWorkoutScreenState();
+}
+
+class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
+  late Timer _timer;
+  int _elapsedSeconds = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _elapsedSeconds++);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  String _formatTime(int totalSeconds) {
+    final h = totalSeconds ~/ 3600;
+    final m = (totalSeconds % 3600) ~/ 60;
+    final s = totalSeconds % 60;
+    if (h > 0) {
+      return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    }
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _confirmFinish(BuildContext ctx) async {
+    HapticFeedback.mediumImpact();
+    final provider = ctx.read<WorkoutLogProvider>();
+    final session  = provider.activeSession;
+    if (session == null) return;
+
+    final totalSeries = session.totalDoneSets;
+
+    final confirmed = await showDialog<bool>(
+      context: ctx,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('¿Terminar entrenamiento?',
+            style: AppTextStyles.headingSmall),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+                color: AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(12)),
+            child: Column(children: [
+              _SummaryRow(
+                  icon: Icons.timer_rounded,
+                  color: AppColors.accentBlue,
+                  label: 'Duración',
+                  value: _formatTime(_elapsedSeconds)),
+              const SizedBox(height: 8),
+              _SummaryRow(
+                  icon: Icons.fitness_center_rounded,
+                  color: AppColors.primary,
+                  label: 'Ejercicios',
+                  value: '${session.completedExercises}/${session.exercises.length}'),
+              const SizedBox(height: 8),
+              _SummaryRow(
+                  icon: Icons.repeat_rounded,
+                  color: AppColors.accentPurple,
+                  label: 'Series hechas',
+                  value: '$totalSeries'),
+              if (session.totalVolume > 0) ...[
+                const SizedBox(height: 8),
+                _SummaryRow(
+                    icon: Icons.bar_chart_rounded,
+                    color: AppColors.accentOrange,
+                    label: 'Volumen total',
+                    value: '${session.totalVolume.toStringAsFixed(0)} kg'),
+              ],
+            ]),
+          ),
+        ]),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Continuar',
+                  style: TextStyle(color: AppColors.textSecondary))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Terminar',
+                style: TextStyle(
+                    color: AppColors.primary, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && ctx.mounted) {
+      await ctx.read<WorkoutLogProvider>().finishSession();
+      if (ctx.mounted) Navigator.of(ctx).pop();
+    }
+  }
+
+  Future<void> _confirmCancel(BuildContext ctx) async {
+    final confirmed = await showDialog<bool>(
+      context: ctx,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('¿Cancelar entrenamiento?',
+            style: AppTextStyles.headingSmall),
+        content: Text(
+            'Se perderá el progreso de esta sesión. ¿Estás seguro?',
+            style: AppTextStyles.bodyMedium),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('No',
+                  style: TextStyle(color: AppColors.textSecondary))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text('Sí, cancelar',
+                  style: TextStyle(color: AppColors.error))),
+        ],
+      ),
+    );
+    if (confirmed == true && ctx.mounted) {
+      ctx.read<WorkoutLogProvider>().cancelSession();
+      Navigator.of(ctx).pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<WorkoutLogProvider>();
+    final session  = provider.activeSession;
+
+    if (session == null) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(child: Text('Sin sesión activa')),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Column(children: [
+          // ── Header ────────────────────────────────────────────
+          _WorkoutHeader(
+            sessionName   : session.name,
+            elapsedSeconds: _elapsedSeconds,
+            formatTime    : _formatTime,
+            onFinish      : () => _confirmFinish(context),
+            onCancel      : () => _confirmCancel(context),
+          ),
+
+          // ── Lista de ejercicios ───────────────────────────────
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+              physics: const BouncingScrollPhysics(),
+              itemCount: session.exercises.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (_, exIdx) => _ExerciseLogCard(
+                exercise: session.exercises[exIdx],
+                exIdx   : exIdx,
+              ),
+            ),
+          ),
+        ]),
+      ),
+
+      // ── Botón terminar ────────────────────────────────────────
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: GestureDetector(
+            onTap: () => _confirmFinish(context),
+            child: Container(
+              height: 52,
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                      color: AppColors.primary.withOpacity(0.35),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4)),
+                ],
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.check_circle_rounded,
+                      color: AppColors.background, size: 20),
+                  SizedBox(width: 10),
+                  Text(
+                    'TERMINAR ENTRENAMIENTO',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.background,
+                        letterSpacing: 0.5),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// HEADER CON CRONÓMETRO
+// ─────────────────────────────────────────────────────────────────
+class _WorkoutHeader extends StatelessWidget {
+  final String           sessionName;
+  final int              elapsedSeconds;
+  final String Function(int) formatTime;
+  final VoidCallback     onFinish;
+  final VoidCallback     onCancel;
+
+  const _WorkoutHeader({
+    required this.sessionName,
+    required this.elapsedSeconds,
+    required this.formatTime,
+    required this.onFinish,
+    required this.onCancel,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      border: Border(
+          bottom: BorderSide(color: AppColors.border, width: 0.5)),
+    ),
+    child: Row(children: [
+      // Botón cancelar
+      GestureDetector(
+        onTap: onCancel,
+        child: Container(
+          width: 38, height: 38,
+          decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border, width: 0.5)),
+          child: const Icon(Icons.close_rounded,
+              color: AppColors.textSecondary, size: 18),
+        ),
+      ),
+      const SizedBox(width: 12),
+
+      // Nombre + indicador en curso
+      Expanded(child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Container(width: 7, height: 7,
+                decoration: const BoxDecoration(
+                    color: AppColors.primary, shape: BoxShape.circle)),
+            const SizedBox(width: 5),
+            Text('En curso', style: AppTextStyles.caption
+                .copyWith(color: AppColors.primary)),
+          ]),
+          const SizedBox(height: 1),
+          Text(sessionName, style: AppTextStyles.headingSmall,
+              overflow: TextOverflow.ellipsis),
+        ],
+      )),
+
+      // Cronómetro
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+            color: AppColors.surfaceVariant,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.border, width: 0.5)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.timer_rounded,
+              size: 13, color: AppColors.primary),
+          const SizedBox(width: 5),
+          Text(formatTime(elapsedSeconds),
+              style: const TextStyle(
+                  fontSize: 15, fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                  letterSpacing: 0.5)),
+        ]),
+      ),
+    ]),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// TARJETA DE EJERCICIO CON SERIES EDITABLES
+// ─────────────────────────────────────────────────────────────────
+class _ExerciseLogCard extends StatelessWidget {
+  final LoggedExercise exercise;
+  final int            exIdx;
+
+  const _ExerciseLogCard({required this.exercise, required this.exIdx});
+
+  @override
+  Widget build(BuildContext context) {
+    final doneSets   = exercise.doneSets;
+    final totalSets  = exercise.sets.length;
+    final allDone    = doneSets == totalSets && totalSets > 0;
+    final color      = allDone ? AppColors.primary : AppColors.accentBlue;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+            color: allDone
+                ? AppColors.primary.withOpacity(0.4)
+                : AppColors.border,
+            width: allDone ? 1.5 : 0.5),
+        boxShadow: allDone
+            ? [BoxShadow(
+                color: AppColors.primary.withOpacity(0.08),
+                blurRadius: 12)]
+            : null,
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // ── Encabezado del ejercicio ────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+          child: Row(children: [
+            Container(
+              width: 38, height: 38,
+              decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: color.withOpacity(0.3), width: 0.5)),
+              child: Icon(allDone
+                  ? Icons.check_circle_rounded
+                  : Icons.fitness_center_rounded,
+                  color: color, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+              Text(exercise.exerciseName,
+                  style: AppTextStyles.labelLarge,
+                  overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 2),
+              Text('$doneSets / $totalSets series',
+                  style: AppTextStyles.caption.copyWith(
+                      color: allDone
+                          ? AppColors.primary
+                          : AppColors.textMuted)),
+            ])),
+            // Progreso circular mini
+            _MiniProgress(done: doneSets, total: totalSets, color: color),
+          ]),
+        ),
+
+        // ── Cabecera de la tabla de series ─────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(children: [
+            SizedBox(width: 28,
+                child: Text('Serie', style: AppTextStyles.caption,
+                    textAlign: TextAlign.center)),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Peso (kg)',
+                style: AppTextStyles.caption,
+                textAlign: TextAlign.center)),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Reps',
+                style: AppTextStyles.caption,
+                textAlign: TextAlign.center)),
+            const SizedBox(width: 8),
+            const SizedBox(width: 36),
+          ]),
+        ),
+        const SizedBox(height: 4),
+
+        // ── Filas de series ─────────────────────────────────────
+        ...List.generate(exercise.sets.length, (setIdx) =>
+            _SetRow(
+              set  : exercise.sets[setIdx],
+              exIdx: exIdx,
+              setIdx: setIdx,
+            )),
+
+        // ── Botones + / - serie ─────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 6, 14, 12),
+          child: Row(children: [
+            _SmallButton(
+              icon : Icons.add_rounded,
+              label: 'Serie',
+              color: AppColors.primary,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                context.read<WorkoutLogProvider>().addSet(exIdx);
+              },
+            ),
+            const SizedBox(width: 8),
+            if (exercise.sets.length > 1)
+              _SmallButton(
+                icon : Icons.remove_rounded,
+                label: 'Quitar',
+                color: AppColors.error,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  context.read<WorkoutLogProvider>().removeLastSet(exIdx);
+                },
+              ),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// FILA DE SERIE (peso + reps + check)
+// ─────────────────────────────────────────────────────────────────
+class _SetRow extends StatefulWidget {
+  final ExerciseSetLog set;
+  final int            exIdx;
+  final int            setIdx;
+  const _SetRow({required this.set, required this.exIdx, required this.setIdx});
+  @override
+  State<_SetRow> createState() => _SetRowState();
+}
+
+class _SetRowState extends State<_SetRow> {
+  late TextEditingController _weightCtrl;
+  late TextEditingController _repsCtrl;
+  bool _weightFocused = false;
+  bool _repsFocused   = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _weightCtrl = TextEditingController(
+        text: widget.set.weight > 0
+            ? _weightDisplay(widget.set.weight)
+            : '');
+    _repsCtrl = TextEditingController(
+        text: widget.set.reps.toString());
+  }
+
+  @override
+  void didUpdateWidget(_SetRow old) {
+    super.didUpdateWidget(old);
+    // Solo actualizar si el campo no está enfocado (para no interrumpir al usuario)
+    if (!_weightFocused) {
+      final newVal = widget.set.weight > 0 ? _weightDisplay(widget.set.weight) : '';
+      if (_weightCtrl.text != newVal) _weightCtrl.text = newVal;
+    }
+    if (!_repsFocused) {
+      final newVal = widget.set.reps.toString();
+      if (_repsCtrl.text != newVal) _repsCtrl.text = newVal;
+    }
+  }
+
+  @override
+  void dispose() {
+    _weightCtrl.dispose();
+    _repsCtrl.dispose();
+    super.dispose();
+  }
+
+  String _weightDisplay(double w) =>
+      w == w.truncateToDouble() ? w.toInt().toString() : w.toStringAsFixed(1);
+
+  @override
+  Widget build(BuildContext context) {
+    final isDone = widget.set.isDone;
+    final color  = isDone ? AppColors.primary : AppColors.textSecondary;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      margin  : const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+      padding : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDone ? AppColors.primary.withOpacity(0.06) : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+            color: isDone
+                ? AppColors.primary.withOpacity(0.2)
+                : Colors.transparent,
+            width: 0.5),
+      ),
+      child: Row(children: [
+        // Número de serie
+        SizedBox(width: 28,
+          child: Container(
+            width: 24, height: 24,
+            decoration: BoxDecoration(
+                color: isDone
+                    ? AppColors.primary.withOpacity(0.15)
+                    : AppColors.surfaceVariant,
+                shape: BoxShape.circle),
+            child: Center(
+              child: Text('${widget.set.setNumber}',
+                  style: TextStyle(
+                      fontSize: 11, fontWeight: FontWeight.w700,
+                      color: isDone ? AppColors.primary : AppColors.textMuted)),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+
+        // Campo de peso
+        Expanded(
+          child: Focus(
+            onFocusChange: (f) => setState(() => _weightFocused = f),
+            child: TextField(
+              controller  : _weightCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              textAlign   : TextAlign.center,
+              style       : TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.w600,
+                  color: isDone ? AppColors.primary : AppColors.textPrimary),
+              decoration  : InputDecoration(
+                hintText      : '0',
+                hintStyle     : TextStyle(
+                    color: AppColors.textMuted, fontSize: 14),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 8),
+                filled        : true,
+                fillColor     : isDone
+                    ? AppColors.primary.withOpacity(0.08)
+                    : AppColors.surfaceVariant,
+                border        : OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide : BorderSide.none),
+                enabledBorder : OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide : BorderSide.none),
+                focusedBorder : OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide : BorderSide(
+                        color: AppColors.primary.withOpacity(0.5), width: 1)),
+              ),
+              onChanged: (v) {
+                final w = double.tryParse(v) ?? 0;
+                context.read<WorkoutLogProvider>()
+                    .updateSetWeight(widget.exIdx, widget.setIdx, w);
+              },
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+
+        // Campo de reps
+        Expanded(
+          child: Focus(
+            onFocusChange: (f) => setState(() => _repsFocused = f),
+            child: TextField(
+              controller  : _repsCtrl,
+              keyboardType: TextInputType.number,
+              textAlign   : TextAlign.center,
+              style       : TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.w600,
+                  color: isDone ? AppColors.primary : AppColors.textPrimary),
+              decoration  : InputDecoration(
+                hintText      : '0',
+                hintStyle     : TextStyle(
+                    color: AppColors.textMuted, fontSize: 14),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 8),
+                filled        : true,
+                fillColor     : isDone
+                    ? AppColors.primary.withOpacity(0.08)
+                    : AppColors.surfaceVariant,
+                border        : OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide : BorderSide.none),
+                enabledBorder : OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide : BorderSide.none),
+                focusedBorder : OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide : BorderSide(
+                        color: AppColors.primary.withOpacity(0.5), width: 1)),
+              ),
+              onChanged: (v) {
+                final r = int.tryParse(v) ?? 0;
+                context.read<WorkoutLogProvider>()
+                    .updateSetReps(widget.exIdx, widget.setIdx, r);
+              },
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+
+        // Botón marcar como hecho
+        GestureDetector(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            context.read<WorkoutLogProvider>()
+                .toggleSetDone(widget.exIdx, widget.setIdx);
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 36, height: 36,
+            decoration: BoxDecoration(
+              color: isDone
+                  ? AppColors.primary
+                  : AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                  color: isDone
+                      ? AppColors.primary
+                      : AppColors.border,
+                  width: 1),
+              boxShadow: isDone
+                  ? [BoxShadow(
+                      color: AppColors.primary.withOpacity(0.3),
+                      blurRadius: 8)]
+                  : null,
+            ),
+            child: Icon(
+              isDone ? Icons.check_rounded : Icons.radio_button_unchecked_rounded,
+              color: isDone ? AppColors.background : AppColors.textMuted,
+              size: 18,
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// WIDGETS AUXILIARES
+// ─────────────────────────────────────────────────────────────────
+
+class _MiniProgress extends StatelessWidget {
+  final int done, total;
+  final Color color;
+  const _MiniProgress({required this.done, required this.total, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    if (total == 0) return const SizedBox(width: 36);
+    return SizedBox(width: 36, height: 36,
+      child: Stack(alignment: Alignment.center, children: [
+        CircularProgressIndicator(
+          value    : done / total,
+          strokeWidth: 3,
+          backgroundColor: AppColors.border,
+          valueColor: AlwaysStoppedAnimation(color),
+        ),
+        Text('$done', style: TextStyle(
+            fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+      ]),
+    );
+  }
+}
+
+class _SmallButton extends StatelessWidget {
+  final IconData icon;
+  final String   label;
+  final Color    color;
+  final VoidCallback onTap;
+  const _SmallButton({required this.icon, required this.label,
+    required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withOpacity(0.25), width: 0.5)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 13, color: color),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(
+            fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+      ]),
+    ),
+  );
+}
+
+class _SummaryRow extends StatelessWidget {
+  final IconData icon;
+  final Color    color;
+  final String   label;
+  final String   value;
+  const _SummaryRow({required this.icon, required this.color,
+    required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) => Row(children: [
+    Icon(icon, size: 14, color: color),
+    const SizedBox(width: 8),
+    Text(label, style: AppTextStyles.bodyMedium),
+    const Spacer(),
+    Text(value, style: AppTextStyles.labelLarge.copyWith(color: color)),
+  ]);
+}
