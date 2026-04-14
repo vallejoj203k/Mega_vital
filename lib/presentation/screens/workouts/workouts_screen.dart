@@ -428,99 +428,99 @@ class _AnatomyBody extends StatelessWidget {
 
 // ─────────────────────────────────────────────────────────────────
 // PATHS CALIBRADOS A LA IMAGEN PNG (espacio 270×470)
+// Referencia visual: boxes de colores sobre figura anatómica
 // ─────────────────────────────────────────────────────────────────
 
-// FRENTE
-Path _imgPecho() => Path()
-  ..moveTo(92, 97)..lineTo(178, 97)
-  ..lineTo(176, 158)..lineTo(94, 158)..close();
+// FRENTE ──────────────────────────────────────────────────────────
 
+// PECHO (caja naranja): pectorales — centro superior del torso
+Path _imgPecho() => Path()
+  ..moveTo(82, 80)..lineTo(188, 80)
+  ..lineTo(186, 172)..lineTo(84, 172)..close();
+
+// HOMBROS (caja cyan — muy ancha): deltoides ambos lados
 Path _imgHombros() {
   final p = Path();
-  // Deltoides izquierdo
-  p.moveTo(54, 84); p.lineTo(92, 84); p.lineTo(91, 152); p.lineTo(52, 148); p.close();
-  // Deltoides derecho
-  p.moveTo(178, 84); p.lineTo(216, 84); p.lineTo(218, 148); p.lineTo(179, 152); p.close();
+  p.moveTo(26, 78); p.lineTo(94, 78); p.lineTo(92, 158); p.lineTo(24, 153); p.close();  // izq
+  p.moveTo(176, 78); p.lineTo(244, 78); p.lineTo(246, 153); p.lineTo(178, 158); p.close(); // der
   return p;
 }
 
+// BÍCEPS (cajas rojo/magenta): brazo superior frente — desde axila hasta codo
 Path _imgBiceps() {
   final p = Path();
-  // Bíceps izquierdo
-  p.moveTo(38, 152); p.lineTo(66, 152); p.lineTo(64, 220); p.lineTo(34, 218); p.close();
-  // Bíceps derecho
-  p.moveTo(204, 152); p.lineTo(232, 152); p.lineTo(236, 218); p.lineTo(206, 220); p.close();
+  p.moveTo(14, 100); p.lineTo(64, 100); p.lineTo(60, 252); p.lineTo(10, 248); p.close();  // izq
+  p.moveTo(206, 100); p.lineTo(256, 100); p.lineTo(260, 248); p.lineTo(210, 252); p.close(); // der
   return p;
 }
 
+// ABS (caja verde): abdominales — zona central media
 Path _imgAbs() => Path()
-  ..moveTo(94, 158)..lineTo(176, 158)
-  ..lineTo(174, 232)..lineTo(96, 232)..close();
+  ..moveTo(90, 172)..lineTo(180, 172)
+  ..lineTo(178, 258)..lineTo(92, 258)..close();
 
+// CUÁDRICEPS (caja azul): muslos frontales
 Path _imgCuads() {
   final p = Path();
-  // Cuádriceps izquierdo
-  p.moveTo(86, 244); p.lineTo(128, 242); p.lineTo(122, 358); p.lineTo(78, 356); p.close();
-  // Cuádriceps derecho
-  p.moveTo(142, 242); p.lineTo(184, 244); p.lineTo(192, 356); p.lineTo(148, 358); p.close();
+  p.moveTo(74, 255); p.lineTo(128, 253); p.lineTo(122, 376); p.lineTo(70, 374); p.close();  // izq
+  p.moveTo(142, 253); p.lineTo(196, 255); p.lineTo(200, 374); p.lineTo(148, 376); p.close(); // der
   return p;
 }
 
+// GEMELOS FRONTALES (cajas amarillas): pantorrillas inferiores
 Path _imgGemelosF() {
   final p = Path();
-  // Gemelo izquierdo (frente)
-  p.moveTo(80, 362); p.lineTo(120, 360); p.lineTo(114, 444); p.lineTo(74, 442); p.close();
-  // Gemelo derecho (frente)
-  p.moveTo(150, 360); p.lineTo(192, 362); p.lineTo(198, 442); p.lineTo(156, 444); p.close();
+  p.moveTo(66, 380); p.lineTo(114, 378); p.lineTo(108, 460); p.lineTo(62, 458); p.close();  // izq
+  p.moveTo(156, 378); p.lineTo(204, 380); p.lineTo(208, 458); p.lineTo(160, 460); p.close(); // der
   return p;
 }
 
-// ESPALDA
-Path _imgEspaldaAlta() => Path()
-  ..moveTo(88, 88)..lineTo(182, 88)
-  ..lineTo(180, 162)..lineTo(90, 162)..close();
+// ESPALDA ─────────────────────────────────────────────────────────
 
+// ESPALDA ALTA (trapecio): zona central superior de la espalda
+Path _imgEspaldaAlta() => Path()
+  ..moveTo(84, 80)..lineTo(184, 80)
+  ..lineTo(182, 168)..lineTo(86, 168)..close();
+
+// DORSALES: lados del torso posterior
 Path _imgDorsales() {
   final p = Path();
-  // Dorsal izquierdo
-  p.moveTo(44, 158); p.lineTo(88, 158); p.lineTo(86, 228); p.lineTo(40, 222); p.close();
-  // Dorsal derecho
-  p.moveTo(182, 158); p.lineTo(226, 158); p.lineTo(230, 222); p.lineTo(184, 228); p.close();
+  p.moveTo(32, 162); p.lineTo(92, 162); p.lineTo(90, 238); p.lineTo(28, 232); p.close();  // izq
+  p.moveTo(178, 162); p.lineTo(238, 162); p.lineTo(242, 232); p.lineTo(180, 238); p.close(); // der
   return p;
 }
 
+// TRÍCEPS: parte posterior brazo superior — amplia, desde hombro hasta codo
 Path _imgTriceps() {
   final p = Path();
-  // Tríceps izquierdo
-  p.moveTo(34, 98); p.lineTo(62, 98); p.lineTo(66, 214); p.lineTo(30, 210); p.close();
-  // Tríceps derecho
-  p.moveTo(208, 98); p.lineTo(236, 98); p.lineTo(240, 210); p.lineTo(204, 214); p.close();
+  p.moveTo(12, 96); p.lineTo(60, 96); p.lineTo(64, 252); p.lineTo(8, 248); p.close();  // izq
+  p.moveTo(210, 96); p.lineTo(258, 96); p.lineTo(262, 248); p.lineTo(206, 252); p.close(); // der
   return p;
 }
 
+// LUMBAR: parte inferior central de la espalda
 Path _imgLumbar() => Path()
-  ..moveTo(92, 224)..lineTo(178, 224)
-  ..lineTo(174, 270)..lineTo(96, 270)..close();
+  ..moveTo(88, 230)..lineTo(182, 230)
+  ..lineTo(180, 278)..lineTo(90, 278)..close();
 
+// GLÚTEOS: zona posterior de la cadera
 Path _imgGluteos() => Path()
-  ..moveTo(80, 270)..lineTo(190, 270)
-  ..lineTo(188, 330)..lineTo(82, 330)..close();
+  ..moveTo(72, 272)..lineTo(198, 272)
+  ..lineTo(196, 342)..lineTo(74, 342)..close();
 
+// ISQUIOTIBIALES: parte posterior de los muslos
 Path _imgIsquios() {
   final p = Path();
-  // Isquiotibial izquierdo
-  p.moveTo(74, 332); p.lineTo(118, 332); p.lineTo(112, 418); p.lineTo(68, 414); p.close();
-  // Isquiotibial derecho
-  p.moveTo(152, 332); p.lineTo(196, 332); p.lineTo(200, 414); p.lineTo(158, 418); p.close();
+  p.moveTo(66, 344); p.lineTo(122, 344); p.lineTo(116, 430); p.lineTo(62, 426); p.close();  // izq
+  p.moveTo(148, 344); p.lineTo(204, 344); p.lineTo(208, 426); p.lineTo(152, 430); p.close(); // der
   return p;
 }
 
+// GEMELOS POSTERIORES: pantorrillas traseras
 Path _imgGemelosB() {
   final p = Path();
-  // Gemelo izquierdo (espalda)
-  p.moveTo(64, 420); p.lineTo(108, 420); p.lineTo(102, 460); p.lineTo(60, 457); p.close();
-  // Gemelo derecho (espalda)
-  p.moveTo(162, 420); p.lineTo(206, 420); p.lineTo(210, 457); p.lineTo(168, 460); p.close();
+  p.moveTo(58, 432); p.lineTo(112, 432); p.lineTo(108, 466); p.lineTo(54, 463); p.close();  // izq
+  p.moveTo(158, 432); p.lineTo(212, 432); p.lineTo(216, 463); p.lineTo(162, 466); p.close(); // der
   return p;
 }
 
