@@ -432,79 +432,95 @@ class _AnatomyBody extends StatelessWidget {
 
 // FRENTE
 Path _imgPecho() => Path()
-  ..moveTo(88, 105)..lineTo(183, 105)
-  ..lineTo(181, 162)..lineTo(90, 162)..close();
+  ..moveTo(92, 97)..lineTo(178, 97)
+  ..lineTo(176, 158)..lineTo(94, 158)..close();
 
 Path _imgHombros() {
   final p = Path();
-  p.moveTo(52, 92); p.lineTo(88, 92); p.lineTo(88, 148); p.lineTo(50, 145); p.close();
-  p.moveTo(183, 92); p.lineTo(219, 92); p.lineTo(221, 145); p.lineTo(183, 148); p.close();
+  // Deltoides izquierdo
+  p.moveTo(54, 84); p.lineTo(92, 84); p.lineTo(91, 152); p.lineTo(52, 148); p.close();
+  // Deltoides derecho
+  p.moveTo(178, 84); p.lineTo(216, 84); p.lineTo(218, 148); p.lineTo(179, 152); p.close();
   return p;
 }
 
 Path _imgBiceps() {
   final p = Path();
-  p.moveTo(40, 148); p.lineTo(68, 148); p.lineTo(66, 212); p.lineTo(36, 210); p.close();
-  p.moveTo(203, 148); p.lineTo(231, 148); p.lineTo(235, 210); p.lineTo(205, 212); p.close();
+  // Bíceps izquierdo
+  p.moveTo(38, 152); p.lineTo(66, 152); p.lineTo(64, 220); p.lineTo(34, 218); p.close();
+  // Bíceps derecho
+  p.moveTo(204, 152); p.lineTo(232, 152); p.lineTo(236, 218); p.lineTo(206, 220); p.close();
   return p;
 }
 
 Path _imgAbs() => Path()
-  ..moveTo(90, 162)..lineTo(181, 162)
-  ..lineTo(179, 228)..lineTo(92, 228)..close();
+  ..moveTo(94, 158)..lineTo(176, 158)
+  ..lineTo(174, 232)..lineTo(96, 232)..close();
 
 Path _imgCuads() {
   final p = Path();
-  p.moveTo(82, 230); p.lineTo(126, 230); p.lineTo(120, 346); p.lineTo(76, 344); p.close();
-  p.moveTo(144, 230); p.lineTo(189, 230); p.lineTo(195, 344); p.lineTo(151, 346); p.close();
+  // Cuádriceps izquierdo
+  p.moveTo(86, 244); p.lineTo(128, 242); p.lineTo(122, 358); p.lineTo(78, 356); p.close();
+  // Cuádriceps derecho
+  p.moveTo(142, 242); p.lineTo(184, 244); p.lineTo(192, 356); p.lineTo(148, 358); p.close();
   return p;
 }
 
 Path _imgGemelosF() {
   final p = Path();
-  p.moveTo(76, 348); p.lineTo(118, 348); p.lineTo(112, 435); p.lineTo(70, 433); p.close();
-  p.moveTo(153, 348); p.lineTo(195, 348); p.lineTo(201, 433); p.lineTo(159, 435); p.close();
+  // Gemelo izquierdo (frente)
+  p.moveTo(80, 362); p.lineTo(120, 360); p.lineTo(114, 444); p.lineTo(74, 442); p.close();
+  // Gemelo derecho (frente)
+  p.moveTo(150, 360); p.lineTo(192, 362); p.lineTo(198, 442); p.lineTo(156, 444); p.close();
   return p;
 }
 
 // ESPALDA
 Path _imgEspaldaAlta() => Path()
-  ..moveTo(85, 95)..lineTo(186, 95)
-  ..lineTo(183, 158)..lineTo(88, 158)..close();
+  ..moveTo(88, 88)..lineTo(182, 88)
+  ..lineTo(180, 162)..lineTo(90, 162)..close();
 
 Path _imgDorsales() {
   final p = Path();
-  p.moveTo(48, 155); p.lineTo(86, 155); p.lineTo(84, 222); p.lineTo(44, 218); p.close();
-  p.moveTo(183, 155); p.lineTo(221, 155); p.lineTo(225, 218); p.lineTo(185, 222); p.close();
+  // Dorsal izquierdo
+  p.moveTo(44, 158); p.lineTo(88, 158); p.lineTo(86, 228); p.lineTo(40, 222); p.close();
+  // Dorsal derecho
+  p.moveTo(182, 158); p.lineTo(226, 158); p.lineTo(230, 222); p.lineTo(184, 228); p.close();
   return p;
 }
 
 Path _imgTriceps() {
   final p = Path();
-  p.moveTo(36, 105); p.lineTo(64, 105); p.lineTo(68, 210); p.lineTo(32, 206); p.close();
-  p.moveTo(205, 105); p.lineTo(233, 105); p.lineTo(237, 206); p.lineTo(201, 210); p.close();
+  // Tríceps izquierdo
+  p.moveTo(34, 98); p.lineTo(62, 98); p.lineTo(66, 214); p.lineTo(30, 210); p.close();
+  // Tríceps derecho
+  p.moveTo(208, 98); p.lineTo(236, 98); p.lineTo(240, 210); p.lineTo(204, 214); p.close();
   return p;
 }
 
 Path _imgLumbar() => Path()
-  ..moveTo(90, 220)..lineTo(180, 220)
-  ..lineTo(176, 265)..lineTo(94, 265)..close();
+  ..moveTo(92, 224)..lineTo(178, 224)
+  ..lineTo(174, 270)..lineTo(96, 270)..close();
 
 Path _imgGluteos() => Path()
-  ..moveTo(78, 265)..lineTo(192, 265)
-  ..lineTo(190, 322)..lineTo(80, 322)..close();
+  ..moveTo(80, 270)..lineTo(190, 270)
+  ..lineTo(188, 330)..lineTo(82, 330)..close();
 
 Path _imgIsquios() {
   final p = Path();
-  p.moveTo(72, 324); p.lineTo(116, 324); p.lineTo(110, 408); p.lineTo(66, 404); p.close();
-  p.moveTo(154, 324); p.lineTo(198, 324); p.lineTo(202, 404); p.lineTo(158, 408); p.close();
+  // Isquiotibial izquierdo
+  p.moveTo(74, 332); p.lineTo(118, 332); p.lineTo(112, 418); p.lineTo(68, 414); p.close();
+  // Isquiotibial derecho
+  p.moveTo(152, 332); p.lineTo(196, 332); p.lineTo(200, 414); p.lineTo(158, 418); p.close();
   return p;
 }
 
 Path _imgGemelosB() {
   final p = Path();
-  p.moveTo(62, 410); p.lineTo(106, 410); p.lineTo(100, 455); p.lineTo(58, 452); p.close();
-  p.moveTo(162, 410); p.lineTo(206, 410); p.lineTo(210, 452); p.lineTo(166, 455); p.close();
+  // Gemelo izquierdo (espalda)
+  p.moveTo(64, 420); p.lineTo(108, 420); p.lineTo(102, 460); p.lineTo(60, 457); p.close();
+  // Gemelo derecho (espalda)
+  p.moveTo(162, 420); p.lineTo(206, 420); p.lineTo(210, 457); p.lineTo(168, 460); p.close();
   return p;
 }
 
@@ -554,38 +570,40 @@ class _MuscleOverlayPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Solo pintamos si hay un músculo seleccionado
+    if (selectedMuscleId == null) return;
+
     final sx = size.width  / _srcW;
     final sy = size.height / _srcH;
     final paths = isFront ? _frontPaths() : _backPaths();
 
-    for (final entry in paths.entries) {
-      final muscle = getMuscleById(entry.key);
-      if (muscle == null) continue;
-      final selected = selectedMuscleId == entry.key;
-      final color    = muscle.color;
+    final entry = paths.entries
+        .where((e) => e.key == selectedMuscleId)
+        .firstOrNull;
+    if (entry == null) return;
 
-      // Escalar el path
-      final m = Matrix4.identity()..scale(sx, sy);
-      final scaledPath = entry.value.transform(m.storage);
+    final muscle = getMuscleById(entry.key);
+    if (muscle == null) return;
 
-      // Glow si está seleccionado
-      if (selected) {
-        canvas.drawPath(scaledPath, Paint()
-          ..color = color.withOpacity(0.25)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10));
-      }
+    final color = muscle.color;
+    final m = Matrix4.identity()..scale(sx, sy);
+    final scaledPath = entry.value.transform(m.storage);
 
-      // Relleno semitransparente
-      canvas.drawPath(scaledPath, Paint()
-        ..color = selected ? color.withOpacity(0.50) : color.withOpacity(0.12)
-        ..style = PaintingStyle.fill);
+    // Glow exterior suave
+    canvas.drawPath(scaledPath, Paint()
+      ..color = color.withOpacity(0.30)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14));
 
-      // Borde
-      canvas.drawPath(scaledPath, Paint()
-        ..color = selected ? color.withOpacity(0.9) : color.withOpacity(0.45)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = selected ? 2.0 : 0.8);
-    }
+    // Relleno suave del músculo seleccionado
+    canvas.drawPath(scaledPath, Paint()
+      ..color = color.withOpacity(0.35)
+      ..style = PaintingStyle.fill);
+
+    // Borde sutil del músculo seleccionado
+    canvas.drawPath(scaledPath, Paint()
+      ..color = color.withOpacity(0.70)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5);
   }
 
   @override
