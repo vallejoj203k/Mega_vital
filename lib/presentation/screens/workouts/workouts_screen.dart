@@ -433,94 +433,167 @@ class _AnatomyBody extends StatelessWidget {
 
 // FRENTE ──────────────────────────────────────────────────────────
 
-// PECHO (caja naranja): pectorales — centro superior del torso
+// PECHO
 Path _imgPecho() => Path()
-  ..moveTo(82, 80)..lineTo(188, 80)
-  ..lineTo(186, 172)..lineTo(84, 172)..close();
+  ..moveTo(113, 101)
+  ..lineTo(177, 98)
+  ..lineTo(186, 147)
+  ..lineTo(109, 149)..close();
 
-// HOMBROS (caja cyan — muy ancha): deltoides ambos lados
+// HOMBROS
 Path _imgHombros() {
   final p = Path();
-  p.moveTo(26, 78); p.lineTo(94, 78); p.lineTo(92, 158); p.lineTo(24, 153); p.close();  // izq
-  p.moveTo(176, 78); p.lineTo(244, 78); p.lineTo(246, 153); p.lineTo(178, 158); p.close(); // der
+  // Izquierda
+  p.moveTo(85, 84);
+  p.lineTo(118, 84);
+  p.lineTo(105, 120);
+  p.lineTo(59, 138);
+  p.close();
+  // Derecha
+  p.moveTo(178, 84);
+  p.lineTo(218, 92);
+  p.lineTo(229, 141);
+  p.lineTo(187, 114);
+  p.close();
   return p;
 }
 
-// BÍCEPS (cajas rojo/magenta): brazo superior frente — desde axila hasta codo
+// BÍCEPS
 Path _imgBiceps() {
   final p = Path();
-  p.moveTo(14, 100); p.lineTo(64, 100); p.lineTo(60, 252); p.lineTo(10, 248); p.close();  // izq
-  p.moveTo(206, 100); p.lineTo(256, 100); p.lineTo(260, 248); p.lineTo(210, 252); p.close(); // der
+  // Izquierda
+  p.moveTo(70, 142);
+  p.lineTo(109, 122);
+  p.lineTo(102, 170);
+  p.lineTo(66, 170);
+  p.close();
+  // Derecha
+  p.moveTo(182, 117);
+  p.lineTo(218, 136);
+  p.lineTo(227, 165);
+  p.lineTo(194, 177);
+  p.close();
   return p;
 }
 
-// ABS (caja verde): abdominales — zona central media
-Path _imgAbs() => Path()
-  ..moveTo(90, 172)..lineTo(180, 172)
-  ..lineTo(178, 258)..lineTo(92, 258)..close();
+// ABDOMEN
+Path _imgAbdomen() => Path()
+  ..moveTo(114, 152)
+  ..lineTo(178, 151)
+  ..lineTo(173, 226)
+  ..lineTo(116, 222)..close();
 
-// CUÁDRICEPS (caja azul): muslos frontales
-Path _imgCuads() {
+
+// CUÁDRICEPS
+Path _imgCuadriceps() {
   final p = Path();
-  p.moveTo(74, 255); p.lineTo(128, 253); p.lineTo(122, 376); p.lineTo(70, 374); p.close();  // izq
-  p.moveTo(142, 253); p.lineTo(196, 255); p.lineTo(200, 374); p.lineTo(148, 376); p.close(); // der
+  // Izquierda
+  p.moveTo(95, 200);
+  p.lineTo(150, 252);
+  p.lineTo(133, 334);
+  p.lineTo(89, 318);
+  p.close();
+  // Derecha
+  p.moveTo(150, 252);
+  p.lineTo(193, 199);
+  p.lineTo(210, 310);
+  p.lineTo(156, 339);
+  p.close();
   return p;
 }
 
-// GEMELOS FRONTALES (cajas amarillas): pantorrillas inferiores
-Path _imgGemelosF() {
+// GEMELOS
+Path _imgGemelos() {
   final p = Path();
-  p.moveTo(66, 380); p.lineTo(114, 378); p.lineTo(108, 460); p.lineTo(62, 458); p.close();  // izq
-  p.moveTo(156, 378); p.lineTo(204, 380); p.lineTo(208, 458); p.lineTo(160, 460); p.close(); // der
+  // Izquierda
+  p.moveTo(101, 323);
+  p.lineTo(127, 347);
+  p.lineTo(115, 424);
+  p.lineTo(89, 424);
+  p.close();
+  // Derecha
+  p.moveTo(164, 344);
+  p.lineTo(205, 320);
+  p.lineTo(201, 429);
+  p.lineTo(173, 427);
+  p.close();
   return p;
 }
 
 // ESPALDA ─────────────────────────────────────────────────────────
 
-// ESPALDA ALTA (trapecio): zona central superior de la espalda
+// ESPALDA ALTA
 Path _imgEspaldaAlta() => Path()
-  ..moveTo(84, 80)..lineTo(184, 80)
-  ..lineTo(182, 168)..lineTo(86, 168)..close();
+  ..moveTo(111, 70)
+  ..lineTo(185, 70)
+  ..lineTo(188, 116)
+  ..lineTo(101, 121)..close();
 
-// DORSALES: lados del torso posterior
+// DORSALES
 Path _imgDorsales() {
   final p = Path();
-  p.moveTo(32, 162); p.lineTo(92, 162); p.lineTo(90, 238); p.lineTo(28, 232); p.close();  // izq
-  p.moveTo(178, 162); p.lineTo(238, 162); p.lineTo(242, 232); p.lineTo(180, 238); p.close(); // der
+  // izq
+  p.moveTo(98, 125);
+  p.lineTo(143, 123);
+  p.lineTo(140, 153);
+  p.lineTo(99, 158);
+  p.close();
+  // der
+  p.moveTo(151, 124);
+  p.lineTo(186, 121);
+  p.lineTo(187, 152);
+  p.lineTo(149, 152);
+  p.close();
   return p;
 }
 
-// TRÍCEPS: parte posterior brazo superior — amplia, desde hombro hasta codo
+// TRÍCEPS
 Path _imgTriceps() {
   final p = Path();
-  p.moveTo(12, 96); p.lineTo(60, 96); p.lineTo(64, 252); p.lineTo(8, 248); p.close();  // izq
-  p.moveTo(210, 96); p.lineTo(258, 96); p.lineTo(262, 248); p.lineTo(206, 252); p.close(); // der
+  // izq
+  p.moveTo(83, 113);
+  p.lineTo(103, 111);
+  p.lineTo(93, 172);
+  p.lineTo(57, 177);
+  p.close();
+  // der
+  p.moveTo(188, 113);
+  p.lineTo(215, 115);
+  p.lineTo(224, 175);
+  p.lineTo(197, 195);
+  p.close();
   return p;
 }
 
-// LUMBAR: parte inferior central de la espalda
+// LUMBAR
 Path _imgLumbar() => Path()
-  ..moveTo(88, 230)..lineTo(182, 230)
-  ..lineTo(180, 278)..lineTo(90, 278)..close();
+  ..moveTo(101, 162)
+  ..lineTo(186, 159)
+  ..lineTo(191, 198)
+  ..lineTo(98, 199)..close();
 
-// GLÚTEOS: zona posterior de la cadera
+// GLÚTEOS
 Path _imgGluteos() => Path()
-  ..moveTo(72, 272)..lineTo(198, 272)
-  ..lineTo(196, 342)..lineTo(74, 342)..close();
+  ..moveTo(97, 202)
+  ..lineTo(198, 201)
+  ..lineTo(196, 243)
+  ..lineTo(93, 253)..close();
 
-// ISQUIOTIBIALES: parte posterior de los muslos
-Path _imgIsquios() {
+// ISQUIOTIBIALES
+Path _imgIsquiotibiales() {
   final p = Path();
-  p.moveTo(66, 344); p.lineTo(122, 344); p.lineTo(116, 430); p.lineTo(62, 426); p.close();  // izq
-  p.moveTo(148, 344); p.lineTo(204, 344); p.lineTo(208, 426); p.lineTo(152, 430); p.close(); // der
-  return p;
-}
-
-// GEMELOS POSTERIORES: pantorrillas traseras
-Path _imgGemelosB() {
-  final p = Path();
-  p.moveTo(58, 432); p.lineTo(112, 432); p.lineTo(108, 466); p.lineTo(54, 463); p.close();  // izq
-  p.moveTo(158, 432); p.lineTo(212, 432); p.lineTo(216, 463); p.lineTo(162, 466); p.close(); // der
+  // izq
+  p.moveTo(85, 263);
+  p.lineTo(143, 256);
+  p.lineTo(130, 337);
+  p.lineTo(93, 325);
+  p.close();
+  // der
+  p.moveTo(151, 251);
+  p.lineTo(202, 249);
+  p.lineTo(203, 337);
+  p.lineTo(152, 325);
+  p.close();
   return p;
 }
 
@@ -529,9 +602,9 @@ Map<String, Path> _frontPaths() => {
   'pecho':      _imgPecho(),
   'hombros':    _imgHombros(),
   'biceps':     _imgBiceps(),
-  'abs':        _imgAbs(),
-  'cuadriceps': _imgCuads(),
-  'gemelos':    _imgGemelosF(),
+  'abs':        _imgAbdomen(),
+  'cuadriceps': _imgCuadriceps(),
+  'gemelos':    _imgGemelos(),
 };
 
 Map<String, Path> _backPaths() => {
@@ -540,8 +613,8 @@ Map<String, Path> _backPaths() => {
   'triceps':  _imgTriceps(),
   'lumbar':   _imgLumbar(),
   'gluteos':  _imgGluteos(),
-  'isquio':   _imgIsquios(),
-  'gemelos':  _imgGemelosB(),
+  'isquio':   _imgIsquiotibiales(),
+  'gemelos':  _imgGemelos(),
 };
 
 // Detecta músculo en coordenadas de imagen (270×470)
@@ -994,12 +1067,12 @@ class _RoutineCard extends StatelessWidget {
               ),
               child: Row(mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                Icon(Icons.play_arrow_rounded, color: color, size: 18),
-                const SizedBox(width: 6),
-                Text('Iniciar entrenamiento',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
-                        color: color)),
-              ]),
+                    Icon(Icons.play_arrow_rounded, color: color, size: 18),
+                    const SizedBox(width: 6),
+                    Text('Iniciar entrenamiento',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+                            color: color)),
+                  ]),
             ),
           ),
         ]));
@@ -1084,10 +1157,10 @@ class _HistorialTabState extends State<_HistorialTab>
             _MiniStat('$totalSeries', 'Series', AppColors.accentBlue),
             _VertDiv(),
             _MiniStat(
-              totalVol >= 1000
-                  ? '${(totalVol/1000).toStringAsFixed(1)}t'
-                  : '${totalVol.toStringAsFixed(0)}kg',
-              'Volumen', AppColors.accentOrange),
+                totalVol >= 1000
+                    ? '${(totalVol/1000).toStringAsFixed(1)}t'
+                    : '${totalVol.toStringAsFixed(0)}kg',
+                'Volumen', AppColors.accentOrange),
           ]),
         ),
       ),
@@ -1159,61 +1232,61 @@ class _HistorialTabState extends State<_HistorialTab>
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  // Encabezado
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-                    child: Row(children: [
-                      Container(width: 38, height: 38,
-                          decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                  color: AppColors.primary.withOpacity(0.25),
-                                  width: 0.5)),
-                          child: const Icon(Icons.fitness_center_rounded,
-                              color: AppColors.primary, size: 18)),
-                      const SizedBox(width: 10),
-                      Expanded(child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                        Text(session.name, style: AppTextStyles.labelLarge,
-                            overflow: TextOverflow.ellipsis),
-                        Text(_formatDate(session.date),
-                            style: AppTextStyles.caption),
-                      ])),
-                      Icon(isExpanded
-                          ? Icons.expand_less_rounded
-                          : Icons.expand_more_rounded,
-                          color: AppColors.textMuted, size: 20),
-                    ]),
-                  ),
+                      // Encabezado
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+                        child: Row(children: [
+                          Container(width: 38, height: 38,
+                              decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                      color: AppColors.primary.withOpacity(0.25),
+                                      width: 0.5)),
+                              child: const Icon(Icons.fitness_center_rounded,
+                                  color: AppColors.primary, size: 18)),
+                          const SizedBox(width: 10),
+                          Expanded(child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(session.name, style: AppTextStyles.labelLarge,
+                                    overflow: TextOverflow.ellipsis),
+                                Text(_formatDate(session.date),
+                                    style: AppTextStyles.caption),
+                              ])),
+                          Icon(isExpanded
+                              ? Icons.expand_less_rounded
+                              : Icons.expand_more_rounded,
+                              color: AppColors.textMuted, size: 20),
+                        ]),
+                      ),
 
-                  // Chips resumen
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-                    child: Wrap(spacing: 6, runSpacing: 6, children: [
-                      _HistChip(Icons.timer_rounded,
-                          _formatDuration(session.durationMinutes),
-                          AppColors.accentBlue),
-                      _HistChip(Icons.fitness_center_rounded,
-                          '${session.completedExercises} ejercicios',
-                          AppColors.accentPurple),
-                      _HistChip(Icons.repeat_rounded,
-                          '${session.totalDoneSets} series',
-                          AppColors.primary),
-                      if (session.totalVolume > 0)
-                        _HistChip(Icons.bar_chart_rounded,
-                            session.totalVolume >= 1000
-                                ? '${(session.totalVolume/1000).toStringAsFixed(1)}t'
-                                : '${session.totalVolume.toStringAsFixed(0)} kg',
-                            AppColors.accentOrange),
-                    ]),
-                  ),
+                      // Chips resumen
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                        child: Wrap(spacing: 6, runSpacing: 6, children: [
+                          _HistChip(Icons.timer_rounded,
+                              _formatDuration(session.durationMinutes),
+                              AppColors.accentBlue),
+                          _HistChip(Icons.fitness_center_rounded,
+                              '${session.completedExercises} ejercicios',
+                              AppColors.accentPurple),
+                          _HistChip(Icons.repeat_rounded,
+                              '${session.totalDoneSets} series',
+                              AppColors.primary),
+                          if (session.totalVolume > 0)
+                            _HistChip(Icons.bar_chart_rounded,
+                                session.totalVolume >= 1000
+                                    ? '${(session.totalVolume/1000).toStringAsFixed(1)}t'
+                                    : '${session.totalVolume.toStringAsFixed(0)} kg',
+                                AppColors.accentOrange),
+                        ]),
+                      ),
 
-                  // Detalle expandible
-                  if (isExpanded)
-                    _InlineSessionDetail(session: session),
-                ]),
+                      // Detalle expandible
+                      if (isExpanded)
+                        _InlineSessionDetail(session: session),
+                    ]),
               ),
             ),
           );
@@ -1271,8 +1344,8 @@ class _InlineSessionDetail extends StatelessWidget {
     final best = done.first;
     final w = best.weight > 0
         ? (best.weight == best.weight.truncateToDouble()
-            ? '${best.weight.toInt()} kg'
-            : '${best.weight.toStringAsFixed(1)} kg')
+        ? '${best.weight.toInt()} kg'
+        : '${best.weight.toStringAsFixed(1)} kg')
         : 'Corporal';
     return '$w × ${best.reps} reps';
   }
