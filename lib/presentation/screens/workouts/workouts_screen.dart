@@ -428,98 +428,99 @@ class _AnatomyBody extends StatelessWidget {
 
 // ─────────────────────────────────────────────────────────────────
 // PATHS CALIBRADOS A LA IMAGEN PNG (espacio 270×470)
+// Referencia visual: boxes de colores sobre figura anatómica
 // ─────────────────────────────────────────────────────────────────
 
 // FRENTE ──────────────────────────────────────────────────────────
 
-// Pectorales: zona central superior del torso
+// PECHO (caja naranja): pectorales — centro superior del torso
 Path _imgPecho() => Path()
-  ..moveTo(90, 95)..lineTo(180, 95)
-  ..lineTo(178, 158)..lineTo(92, 158)..close();
+  ..moveTo(82, 80)..lineTo(188, 80)
+  ..lineTo(186, 172)..lineTo(84, 172)..close();
 
-// Deltoides: zona lateral del hombro (entre cuello y brazo)
+// HOMBROS (caja cyan — muy ancha): deltoides ambos lados
 Path _imgHombros() {
   final p = Path();
-  p.moveTo(46, 78); p.lineTo(92, 78); p.lineTo(90, 148); p.lineTo(44, 144); p.close();  // izq
-  p.moveTo(178, 78); p.lineTo(224, 78); p.lineTo(226, 144); p.lineTo(180, 148); p.close(); // der
+  p.moveTo(26, 78); p.lineTo(94, 78); p.lineTo(92, 158); p.lineTo(24, 153); p.close();  // izq
+  p.moveTo(176, 78); p.lineTo(244, 78); p.lineTo(246, 153); p.lineTo(178, 158); p.close(); // der
   return p;
 }
 
-// Bíceps: frente del brazo superior — zona amplia desde axila hasta codo
+// BÍCEPS (cajas rojo/magenta): brazo superior frente — desde axila hasta codo
 Path _imgBiceps() {
   final p = Path();
-  p.moveTo(26, 112); p.lineTo(62, 112); p.lineTo(60, 238); p.lineTo(22, 234); p.close();  // izq
-  p.moveTo(208, 112); p.lineTo(244, 112); p.lineTo(248, 234); p.lineTo(210, 238); p.close(); // der
+  p.moveTo(14, 100); p.lineTo(64, 100); p.lineTo(60, 252); p.lineTo(10, 248); p.close();  // izq
+  p.moveTo(206, 100); p.lineTo(256, 100); p.lineTo(260, 248); p.lineTo(210, 252); p.close(); // der
   return p;
 }
 
-// Abdominales: zona central media del torso
+// ABS (caja verde): abdominales — zona central media
 Path _imgAbs() => Path()
-  ..moveTo(92, 158)..lineTo(178, 158)
-  ..lineTo(176, 238)..lineTo(94, 238)..close();
+  ..moveTo(90, 172)..lineTo(180, 172)
+  ..lineTo(178, 258)..lineTo(92, 258)..close();
 
-// Cuádriceps: muslos frontales — separados por entrepierna
+// CUÁDRICEPS (caja azul): muslos frontales
 Path _imgCuads() {
   final p = Path();
-  p.moveTo(82, 250); p.lineTo(128, 248); p.lineTo(122, 368); p.lineTo(76, 366); p.close();  // izq
-  p.moveTo(142, 248); p.lineTo(188, 250); p.lineTo(194, 366); p.lineTo(148, 368); p.close(); // der
+  p.moveTo(74, 255); p.lineTo(128, 253); p.lineTo(122, 376); p.lineTo(70, 374); p.close();  // izq
+  p.moveTo(142, 253); p.lineTo(196, 255); p.lineTo(200, 374); p.lineTo(148, 376); p.close(); // der
   return p;
 }
 
-// Gemelos frontales: pantorrillas — zona inferior de la pierna
+// GEMELOS FRONTALES (cajas amarillas): pantorrillas inferiores
 Path _imgGemelosF() {
   final p = Path();
-  p.moveTo(76, 372); p.lineTo(120, 370); p.lineTo(114, 452); p.lineTo(72, 450); p.close();  // izq
-  p.moveTo(150, 370); p.lineTo(194, 372); p.lineTo(200, 450); p.lineTo(156, 452); p.close(); // der
+  p.moveTo(66, 380); p.lineTo(114, 378); p.lineTo(108, 460); p.lineTo(62, 458); p.close();  // izq
+  p.moveTo(156, 378); p.lineTo(204, 380); p.lineTo(208, 458); p.lineTo(160, 460); p.close(); // der
   return p;
 }
 
 // ESPALDA ─────────────────────────────────────────────────────────
 
-// Trapecio / espalda alta: zona central superior de la espalda
+// ESPALDA ALTA (trapecio): zona central superior de la espalda
 Path _imgEspaldaAlta() => Path()
-  ..moveTo(86, 82)..lineTo(182, 82)
-  ..lineTo(180, 164)..lineTo(88, 164)..close();
+  ..moveTo(84, 80)..lineTo(184, 80)
+  ..lineTo(182, 168)..lineTo(86, 168)..close();
 
-// Dorsales: lados del torso posterior (lat)
+// DORSALES: lados del torso posterior
 Path _imgDorsales() {
   final p = Path();
-  p.moveTo(38, 158); p.lineTo(88, 158); p.lineTo(86, 234); p.lineTo(34, 228); p.close();  // izq
-  p.moveTo(180, 158); p.lineTo(230, 158); p.lineTo(234, 228); p.lineTo(182, 234); p.close(); // der
+  p.moveTo(32, 162); p.lineTo(92, 162); p.lineTo(90, 238); p.lineTo(28, 232); p.close();  // izq
+  p.moveTo(178, 162); p.lineTo(238, 162); p.lineTo(242, 232); p.lineTo(180, 238); p.close(); // der
   return p;
 }
 
-// Tríceps: parte posterior del brazo superior — zona amplia
+// TRÍCEPS: parte posterior brazo superior — amplia, desde hombro hasta codo
 Path _imgTriceps() {
   final p = Path();
-  p.moveTo(24, 100); p.lineTo(60, 100); p.lineTo(64, 238); p.lineTo(20, 234); p.close();  // izq
-  p.moveTo(208, 100); p.lineTo(244, 100); p.lineTo(248, 234); p.lineTo(204, 238); p.close(); // der
+  p.moveTo(12, 96); p.lineTo(60, 96); p.lineTo(64, 252); p.lineTo(8, 248); p.close();  // izq
+  p.moveTo(210, 96); p.lineTo(258, 96); p.lineTo(262, 248); p.lineTo(206, 252); p.close(); // der
   return p;
 }
 
-// Lumbar: zona inferior central de la espalda
+// LUMBAR: parte inferior central de la espalda
 Path _imgLumbar() => Path()
-  ..moveTo(90, 226)..lineTo(178, 226)
-  ..lineTo(176, 274)..lineTo(92, 274)..close();
+  ..moveTo(88, 230)..lineTo(182, 230)
+  ..lineTo(180, 278)..lineTo(90, 278)..close();
 
-// Glúteos: zona posterior de la cadera
+// GLÚTEOS: zona posterior de la cadera
 Path _imgGluteos() => Path()
-  ..moveTo(76, 270)..lineTo(192, 270)
-  ..lineTo(190, 338)..lineTo(78, 338)..close();
+  ..moveTo(72, 272)..lineTo(198, 272)
+  ..lineTo(196, 342)..lineTo(74, 342)..close();
 
-// Isquiotibiales: parte posterior de los muslos
+// ISQUIOTIBIALES: parte posterior de los muslos
 Path _imgIsquios() {
   final p = Path();
-  p.moveTo(70, 340); p.lineTo(118, 340); p.lineTo(112, 424); p.lineTo(66, 420); p.close();  // izq
-  p.moveTo(150, 340); p.lineTo(198, 340); p.lineTo(202, 420); p.lineTo(156, 424); p.close(); // der
+  p.moveTo(66, 344); p.lineTo(122, 344); p.lineTo(116, 430); p.lineTo(62, 426); p.close();  // izq
+  p.moveTo(148, 344); p.lineTo(204, 344); p.lineTo(208, 426); p.lineTo(152, 430); p.close(); // der
   return p;
 }
 
-// Gemelos posteriores: pantorrillas traseras
+// GEMELOS POSTERIORES: pantorrillas traseras
 Path _imgGemelosB() {
   final p = Path();
-  p.moveTo(62, 426); p.lineTo(108, 426); p.lineTo(104, 464); p.lineTo(58, 461); p.close();  // izq
-  p.moveTo(160, 426); p.lineTo(206, 426); p.lineTo(210, 461); p.lineTo(164, 464); p.close(); // der
+  p.moveTo(58, 432); p.lineTo(112, 432); p.lineTo(108, 466); p.lineTo(54, 463); p.close();  // izq
+  p.moveTo(158, 432); p.lineTo(212, 432); p.lineTo(216, 463); p.lineTo(162, 466); p.close(); // der
   return p;
 }
 
