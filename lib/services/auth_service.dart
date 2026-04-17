@@ -182,7 +182,8 @@ class AuthService {
           .from('user_profiles')
           .select()
           .eq('uid', uid)
-          .single();
+          .single()
+          .timeout(const Duration(seconds: 10));
       return UserProfile.fromMap(data);
     } catch (_) {
       return null;
