@@ -6,8 +6,10 @@
 // - Memoria de pesos usados por ejercicio
 // ─────────────────────────────────────────────────────────────────
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../services/workout_log_service.dart';
+import '../../services/points_service.dart';
 import '../data/muscle_data.dart';
 
 // Helpers para parsear los strings de series/reps del modelo ExerciseItem
@@ -166,12 +168,14 @@ class WorkoutLogProvider extends ChangeNotifier {
 
   // ── Finalizar sesión ──────────────────────────────────────────
 
-  Future<void> finishSession() async {
+  Future<void> finishSession({String userName = 'Usuario'}) async {
     if (_activeSession == null) return;
     _activeSession!.durationMinutes = currentDurationMinutes;
     _activeSession!.isCompleted     = true;
     await _service.saveSessionWeights(_activeSession!);
     await _service.saveSession(_activeSession!);
+    // Otorgar +100 puntos de comunidad (no bloqueante)
+    unawaited(PointsService.instance.awardWorkout(userName));
     _activeSession = null;
     _sessionStart  = null;
     await Future.wait([_loadHistory(), _loadWeights()]);

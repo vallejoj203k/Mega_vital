@@ -170,23 +170,25 @@ class CommunityService {
     }
   }
 
-  Future<bool> createPost({
+  /// Retorna null en éxito, o el mensaje de error en fallo.
+  Future<String?> createPost({
     required String userName,
     required String content,
     String? achievement,
   }) async {
     final uid = _uid;
-    if (uid == null) return false;
+    if (uid == null) return 'No hay sesión activa.';
     try {
       await _db.from('community_posts').insert({
         'user_id': uid,
-        'user_name': userName.trim(),
+        'user_name': userName.isEmpty ? 'Usuario' : userName.trim(),
         'content': content.trim(),
-        if (achievement != null) 'achievement': achievement.trim(),
+        if (achievement != null && achievement.trim().isNotEmpty)
+          'achievement': achievement.trim(),
       });
-      return true;
-    } catch (_) {
-      return false;
+      return null;
+    } catch (e) {
+      return e.toString();
     }
   }
 
@@ -259,17 +261,28 @@ class CommunityService {
     }
   }
 
-  Future<List<LeaderboardEntry>> fetchLeaderboard() async {
-    final uid = _uid;
-    if (uid == null) return [];
+  Future<List<LeaderboardEntry>> _fetchLeaderboard(
+      String rpcName, String currentUid) async {
     try {
-      final data = await _db.rpc('get_leaderboard');
+      final data = await _db.rpc(rpcName);
       return [
         for (final m in data as List)
-          LeaderboardEntry.fromMap(m as Map<String, dynamic>, uid),
+          LeaderboardEntry.fromMap(m as Map<String, dynamic>, currentUid),
       ];
     } catch (_) {
       return [];
     }
+  }
+
+  Future<List<LeaderboardEntry>> fetchLeaderboardTotal() async {
+    final uid = _uid;
+    if (uid == null) return [];
+    return _fetchLeaderboard('get_leaderboard_total', uid);
+  }
+
+  Future<List<LeaderboardEntry>> fetchLeaderboardWeekly() async {
+    final uid = _uid;
+    if (uid == null) return [];
+    return _fetchLeaderboard('get_leaderboard_weekly', uid);
   }
 }

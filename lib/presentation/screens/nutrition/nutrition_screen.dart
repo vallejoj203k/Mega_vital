@@ -5,6 +5,7 @@
 // FitnessCalculator según los datos del usuario logueado.
 // ─────────────────────────────────────────────────────────────────
 
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -196,11 +197,25 @@ class _NutritionScreenState extends State<NutritionScreen>
   }
 
   void _showAddFoodSheet(BuildContext ctx, NutritionProvider nutrition) {
+    final auth      = ctx.read<AuthProvider>();
+    final profile   = auth.profile;
+    final calc      = profile != null
+        ? FitnessCalculator(
+            weight: profile.weight, height: profile.height,
+            age: profile.age, goal: profile.goal)
+        : null;
+    final goalCal   = calc?.metaCalorias ?? 2000;
+    final userName  = auth.profile?.name ?? 'Usuario';
+
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => AddFoodSheet(nutrition: nutrition),
+      builder: (_) => AddFoodSheet(
+        nutrition: nutrition,
+        goalCalories: goalCal,
+        userName: userName,
+      ),
     );
   }
 }
@@ -609,7 +624,14 @@ class _AddFab extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────
 class AddFoodSheet extends StatefulWidget {
   final NutritionProvider nutrition;
-  const AddFoodSheet({super.key, required this.nutrition});
+  final int goalCalories;
+  final String userName;
+  const AddFoodSheet({
+    super.key,
+    required this.nutrition,
+    required this.goalCalories,
+    required this.userName,
+  });
   @override
   State<AddFoodSheet> createState() => _AddFoodSheetState();
 }
@@ -691,6 +713,11 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
         carbs: item.carbs, fat: item.fat,
       );
     }
+    // Verificar si el usuario cumplió su meta calórica diaria
+    unawaited(widget.nutrition.checkAndAwardNutritionGoal(
+      goalCalories: widget.goalCalories,
+      userName: widget.userName,
+    ));
     if (mounted) Navigator.pop(context);
   }
 
