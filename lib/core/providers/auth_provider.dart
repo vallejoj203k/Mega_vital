@@ -50,7 +50,7 @@ class AuthProvider extends ChangeNotifier {
         _status         = AuthStatus.authenticated;
         _profileLoading = true;
         notifyListeners();
-        _profile        = await _service.getUserProfile(current.uid);
+        _profile        = await _service.ensureUserProfile(current);
         _profileLoading = false;
         notifyListeners();
       } else {
@@ -69,7 +69,7 @@ class AuthProvider extends ChangeNotifier {
         _status         = AuthStatus.authenticated;
         _profileLoading = true;
         notifyListeners();
-        _profile        = await _service.getUserProfile(user.uid);
+        _profile        = await _service.ensureUserProfile(user);
         _profileLoading = false;
       } else {
         _status         = AuthStatus.unauthenticated;
@@ -92,7 +92,7 @@ class AuthProvider extends ChangeNotifier {
     _user   = result.user;
     _status = AuthStatus.authenticated;
     _setLoading(false);
-    _profile = await _service.getUserProfile(result.user!.uid);
+    _profile = await _service.ensureUserProfile(result.user!);
     notifyListeners();
     return true;
   }
@@ -120,7 +120,7 @@ class AuthProvider extends ChangeNotifier {
     _user   = result.user;
     _status = AuthStatus.authenticated;
     _setLoading(false);
-    _profile = await _service.getUserProfile(result.user!.uid);
+    _profile = await _service.ensureUserProfile(result.user!);
     notifyListeners();
     return true;
   }
@@ -154,11 +154,11 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> reloadProfile() async {
-    final uid = _user?.uid;
-    if (uid == null) return;
+    final user = _user;
+    if (user == null) return;
     _profileLoading = true;
     notifyListeners();
-    _profile        = await _service.getUserProfile(uid);
+    _profile        = await _service.ensureUserProfile(user);
     _profileLoading = false;
     notifyListeners();
   }
