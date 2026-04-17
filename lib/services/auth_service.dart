@@ -118,18 +118,6 @@ class AuthService {
         return AuthResult.fail('No se pudo crear la cuenta. Intenta de nuevo.');
       }
 
-      await _supabase.from('user_profiles').insert({
-        'uid': supaUser.id,
-        'name': name.trim(),
-        'email': email.trim(),
-        'goal': goal,
-        'weight': weight,
-        'height': height,
-        'age': age,
-        'streak': 0,
-        'total_workouts': 0,
-      });
-
       return AuthResult.ok(AppUser.fromSupabase(supaUser));
     } on AuthException catch (e) {
       return AuthResult.fail(_translateError(e.message));
@@ -185,6 +173,57 @@ class AuthService {
           .single()
           .timeout(const Duration(seconds: 10));
       return UserProfile.fromMap(data);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Crea o sobreescribe el perfil con los datos reales del registro.
+  Future<UserProfile?> createProfileWithData({
+    required AppUser user,
+    required String name,
+    required String goal,
+    required double weight,
+    required double height,
+    required int age,
+  }) async {
+    try {
+      await _supabase.from('user_profiles').upsert({
+        'uid':            user.uid,
+        'name':           name.trim(),
+        'email':          user.email,
+        'goal':           goal,
+        'weight':         weight,
+        'height':         height,
+        'age':            age,
+        'streak':         0,
+        'total_workouts': 0,
+      });
+      return await getUserProfile(user.uid);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Carga el perfil, y si no existe lo crea con valores por defecto (fallback para login).
+  Future<UserProfile?> ensureUserProfile(AppUser user) async {
+    final existing = await getUserProfile(user.uid);
+    if (existing != null) return existing;
+
+    try {
+      final name = user.displayName.isNotEmpty ? user.displayName : 'Usuario';
+      await _supabase.from('user_profiles').upsert({
+        'uid':            user.uid,
+        'name':           name,
+        'email':          user.email,
+        'goal':           'Ganar músculo',
+        'weight':         70.0,
+        'height':         170.0,
+        'age':            25,
+        'streak':         0,
+        'total_workouts': 0,
+      });
+      return await getUserProfile(user.uid);
     } catch (_) {
       return null;
     }

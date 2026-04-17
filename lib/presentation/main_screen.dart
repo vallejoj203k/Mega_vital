@@ -6,6 +6,8 @@
 // ──────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../core/providers/nav_provider.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/workouts/workouts_screen.dart';
 import 'screens/nutrition/nutrition_screen.dart';
@@ -21,9 +23,6 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 0;
-
-  // Las 5 pantallas — se crean una vez y se conservan
   static const List<Widget> _screens = [
     HomeScreen(),
     WorkoutsScreen(),
@@ -32,28 +31,19 @@ class _MainScreenState extends State<MainScreen> {
     ProfileScreen(),
   ];
 
-  void _onNavTap(int index) {
-    if (index == _currentIndex) return; // Evita rebuild innecesario
-    setState(() => _currentIndex = index);
-  }
-
   @override
   Widget build(BuildContext context) {
+    final nav = context.watch<NavProvider>();
     return Scaffold(
-      // Sin fondo propio — cada pantalla define el suyo
       backgroundColor: Colors.transparent,
       body: IndexedStack(
-        // IndexedStack mantiene el estado de TODAS las pantallas
-        // activas simultáneamente (no las destruye al cambiar de tab)
-        index: _currentIndex,
+        index: nav.index,
         children: _screens,
       ),
-      // Eliminamos el bottomNavigationBar de Scaffold y usamos
-      // Stack para tener control total del posicionamiento
       extendBody: true,
       bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: _currentIndex,
-        onTap: _onNavTap,
+        currentIndex: nav.index,
+        onTap: context.read<NavProvider>().goTo,
       ),
     );
   }
