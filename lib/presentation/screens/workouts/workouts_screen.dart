@@ -14,6 +14,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/data/muscle_data.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/workout_log_provider.dart';
 import '../../../services/routine_service.dart';
 import '../../../services/workout_log_service.dart';
@@ -178,6 +179,9 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
     final exercises = _selectedMuscleId != null
         ? exercisesForMuscle(_selectedMuscleId!) : <ExerciseItem>[];
 
+    final isMale =
+        context.watch<AuthProvider>().profile?.isMale ?? false;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(child: Column(children: [
@@ -236,6 +240,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
                 child: ScaleTransition(scale: _bodyScale,
                   child: _AnatomyBody(
                     isFront:          _isFront,
+                    isMale:           isMale,
                     selectedMuscleId: _selectedMuscleId,
                     onMuscleTap:      _onMuscleTap,
                     onFlip:           _flip,
@@ -275,12 +280,14 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
 // ─────────────────────────────────────────────────────────────────
 class _AnatomyBody extends StatelessWidget {
   final bool    isFront;
+  final bool    isMale;
   final String? selectedMuscleId;
   final ValueChanged<String> onMuscleTap;
   final VoidCallback onFlip;
 
-  const _AnatomyBody({required this.isFront, required this.selectedMuscleId,
-    required this.onMuscleTap, required this.onFlip});
+  const _AnatomyBody({required this.isFront, required this.isMale,
+    required this.selectedMuscleId, required this.onMuscleTap,
+    required this.onFlip});
 
   @override
   Widget build(BuildContext context) {
@@ -345,15 +352,20 @@ class _AnatomyBody extends StatelessWidget {
         }
 
         return Stack(alignment: Alignment.center, children: [
-          // ── Imagen PNG anatómica ────────────────────────────────
+          // ── Imagen PNG anatómica (varía según género del perfil) ──
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 350),
             child: Image.asset(
-              key: ValueKey(isFront),
+              key: ValueKey('${isFront}_$isMale'),
               isFront
-                  ? 'assets/images/body_front.png'
-                  : 'assets/images/body_back.png',
-              width: dispW, height: dispH,
+                  ? (isMale
+                      ? 'assets/images/frontal_masculino.png'
+                      : 'assets/images/body_front.png')
+                  : (isMale
+                      ? 'assets/images/trasero_masculino.png'
+                      : 'assets/images/body_back.png'),
+              width: dispW,
+              height: dispH,
               fit: BoxFit.contain,
             ),
           ),

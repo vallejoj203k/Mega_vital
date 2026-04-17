@@ -26,8 +26,14 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   age             INTEGER NOT NULL DEFAULT 25,
   created_at      TIMESTAMPTZ DEFAULT NOW(),
   streak          INTEGER NOT NULL DEFAULT 0,
-  total_workouts  INTEGER NOT NULL DEFAULT 0
+  total_workouts  INTEGER NOT NULL DEFAULT 0,
+  gender          TEXT NOT NULL DEFAULT 'mujer',
+  referred_by     TEXT
 );
+
+-- Si la tabla ya existe, añadir columnas nuevas (idempotente)
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS gender      TEXT NOT NULL DEFAULT 'mujer';
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS referred_by TEXT;
 
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 

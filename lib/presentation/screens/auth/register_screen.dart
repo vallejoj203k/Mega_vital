@@ -35,8 +35,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _passConfirmCtrl = TextEditingController();
+  final _referredByCtrl = TextEditingController();
   bool _obscurePass = true;
   bool _obscureConfirm = true;
+  String _selectedGender = 'mujer';
   final _formKey1 = GlobalKey<FormState>();
 
   // ── Controladores paso 2 ──
@@ -70,6 +72,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailCtrl.dispose();
     _passCtrl.dispose();
     _passConfirmCtrl.dispose();
+    _referredByCtrl.dispose();
     _ageCtrl.dispose();
     super.dispose();
   }
@@ -186,12 +189,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
           emailCtrl: _emailCtrl,
           passCtrl: _passCtrl,
           passConfirmCtrl: _passConfirmCtrl,
+          referredByCtrl: _referredByCtrl,
           obscurePass: _obscurePass,
           obscureConfirm: _obscureConfirm,
+          selectedGender: _selectedGender,
           formKey: _formKey1,
           onTogglePass: () => setState(() => _obscurePass = !_obscurePass),
           onToggleConfirm: () =>
               setState(() => _obscureConfirm = !_obscureConfirm),
+          onGenderChanged: (g) => setState(() => _selectedGender = g),
           onNext: _nextStep,
         );
       case 1:
@@ -245,6 +251,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       weight: _weight,
       height: _height,
       age: _age,
+      gender: _selectedGender,
+      referredBy: _referredByCtrl.text.trim().isEmpty
+          ? null
+          : _referredByCtrl.text.trim(),
     );
 
     if (!ok && mounted) {
@@ -314,21 +324,27 @@ class _StepProgressBar extends StatelessWidget {
 // PASO 1 — Datos de cuenta
 // ─────────────────────────────────────────────────────────────────
 class _Step1 extends StatelessWidget {
-  final TextEditingController nameCtrl, emailCtrl, passCtrl, passConfirmCtrl;
+  final TextEditingController nameCtrl, emailCtrl, passCtrl, passConfirmCtrl,
+      referredByCtrl;
   final bool obscurePass, obscureConfirm;
+  final String selectedGender;
   final GlobalKey<FormState> formKey;
   final VoidCallback onTogglePass, onToggleConfirm, onNext;
+  final ValueChanged<String> onGenderChanged;
 
   const _Step1({
     required this.nameCtrl,
     required this.emailCtrl,
     required this.passCtrl,
     required this.passConfirmCtrl,
+    required this.referredByCtrl,
     required this.obscurePass,
     required this.obscureConfirm,
+    required this.selectedGender,
     required this.formKey,
     required this.onTogglePass,
     required this.onToggleConfirm,
+    required this.onGenderChanged,
     required this.onNext,
   });
 
@@ -340,6 +356,7 @@ class _Step1 extends StatelessWidget {
       child: Form(
         key: formKey,
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             AuthField(
               controller: nameCtrl,
@@ -353,6 +370,16 @@ class _Step1 extends StatelessWidget {
               },
             ),
             const SizedBox(height: 14),
+
+            // ── Selector de género ────────────────────────────────────
+            Text('Género', style: AppTextStyles.labelMedium),
+            const SizedBox(height: 8),
+            _GenderSelector(
+              selected: selectedGender,
+              onChanged: onGenderChanged,
+            ),
+            const SizedBox(height: 14),
+
             AuthField(
               controller: emailCtrl,
               label: 'Correo electrónico',
@@ -376,8 +403,11 @@ class _Step1 extends StatelessWidget {
               obscureText: obscurePass,
               suffixIcon: IconButton(
                 icon: Icon(
-                  obscurePass ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                  size: 20, color: AppColors.textMuted,
+                  obscurePass
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  size: 20,
+                  color: AppColors.textMuted,
                 ),
                 onPressed: onTogglePass,
               ),
@@ -396,8 +426,11 @@ class _Step1 extends StatelessWidget {
               obscureText: obscureConfirm,
               suffixIcon: IconButton(
                 icon: Icon(
-                  obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                  size: 20, color: AppColors.textMuted,
+                  obscureConfirm
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  size: 20,
+                  color: AppColors.textMuted,
                 ),
                 onPressed: onToggleConfirm,
               ),
@@ -407,12 +440,130 @@ class _Step1 extends StatelessWidget {
                 return null;
               },
             ),
+            const SizedBox(height: 14),
+
+            // ── ¿Quién te recomendó? (opcional) ──────────────────────
+            AuthField(
+              controller: referredByCtrl,
+              label: '¿Quién te recomendó? (opcional)',
+              hint: 'Nombre de tu amigo o familiar',
+              icon: Icons.group_outlined,
+            ),
             const SizedBox(height: 28),
             _StepButton(label: 'Siguiente →', onTap: onNext),
             const SizedBox(height: 20),
             _LoginPrompt(),
             const SizedBox(height: 40),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Selector de género ───────────────────────────────────────────
+class _GenderSelector extends StatelessWidget {
+  final String selected;
+  final ValueChanged<String> onChanged;
+  const _GenderSelector({required this.selected, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _GenderOption(
+          label: 'Mujer',
+          icon: Icons.female_rounded,
+          value: 'mujer',
+          selected: selected == 'mujer',
+          onTap: () => onChanged('mujer'),
+        ),
+        const SizedBox(width: 12),
+        _GenderOption(
+          label: 'Hombre',
+          icon: Icons.male_rounded,
+          value: 'hombre',
+          selected: selected == 'hombre',
+          onTap: () => onChanged('hombre'),
+        ),
+      ],
+    );
+  }
+}
+
+class _GenderOption extends StatelessWidget {
+  final String label, value;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _GenderOption({
+    required this.label,
+    required this.icon,
+    required this.value,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          height: 52,
+          decoration: BoxDecoration(
+            gradient: selected
+                ? const LinearGradient(
+                    colors: [Color(0xFF0F2318), Color(0xFF081A0E)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            color: selected ? null : AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected
+                  ? AppColors.primary.withOpacity(0.5)
+                  : AppColors.border,
+              width: selected ? 1 : 0.5,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 22,
+                color:
+                    selected ? AppColors.primary : AppColors.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: selected
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 6),
+              if (selected)
+                Container(
+                  width: 16,
+                  height: 16,
+                  decoration: const BoxDecoration(
+                    gradient: AppColors.primaryGradient,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.check_rounded,
+                      size: 10, color: AppColors.background),
+                ),
+            ],
+          ),
         ),
       ),
     );
