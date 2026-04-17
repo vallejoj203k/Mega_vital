@@ -1,12 +1,8 @@
-// lib/core/providers/auth_provider.dart
-// ─────────────────────────────────────────────────────────────────
-// Gestiona el estado global de autenticación.
-// Usa MockUser en lugar de firebase_auth User.
-// ─────────────────────────────────────────────────────────────────
-
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+
+export '../../services/auth_service.dart' show AppUser, MockUser;
 
 enum AuthStatus { initial, authenticated, unauthenticated }
 
@@ -14,19 +10,19 @@ class AuthProvider extends ChangeNotifier {
   final AuthService _service;
 
   AuthStatus _status = AuthStatus.initial;
-  MockUser?    _mockUser;
+  AppUser?     _user;
   UserProfile? _profile;
   String?      _errorMessage;
   bool         _isLoading = false;
+  StreamSubscription? _authSub;
 
   AuthProvider({AuthService? service})
       : _service = service ?? AuthService() {
     _init();
   }
 
-  // ── Getters ──────────────────────────────────────────────────
-  AuthStatus   get status       => _status;
-  MockUser?    get firebaseUser  => _mockUser;
+  AuthStatus   get status        => _status;
+  AppUser?     get firebaseUser  => _user;
   UserProfile? get profile       => _profile;
   String?      get errorMessage  => _errorMessage;
   bool         get isLoading     => _isLoading;
@@ -34,7 +30,7 @@ class AuthProvider extends ChangeNotifier {
   bool         get isInitializing=> _status == AuthStatus.initial;
 
   String get displayName =>
-      _profile?.name ?? _mockUser?.displayName ?? 'Usuario';
+      _profile?.name ?? _user?.displayName ?? 'Usuario';
 
   String get userInitials {
     final parts = displayName.trim().split(' ');
@@ -44,12 +40,24 @@ class AuthProvider extends ChangeNotifier {
     return displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
   }
 
-  // ── Inicialización: restaura sesión guardada ─────────────────
   Future<void> _init() async {
-    _service.authStateChanges.listen((user) async {
-      _mockUser = user;
+    final current = _service.currentUser;
+    if (current != null) {
+      _user   = current;
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+      _profile = await _service.getUserProfile(current.uid);
+      notifyListeners();
+    } else {
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
+    }
+
+    _authSub = _service.authStateChanges.listen((user) async {
+      _user = user;
       if (user != null) {
-        _status  = AuthStatus.authenticated;
+        _status = AuthStatus.authenticated;
+        notifyListeners();
         _profile = await _service.getUserProfile(user.uid);
       } else {
         _status  = AuthStatus.unauthenticated;
@@ -59,26 +67,23 @@ class AuthProvider extends ChangeNotifier {
     });
   }
 
-  // ── LOGIN ────────────────────────────────────────────────────
   Future<bool> login({required String email, required String password}) async {
     _setLoading(true);
     _clearError();
-
     final result = await _service.login(email: email, password: password);
     if (!result.success) {
       _errorMessage = result.errorMessage;
       _setLoading(false);
       return false;
     }
-
-    _mockUser = result.user;
-    _profile  = await _service.getUserProfile(result.user!.uid);
-    _status   = AuthStatus.authenticated;
+    _user   = result.user;
+    _status = AuthStatus.authenticated;
     _setLoading(false);
+    _profile = await _service.getUserProfile(result.user!.uid);
+    notifyListeners();
     return true;
   }
 
-  // ── REGISTRO ─────────────────────────────────────────────────
   Future<bool> register({
     required String name,
     required String email,
@@ -90,7 +95,6 @@ class AuthProvider extends ChangeNotifier {
   }) async {
     _setLoading(true);
     _clearError();
-
     final result = await _service.register(
       name: name, email: email, password: password,
       goal: goal, weight: weight, height: height, age: age,
@@ -100,15 +104,14 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(false);
       return false;
     }
-
-    _mockUser = result.user;
-    _profile  = await _service.getUserProfile(result.user!.uid);
-    _status   = AuthStatus.authenticated;
+    _user   = result.user;
+    _status = AuthStatus.authenticated;
     _setLoading(false);
+    _profile = await _service.getUserProfile(result.user!.uid);
+    notifyListeners();
     return true;
   }
 
-  // ── RECUPERAR CONTRASEÑA ─────────────────────────────────────
   Future<bool> sendPasswordReset(String email) async {
     _setLoading(true);
     _clearError();
@@ -118,18 +121,16 @@ class AuthProvider extends ChangeNotifier {
     return true;
   }
 
-  // ── CERRAR SESIÓN ────────────────────────────────────────────
   Future<void> signOut() async {
     await _service.signOut();
-    _mockUser = null;
-    _profile  = null;
-    _status   = AuthStatus.unauthenticated;
+    _user    = null;
+    _profile = null;
+    _status  = AuthStatus.unauthenticated;
     notifyListeners();
   }
 
-  // ── ACTUALIZAR PERFIL ────────────────────────────────────────
   Future<bool> updateProfile(Map<String, dynamic> data) async {
-    final uid = _mockUser?.uid;
+    final uid = _user?.uid;
     if (uid == null) return false;
     final ok = await _service.updateUserProfile(uid, data);
     if (ok) {
@@ -140,7 +141,12 @@ class AuthProvider extends ChangeNotifier {
   }
 
   void clearError() => _clearError();
-
   void _setLoading(bool v) { _isLoading = v; notifyListeners(); }
   void _clearError()       { _errorMessage = null; notifyListeners(); }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
+  }
 }
