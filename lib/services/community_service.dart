@@ -170,23 +170,25 @@ class CommunityService {
     }
   }
 
-  Future<bool> createPost({
+  /// Retorna null en éxito, o el mensaje de error en fallo.
+  Future<String?> createPost({
     required String userName,
     required String content,
     String? achievement,
   }) async {
     final uid = _uid;
-    if (uid == null) return false;
+    if (uid == null) return 'No hay sesión activa.';
     try {
       await _db.from('community_posts').insert({
         'user_id': uid,
-        'user_name': userName.trim(),
+        'user_name': userName.isEmpty ? 'Usuario' : userName.trim(),
         'content': content.trim(),
-        if (achievement != null) 'achievement': achievement.trim(),
+        if (achievement != null && achievement.trim().isNotEmpty)
+          'achievement': achievement.trim(),
       });
-      return true;
-    } catch (_) {
-      return false;
+      return null;
+    } catch (e) {
+      return e.toString();
     }
   }
 

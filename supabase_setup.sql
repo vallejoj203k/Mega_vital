@@ -1,6 +1,17 @@
 -- ============================================
 -- MEGA VITAL - Setup de base de datos Supabase
 -- Ejecutar en: Supabase Dashboard > SQL Editor
+--
+-- Si las tablas de comunidad ya existen y quieres
+-- arreglar el error de FK, ejecuta primero:
+--
+--   ALTER TABLE public.community_posts
+--     DROP CONSTRAINT IF EXISTS community_posts_user_id_fkey;
+--   ALTER TABLE public.post_likes
+--     DROP CONSTRAINT IF EXISTS post_likes_user_id_fkey;
+--   ALTER TABLE public.post_comments
+--     DROP CONSTRAINT IF EXISTS post_comments_user_id_fkey;
+--
 -- ============================================
 
 -- ─── 1. user_profiles ───────────────────────────────────────────────────────
@@ -38,10 +49,12 @@ CREATE POLICY "Users can update own profile"
 
 
 -- ─── 2. community_posts ─────────────────────────────────────────────────────
+-- user_id es TEXT sin FK a user_profiles para evitar fallos cuando el perfil
+-- aún no existe. La seguridad se garantiza exclusivamente por RLS.
 
 CREATE TABLE IF NOT EXISTS public.community_posts (
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id        TEXT NOT NULL REFERENCES public.user_profiles(uid) ON DELETE CASCADE,
+  user_id        TEXT NOT NULL,
   user_name      TEXT NOT NULL,
   content        TEXT NOT NULL,
   achievement    TEXT,
@@ -49,6 +62,10 @@ CREATE TABLE IF NOT EXISTS public.community_posts (
   comments_count INTEGER NOT NULL DEFAULT 0,
   created_at     TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Si la tabla ya existía con FK, eliminarla:
+ALTER TABLE public.community_posts
+  DROP CONSTRAINT IF EXISTS community_posts_user_id_fkey;
 
 ALTER TABLE public.community_posts ENABLE ROW LEVEL SECURITY;
 
@@ -74,10 +91,14 @@ CREATE POLICY "Users can delete own posts"
 CREATE TABLE IF NOT EXISTS public.post_likes (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   post_id    UUID NOT NULL REFERENCES public.community_posts(id) ON DELETE CASCADE,
-  user_id    TEXT NOT NULL REFERENCES public.user_profiles(uid) ON DELETE CASCADE,
+  user_id    TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(post_id, user_id)
 );
+
+-- Si ya existía con FK a user_profiles, eliminarla:
+ALTER TABLE public.post_likes
+  DROP CONSTRAINT IF EXISTS post_likes_user_id_fkey;
 
 ALTER TABLE public.post_likes ENABLE ROW LEVEL SECURITY;
 
@@ -103,11 +124,15 @@ CREATE POLICY "Users can delete own likes"
 CREATE TABLE IF NOT EXISTS public.post_comments (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   post_id    UUID NOT NULL REFERENCES public.community_posts(id) ON DELETE CASCADE,
-  user_id    TEXT NOT NULL REFERENCES public.user_profiles(uid) ON DELETE CASCADE,
+  user_id    TEXT NOT NULL,
   user_name  TEXT NOT NULL,
   content    TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Si ya existía con FK a user_profiles, eliminarla:
+ALTER TABLE public.post_comments
+  DROP CONSTRAINT IF EXISTS post_comments_user_id_fkey;
 
 ALTER TABLE public.post_comments ENABLE ROW LEVEL SECURITY;
 

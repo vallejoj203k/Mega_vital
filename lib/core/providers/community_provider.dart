@@ -38,18 +38,19 @@ class CommunityProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> createPost(
+  /// Retorna null en éxito, o el mensaje de error en fallo.
+  Future<String?> createPost(
     String userName,
     String content, {
     String? achievement,
   }) async {
-    final ok = await _service.createPost(
+    final error = await _service.createPost(
       userName: userName,
       content: content,
       achievement: achievement,
     );
-    if (ok) await loadPosts();
-    return ok;
+    if (error == null) await loadPosts();
+    return error;
   }
 
   Future<void> toggleLike(String postId) async {

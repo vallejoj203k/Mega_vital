@@ -408,20 +408,46 @@ class _PublishSheetState extends State<_PublishSheet> {
     final achievement = _showAchievement && _achievementController.text.trim().isNotEmpty
         ? _achievementController.text.trim()
         : null;
-    final ok = await context
+    final error = await context
         .read<CommunityProvider>()
         .createPost(widget.userName, text, achievement: achievement);
     if (mounted) {
-      Navigator.pop(context);
-      if (!ok) {
+      if (error == null) {
+        Navigator.pop(context);
+      } else {
+        setState(() => _loading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Error al publicar. Intenta de nuevo.'),
+            content: Text(
+              _friendlyError(error),
+              style: const TextStyle(color: Colors.white),
+            ),
             backgroundColor: AppColors.error,
+            duration: const Duration(seconds: 5),
           ),
         );
       }
     }
+  }
+
+  String _friendlyError(String raw) {
+    final lower = raw.toLowerCase();
+    if (lower.contains('relation') && lower.contains('does not exist')) {
+      return 'Las tablas de comunidad no existen aún. Ejecuta el SQL en Supabase primero.';
+    }
+    if (lower.contains('violates foreign key')) {
+      return 'Error de perfil: completa tu perfil antes de publicar.';
+    }
+    if (lower.contains('row-level security') || lower.contains('rls')) {
+      return 'Sin permiso para publicar. Verifica que estés autenticado.';
+    }
+    if (lower.contains('network') || lower.contains('connection')) {
+      return 'Sin conexión. Verifica tu internet.';
+    }
+    if (lower.contains('no hay sesión')) {
+      return 'Inicia sesión para publicar.';
+    }
+    return 'Error al publicar: $raw';
   }
 
   @override
