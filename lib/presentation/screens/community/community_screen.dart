@@ -1069,36 +1069,33 @@ class _LeaderboardList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final top3 = leaders.take(3).toList();
-    final rest = leaders.skip(3).toList();
-
     return RefreshIndicator(
       color: AppColors.primary,
       backgroundColor: AppColors.surface,
       onRefresh: onRefresh,
-      child: ListView(
+      child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(
             parent: BouncingScrollPhysics()),
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        children: [
-          if (top3.length >= 3) _PodiumRow(leaders: top3),
-          if (top3.length >= 3) const SizedBox(height: 20),
-          if (rest.isNotEmpty) ...[
-            Text('Clasificación completa',
-                style: AppTextStyles.headingSmall),
-            const SizedBox(height: 12),
-          ],
-          ...rest.map(
-            (e) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _LeaderCard(entry: e),
-            ),
-          ),
-          // Leyenda de puntos
-          const SizedBox(height: 20),
-          _PointsLegend(),
-          const SizedBox(height: 80),
-        ],
+        itemCount: leaders.length + 2,
+        itemBuilder: (_, i) {
+          if (i < leaders.length) {
+            final entry = leaders[i];
+            return entry.rank <= 3
+                ? _TopThreeCard(entry: entry)
+                : Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _LeaderCard(entry: entry),
+                  );
+          }
+          if (i == leaders.length) {
+            return Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: _PointsLegend(),
+            );
+          }
+          return const SizedBox(height: 80);
+        },
       ),
     );
   }
@@ -1151,55 +1148,20 @@ class _PointsLegend extends StatelessWidget {
   }
 }
 
-class _PodiumRow extends StatelessWidget {
-  final List<LeaderboardEntry> leaders;
-  const _PodiumRow({required this.leaders});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(
-          child: _PodiumCard(
-            entry: leaders[1],
-            height: 100,
-            color: AppColors.accentBlue,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _PodiumCard(
-            entry: leaders[0],
-            height: 130,
-            color: AppColors.primary,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _PodiumCard(
-            entry: leaders[2],
-            height: 80,
-            color: AppColors.accentOrange,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PodiumCard extends StatelessWidget {
+class _TopThreeCard extends StatelessWidget {
   final LeaderboardEntry entry;
-  final double height;
-  final Color color;
+  const _TopThreeCard({required this.entry});
 
-  const _PodiumCard({
-    required this.entry,
-    required this.height,
-    required this.color,
-  });
+  Color get _medalColor {
+    switch (entry.rank) {
+      case 1: return const Color(0xFFFFD700);
+      case 2: return const Color(0xFFB8C4CF);
+      case 3: return const Color(0xFFCD8B5A);
+      default: return AppColors.primary;
+    }
+  }
 
-  String get _rankEmoji {
+  String get _medalEmoji {
     switch (entry.rank) {
       case 1: return '🥇';
       case 2: return '🥈';
@@ -1210,53 +1172,93 @@ class _PodiumCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(_rankEmoji, style: const TextStyle(fontSize: 20)),
-        const SizedBox(height: 4),
-        InitialsAvatar(
-            initials: entry.initials,
-            size: 36,
-            bgColor: entry.isMe ? null : color.withOpacity(0.2)),
-        const SizedBox(height: 4),
-        Text(
-          entry.name.split(' ').first,
-          style:
-              AppTextStyles.caption.copyWith(color: AppColors.textPrimary),
-          overflow: TextOverflow.ellipsis,
+    final color = _medalColor;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.55), width: 1.5),
         ),
-        if (entry.isMe) ...[
-          const SizedBox(height: 2),
-          Text('(tú)',
-              style:
-                  AppTextStyles.caption.copyWith(color: AppColors.primary)),
-        ],
-        const SizedBox(height: 4),
-        Container(
-          height: height,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.12),
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(10)),
-            border:
-                Border.all(color: color.withOpacity(0.3), width: 0.5),
-          ),
-          alignment: Alignment.center,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+        child: IntrinsicHeight(
+          child: Row(
             children: [
-              Text(
-                '${entry.points}',
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: color),
+              Container(
+                width: 4,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: const BorderRadius.horizontal(
+                      left: Radius.circular(14)),
+                ),
               ),
-              Text('pts', style: AppTextStyles.caption),
+              const SizedBox(width: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Text(_medalEmoji,
+                    style: const TextStyle(fontSize: 24)),
+              ),
+              const SizedBox(width: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: InitialsAvatar(
+                  initials: entry.initials,
+                  size: 48,
+                  bgColor: entry.isMe ? null : color.withOpacity(0.15),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        entry.isMe ? '${entry.name} (tú)' : entry.name,
+                        style: AppTextStyles.labelLarge.copyWith(
+                          color: entry.isMe
+                              ? AppColors.primary
+                              : AppColors.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '#${entry.rank} lugar',
+                        style: AppTextStyles.caption
+                            .copyWith(color: color.withOpacity(0.85)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${entry.points}',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: color,
+                        height: 1,
+                      ),
+                    ),
+                    Text('pts', style: AppTextStyles.caption),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
