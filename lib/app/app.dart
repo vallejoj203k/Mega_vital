@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
+import '../core/providers/nav_provider.dart';
 import '../core/providers/auth_provider.dart';
 import '../core/providers/nutrition_provider.dart';
 import '../core/providers/workout_log_provider.dart';
@@ -23,6 +24,7 @@ class GymApp extends StatelessWidget {
 
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => NavProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         // NutritionProvider carga el día actual al inicializarse
         ChangeNotifierProvider(create: (_) => NutritionProvider()..init()),

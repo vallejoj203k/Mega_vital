@@ -8,6 +8,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/mock/mock_data.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/nav_provider.dart';
 import '../../../core/providers/nutrition_provider.dart';
 import '../../../core/providers/workout_log_provider.dart';
 import '../../../services/fitness_calculator.dart';
@@ -44,6 +45,15 @@ class _HomeScreenState extends State<HomeScreen>
       // Cargar datos de nutrición de hoy
       context.read<NutritionProvider>().loadToday();
     });
+  }
+
+  // ── Fecha real ────────────────────────────────────────────────
+  String get _fechaHoy {
+    final d = DateTime.now();
+    const dias  = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+    const meses = ['enero','febrero','marzo','abril','mayo','junio',
+                   'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    return '${dias[d.weekday - 1]}, ${d.day} de ${meses[d.month - 1]}';
   }
 
   // ── Saludo dinámico ────────────────────────────────────────────
@@ -104,6 +114,7 @@ class _HomeScreenState extends State<HomeScreen>
                 iniciales:  auth.userInitials,
                 saludo:     _saludo,
                 saludoIcon: _saludoIcon,
+                fecha:      _fechaHoy,
               ),
             )),
 
@@ -366,10 +377,10 @@ class _ErrorHome extends StatelessWidget {
 
 // ── Top bar ───────────────────────────────────────────────────────
 class _TopBar extends StatelessWidget {
-  final String nombre, iniciales, saludo;
+  final String nombre, iniciales, saludo, fecha;
   final IconData saludoIcon;
   const _TopBar({required this.nombre, required this.iniciales,
-    required this.saludo, required this.saludoIcon});
+    required this.saludo, required this.saludoIcon, required this.fecha});
 
   @override
   Widget build(BuildContext context) => Row(children: [
@@ -385,6 +396,9 @@ class _TopBar extends StatelessWidget {
         ]),
         Text(nombre, style: AppTextStyles.headingSmall,
             overflow: TextOverflow.ellipsis),
+        const SizedBox(height: 1),
+        Text(fecha, style: AppTextStyles.caption
+            .copyWith(color: AppColors.textMuted, fontSize: 11)),
       ],
     )),
     StreakBadge(days: MockData.currentUser.streak),
@@ -430,8 +444,10 @@ class _WelcomeCard extends StatelessWidget {
                     .copyWith(color: AppColors.primary, height: 1.3)),
           ])),
           const SizedBox(height: 14),
-          NeonButton(label: 'Iniciar entrenamiento',
-              icon: Icons.play_arrow_rounded, onTap: () {}),
+          NeonButton(
+              label: 'Iniciar entrenamiento',
+              icon: Icons.play_arrow_rounded,
+              onTap: () => context.read<NavProvider>().goTo(1)),
         ],
       )),
       const SizedBox(width: 14),
@@ -532,7 +548,7 @@ class _WorkoutOfDay extends StatelessWidget {
                   style: AppTextStyles.caption),
             ])),
             GestureDetector(
-              onTap: () {},
+              onTap: () => context.read<NavProvider>().goTo(1),
               child: Container(width: 40, height: 40,
                   decoration: BoxDecoration(
                     gradient: AppColors.primaryGradient,
@@ -624,7 +640,7 @@ class _WorkoutOfDay extends StatelessWidget {
             ],
           )),
           GestureDetector(
-            onTap: () {},
+            onTap: () => context.read<NavProvider>().goTo(1),
             child: Container(width: 40, height: 40,
                 decoration: BoxDecoration(
                   gradient: AppColors.primaryGradient,
@@ -1151,13 +1167,14 @@ class _QuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      (Icons.fitness_center_rounded, 'Entreno',   AppColors.primary),
-      (Icons.restaurant_menu_rounded, 'Comida',   AppColors.accentBlue),
-      (Icons.monitor_weight_outlined, 'Peso',     AppColors.accentOrange),
-      (Icons.bar_chart_rounded,       'Progreso', AppColors.accentPurple),
+      (Icons.fitness_center_rounded,  'Entreno',  AppColors.primary,       1),
+      (Icons.restaurant_menu_rounded, 'Comida',   AppColors.accentBlue,    2),
+      (Icons.monitor_weight_outlined, 'Peso',     AppColors.accentOrange,  4),
+      (Icons.bar_chart_rounded,       'Progreso', AppColors.accentPurple,  4),
     ];
     return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: items.map((a) => GestureDetector(onTap: () {},
+      children: items.map((a) => GestureDetector(
+        onTap: () => context.read<NavProvider>().goTo(a.$4),
         child: DarkCard(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           child: Column(children: [
@@ -1177,42 +1194,68 @@ class _QuickActions extends StatelessWidget {
 class _WeeklyProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final days = MockData.weeklyProgress.entries.toList();
+    final log    = context.watch<WorkoutLogProvider>();
+    final now    = DateTime.now();
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    final startOfMonday = DateTime(monday.year, monday.month, monday.day);
+    final todayStart    = DateTime(now.year, now.month, now.day);
+
+    const labels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+    final days = List.generate(7, (i) {
+      final dayStart = startOfMonday.add(Duration(days: i));
+      final dayEnd   = dayStart.add(const Duration(days: 1));
+      final isFuture = dayStart.isAfter(todayStart);
+      final isToday  = dayStart == todayStart;
+
+      double progress = 0.0;
+      if (!isFuture) {
+        final sessions = log.history.where((s) =>
+          s.isCompleted &&
+          !s.date.isBefore(dayStart) &&
+          s.date.isBefore(dayEnd),
+        ).length;
+        if (sessions > 0) progress = 1.0;
+      }
+
+      return (label: labels[i], progress: progress, isToday: isToday);
+    });
+
     return DarkCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionHeader(title: 'Esta semana',
             actionLabel: 'Ver todo', onAction: () {}),
         const SizedBox(height: 16),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: days.map((e) {
-            final isToday = e.key == 'Jue';
-            return Column(children: [
-              Container(width: 32, height: 60,
-                decoration: BoxDecoration(color: AppColors.surfaceVariant,
-                    borderRadius: BorderRadius.circular(8)),
-                alignment: Alignment.bottomCenter,
-                clipBehavior: Clip.antiAlias,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 700),
-                  curve: Curves.easeOutCubic,
-                  height: 60 * e.value,
-                  decoration: BoxDecoration(
-                    gradient: isToday ? AppColors.primaryGradient
-                        : LinearGradient(colors: [
-                      AppColors.textMuted.withOpacity(0.6),
-                      AppColors.textMuted.withOpacity(0.4)],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+          children: days.map((d) => Column(children: [
+            Container(width: 32, height: 60,
+              decoration: BoxDecoration(color: AppColors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(8)),
+              alignment: Alignment.bottomCenter,
+              clipBehavior: Clip.antiAlias,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 700),
+                curve: Curves.easeOutCubic,
+                // Entrenado → barra llena; hoy sin entreno → marca mínima; resto → 0
+                height: d.progress > 0 ? 60 : (d.isToday ? 4 : 0),
+                decoration: BoxDecoration(
+                  gradient: d.isToday
+                      ? AppColors.primaryGradient
+                      : LinearGradient(colors: [
+                          AppColors.textMuted.withOpacity(0.6),
+                          AppColors.textMuted.withOpacity(0.4),
+                        ], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              const SizedBox(height: 6),
-              Text(e.key, style: TextStyle(fontSize: 11,
-                  fontWeight: isToday ? FontWeight.w700 : FontWeight.w400,
-                  color: isToday ? AppColors.primary : AppColors.textMuted)),
-            ]);
-          }).toList(),
+            ),
+            const SizedBox(height: 6),
+            Text(d.label, style: TextStyle(
+              fontSize: 11,
+              fontWeight: d.isToday ? FontWeight.w700 : FontWeight.w400,
+              color: d.isToday ? AppColors.primary : AppColors.textMuted,
+            )),
+          ])).toList(),
         ),
       ],
     ));
