@@ -41,14 +41,19 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> _init() async {
-    final current = _service.currentUser;
-    if (current != null) {
-      _user   = current;
-      _status = AuthStatus.authenticated;
-      notifyListeners();
-      _profile = await _service.getUserProfile(current.uid);
-      notifyListeners();
-    } else {
+    try {
+      final current = _service.currentUser;
+      if (current != null) {
+        _user   = current;
+        _status = AuthStatus.authenticated;
+        notifyListeners();
+        _profile = await _service.getUserProfile(current.uid);
+        notifyListeners();
+      } else {
+        _status = AuthStatus.unauthenticated;
+        notifyListeners();
+      }
+    } catch (_) {
       _status = AuthStatus.unauthenticated;
       notifyListeners();
     }
