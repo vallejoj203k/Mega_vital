@@ -198,25 +198,129 @@ CREATE TRIGGER on_comment_change
   FOR EACH ROW EXECUTE FUNCTION public.handle_comment_change();
 
 
--- ─── 6. Función leaderboard (SECURITY DEFINER bypasses RLS) ─────────────────
+-- ─── 6. point_events — historial de puntos por usuario ──────────────────────
+-- Fuente de verdad para ambos rankings (semanal e histórico total).
+-- Los triggers de comunidad insertan aquí con SECURITY DEFINER.
+-- Flutter inserta directamente para entrenamientos y logros.
 
-CREATE OR REPLACE FUNCTION public.get_leaderboard()
-RETURNS TABLE(
-  uid    TEXT,
-  name   TEXT,
-  points BIGINT,
-  rank   BIGINT
-)
-LANGUAGE SQL
-SECURITY DEFINER
-STABLE
-AS $$
+CREATE TABLE IF NOT EXISTS public.point_events (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    TEXT NOT NULL,
+  user_name  TEXT NOT NULL,
+  amount     INTEGER NOT NULL,
+  reason     TEXT NOT NULL, -- 'post' | 'like_received' | 'comment' | 'workout' | 'streak' | 'achievement'
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.point_events ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated can view point events" ON public.point_events;
+DROP POLICY IF EXISTS "Users can insert own point events"   ON public.point_events;
+
+CREATE POLICY "Authenticated can view point events"
+  ON public.point_events FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Users can insert own point events"
+  ON public.point_events FOR INSERT
+  WITH CHECK (auth.uid()::text = user_id);
+
+
+-- ─── 7. Triggers que otorgan puntos automáticamente ─────────────────────────
+
+-- +20 pts al autor cuando publica
+CREATE OR REPLACE FUNCTION public.award_post_points()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  INSERT INTO public.point_events (user_id, user_name, amount, reason)
+  VALUES (NEW.user_id, NEW.user_name, 20, 'post');
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_post_points ON public.community_posts;
+CREATE TRIGGER on_post_points
+  AFTER INSERT ON public.community_posts
+  FOR EACH ROW EXECUTE FUNCTION public.award_post_points();
+
+-- +3 pts al AUTOR DEL POST cuando alguien da like (no al liker)
+CREATE OR REPLACE FUNCTION public.award_like_points()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_author_id   TEXT;
+  v_author_name TEXT;
+BEGIN
+  SELECT user_id, user_name
+    INTO v_author_id, v_author_name
+    FROM public.community_posts
+   WHERE id = NEW.post_id;
+
+  -- No se auto-otorgan puntos por dar like a tu propio post
+  IF v_author_id IS NOT NULL AND v_author_id <> NEW.user_id THEN
+    INSERT INTO public.point_events (user_id, user_name, amount, reason)
+    VALUES (v_author_id, v_author_name, 3, 'like_received');
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_like_points ON public.post_likes;
+CREATE TRIGGER on_like_points
+  AFTER INSERT ON public.post_likes
+  FOR EACH ROW EXECUTE FUNCTION public.award_like_points();
+
+-- +5 pts al comentador
+CREATE OR REPLACE FUNCTION public.award_comment_points()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  INSERT INTO public.point_events (user_id, user_name, amount, reason)
+  VALUES (NEW.user_id, NEW.user_name, 5, 'comment');
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_comment_points ON public.post_comments;
+CREATE TRIGGER on_comment_points
+  AFTER INSERT ON public.post_comments
+  FOR EACH ROW EXECUTE FUNCTION public.award_comment_points();
+
+
+-- ─── 8. Funciones de clasificación ──────────────────────────────────────────
+
+-- Clasificación histórica total
+CREATE OR REPLACE FUNCTION public.get_leaderboard_total()
+RETURNS TABLE(uid TEXT, name TEXT, points BIGINT, rank BIGINT)
+LANGUAGE SQL SECURITY DEFINER STABLE AS $$
   SELECT
-    uid,
-    name,
-    (total_workouts * 50 + streak * 10)::BIGINT AS points,
-    ROW_NUMBER() OVER (ORDER BY (total_workouts * 50 + streak * 10) DESC)::BIGINT AS rank
-  FROM public.user_profiles
+    user_id                                                    AS uid,
+    user_name                                                  AS name,
+    SUM(amount)::BIGINT                                        AS points,
+    ROW_NUMBER() OVER (ORDER BY SUM(amount) DESC)::BIGINT      AS rank
+  FROM public.point_events
+  GROUP BY user_id, user_name
   ORDER BY points DESC
   LIMIT 20;
+$$;
+
+-- Clasificación semanal (lunes → domingo en curso)
+CREATE OR REPLACE FUNCTION public.get_leaderboard_weekly()
+RETURNS TABLE(uid TEXT, name TEXT, points BIGINT, rank BIGINT)
+LANGUAGE SQL SECURITY DEFINER STABLE AS $$
+  SELECT
+    user_id                                                    AS uid,
+    user_name                                                  AS name,
+    SUM(amount)::BIGINT                                        AS points,
+    ROW_NUMBER() OVER (ORDER BY SUM(amount) DESC)::BIGINT      AS rank
+  FROM public.point_events
+  WHERE created_at >= date_trunc('week', NOW())
+  GROUP BY user_id, user_name
+  ORDER BY points DESC
+  LIMIT 20;
+$$;
+
+-- Mantener compatibilidad con la función original (ahora usa point_events)
+CREATE OR REPLACE FUNCTION public.get_leaderboard()
+RETURNS TABLE(uid TEXT, name TEXT, points BIGINT, rank BIGINT)
+LANGUAGE SQL SECURITY DEFINER STABLE AS $$
+  SELECT * FROM public.get_leaderboard_total();
 $$;

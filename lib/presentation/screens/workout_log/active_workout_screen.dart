@@ -14,6 +14,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/workout_log_provider.dart';
 import '../../../services/workout_log_service.dart';
 
@@ -117,7 +118,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     );
 
     if (confirmed == true && ctx.mounted) {
-      await ctx.read<WorkoutLogProvider>().finishSession();
+      final userName = ctx.read<AuthProvider>().profile?.name ?? 'Usuario';
+      await ctx.read<WorkoutLogProvider>().finishSession(userName: userName);
       if (ctx.mounted) Navigator.of(ctx).pop();
     }
   }

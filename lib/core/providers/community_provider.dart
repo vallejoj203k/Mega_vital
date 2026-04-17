@@ -5,13 +5,15 @@ class CommunityProvider extends ChangeNotifier {
   final _service = CommunityService();
 
   List<CommunityPost> _posts = [];
-  List<LeaderboardEntry> _leaderboard = [];
+  List<LeaderboardEntry> _leaderboardWeekly = [];
+  List<LeaderboardEntry> _leaderboardTotal = [];
   bool _loadingPosts = false;
   bool _loadingLeaderboard = false;
   bool _initialized = false;
 
   List<CommunityPost> get posts => _posts;
-  List<LeaderboardEntry> get leaderboard => _leaderboard;
+  List<LeaderboardEntry> get leaderboardWeekly => _leaderboardWeekly;
+  List<LeaderboardEntry> get leaderboardTotal => _leaderboardTotal;
   bool get loadingPosts => _loadingPosts;
   bool get loadingLeaderboard => _loadingLeaderboard;
   bool get initialized => _initialized;
@@ -33,7 +35,12 @@ class CommunityProvider extends ChangeNotifier {
   Future<void> loadLeaderboard() async {
     _loadingLeaderboard = true;
     notifyListeners();
-    _leaderboard = await _service.fetchLeaderboard();
+    final results = await Future.wait([
+      _service.fetchLeaderboardWeekly(),
+      _service.fetchLeaderboardTotal(),
+    ]);
+    _leaderboardWeekly = results[0];
+    _leaderboardTotal = results[1];
     _loadingLeaderboard = false;
     notifyListeners();
   }
@@ -58,7 +65,6 @@ class CommunityProvider extends ChangeNotifier {
     if (idx == -1) return;
     final post = _posts[idx];
     final newLiked = !post.likedByMe;
-    // Optimistic update
     _posts[idx] = post.copyWith(
       likedByMe: newLiked,
       likesCount: post.likesCount + (newLiked ? 1 : -1),
@@ -66,7 +72,6 @@ class CommunityProvider extends ChangeNotifier {
     notifyListeners();
     final ok = await _service.toggleLike(postId, currentlyLiked: post.likedByMe);
     if (!ok) {
-      // Revert on failure
       _posts[idx] = post;
       notifyListeners();
     }

@@ -857,57 +857,295 @@ class _CommentsSheetState extends State<_CommentsSheet> {
 
 // ─── Leaderboard tab ──────────────────────────────────────────────────────────
 
-class _LeaderboardTab extends StatelessWidget {
+enum _LeaderMode { weekly, total }
+
+class _LeaderboardTab extends StatefulWidget {
   const _LeaderboardTab();
+
+  @override
+  State<_LeaderboardTab> createState() => _LeaderboardTabState();
+}
+
+class _LeaderboardTabState extends State<_LeaderboardTab> {
+  _LeaderMode _mode = _LeaderMode.weekly;
 
   @override
   Widget build(BuildContext context) {
     return Consumer<CommunityProvider>(
       builder: (context, provider, _) {
-        if (provider.loadingLeaderboard && provider.leaderboard.isEmpty) {
-          return const Center(
-            child: CircularProgressIndicator(color: AppColors.primary),
-          );
-        }
-        if (provider.leaderboard.isEmpty) {
-          return Center(
-            child: Text(
-              'Completa entrenamientos para aparecer aquí',
-              style:
-                  AppTextStyles.bodyMedium.copyWith(color: AppColors.textMuted),
-              textAlign: TextAlign.center,
-            ),
-          );
-        }
-        final leaders = provider.leaderboard;
-        final top3 = leaders.take(3).toList();
-        final rest = leaders.skip(3).toList();
+        final leaders = _mode == _LeaderMode.weekly
+            ? provider.leaderboardWeekly
+            : provider.leaderboardTotal;
+        final isLoading =
+            provider.loadingLeaderboard && leaders.isEmpty;
 
-        return RefreshIndicator(
-          color: AppColors.primary,
-          backgroundColor: AppColors.surface,
-          onRefresh: () => provider.loadLeaderboard(),
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics()),
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            children: [
-              if (top3.length >= 3) _PodiumRow(leaders: top3),
-              const SizedBox(height: 20),
-              Text('Clasificación completa',
-                  style: AppTextStyles.headingSmall),
-              const SizedBox(height: 12),
-              ...rest.map(
-                (e) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _LeaderCard(entry: e),
-                ),
+        return Column(
+          children: [
+            // Toggle Semanal / Histórico
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _ModeToggle(
+                mode: _mode,
+                onChanged: (m) => setState(() => _mode = m),
               ),
-              const SizedBox(height: 80),
-            ],
-          ),
+            ),
+            const SizedBox(height: 4),
+
+            // Descripción de puntos
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _mode == _LeaderMode.weekly
+                  ? Text(
+                      'Puntos ganados esta semana · se reinicia cada lunes',
+                      style: AppTextStyles.caption
+                          .copyWith(color: AppColors.textMuted),
+                      textAlign: TextAlign.center,
+                    )
+                  : Text(
+                      'Puntos acumulados desde el inicio',
+                      style: AppTextStyles.caption
+                          .copyWith(color: AppColors.textMuted),
+                      textAlign: TextAlign.center,
+                    ),
+            ),
+            const SizedBox(height: 12),
+
+            Expanded(
+              child: isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                          color: AppColors.primary),
+                    )
+                  : leaders.isEmpty
+                      ? _LeaderboardEmpty(mode: _mode)
+                      : _LeaderboardList(
+                          leaders: leaders,
+                          onRefresh: () => provider.loadLeaderboard(),
+                        ),
+            ),
+          ],
         );
       },
+    );
+  }
+}
+
+// Toggle Semanal / Histórico
+class _ModeToggle extends StatelessWidget {
+  final _LeaderMode mode;
+  final ValueChanged<_LeaderMode> onChanged;
+  const _ModeToggle({required this.mode, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 38,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          _ToggleBtn(
+            label: 'Esta semana',
+            icon: Icons.calendar_today_rounded,
+            selected: mode == _LeaderMode.weekly,
+            onTap: () => onChanged(_LeaderMode.weekly),
+          ),
+          _ToggleBtn(
+            label: 'Histórico',
+            icon: Icons.emoji_events_rounded,
+            selected: mode == _LeaderMode.total,
+            onTap: () => onChanged(_LeaderMode.total),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToggleBtn extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+  const _ToggleBtn({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            gradient: selected ? AppColors.primaryGradient : null,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon,
+                  size: 13,
+                  color: selected
+                      ? AppColors.background
+                      : AppColors.textMuted),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: selected
+                      ? FontWeight.w700
+                      : FontWeight.w400,
+                  color: selected
+                      ? AppColors.background
+                      : AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LeaderboardEmpty extends StatelessWidget {
+  final _LeaderMode mode;
+  const _LeaderboardEmpty({required this.mode});
+
+  @override
+  Widget build(BuildContext context) {
+    final isWeekly = mode == _LeaderMode.weekly;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isWeekly
+                  ? Icons.calendar_today_rounded
+                  : Icons.emoji_events_rounded,
+              size: 52,
+              color: AppColors.textMuted,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              isWeekly
+                  ? 'Nadie ha ganado puntos esta semana todavía'
+                  : 'Aún no hay puntos acumulados',
+              style: AppTextStyles.bodyMedium
+                  .copyWith(color: AppColors.textMuted),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isWeekly
+                  ? '¡Entrena, publica y comenta para subir!'
+                  : 'Completa entrenamientos y participa en la comunidad',
+              style: AppTextStyles.caption,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LeaderboardList extends StatelessWidget {
+  final List<LeaderboardEntry> leaders;
+  final Future<void> Function() onRefresh;
+  const _LeaderboardList({required this.leaders, required this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) {
+    final top3 = leaders.take(3).toList();
+    final rest = leaders.skip(3).toList();
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      backgroundColor: AppColors.surface,
+      onRefresh: onRefresh,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics()),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        children: [
+          if (top3.length >= 3) _PodiumRow(leaders: top3),
+          if (top3.length >= 3) const SizedBox(height: 20),
+          if (rest.isNotEmpty) ...[
+            Text('Clasificación completa',
+                style: AppTextStyles.headingSmall),
+            const SizedBox(height: 12),
+          ],
+          ...rest.map(
+            (e) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _LeaderCard(entry: e),
+            ),
+          ),
+          // Leyenda de puntos
+          const SizedBox(height: 20),
+          _PointsLegend(),
+          const SizedBox(height: 80),
+        ],
+      ),
+    );
+  }
+}
+
+// Leyenda que explica cómo se ganan puntos
+class _PointsLegend extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    const items = [
+      (Icons.fitness_center_rounded, 'Completar entrenamiento', '+100'),
+      (Icons.post_add_rounded,       'Publicar en el feed',     '+ 20'),
+      (Icons.favorite_rounded,       'Recibir un like',         '+  3'),
+      (Icons.chat_bubble_rounded,    'Dejar un comentario',     '+  5'),
+    ];
+    return DarkCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.info_outline_rounded,
+                size: 14, color: AppColors.primary),
+            const SizedBox(width: 6),
+            Text('Cómo ganar puntos',
+                style:
+                    AppTextStyles.labelMedium.copyWith(color: AppColors.primary)),
+          ]),
+          const SizedBox(height: 10),
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(children: [
+                Icon(item.$1, size: 14, color: AppColors.textMuted),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: Text(item.$2, style: AppTextStyles.caption)),
+                Text(
+                  item.$3,
+                  style: AppTextStyles.caption
+                      .copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
+                ),
+              ]),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
