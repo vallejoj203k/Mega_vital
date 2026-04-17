@@ -29,6 +29,8 @@ flutter:
   assets:
     - assets/images/body_front.png
     - assets/images/body_back.png
+    - assets/images/frontal_masculino.png
+    - assets/images/trasero_masculino.png
 
 flutter_icons:
   android: true

@@ -42,6 +42,8 @@ class UserProfile {
   final double height;
   final int age;
   final DateTime createdAt;
+  final String gender;       // 'hombre' | 'mujer'
+  final String? referredBy;  // nombre de quien recomendó el gimnasio
 
   const UserProfile({
     required this.uid,
@@ -52,7 +54,11 @@ class UserProfile {
     required this.height,
     required this.age,
     required this.createdAt,
+    this.gender = 'mujer',
+    this.referredBy,
   });
+
+  bool get isMale => gender == 'hombre';
 
   Map<String, dynamic> toMap() => {
     'uid': uid,
@@ -65,6 +71,8 @@ class UserProfile {
     'created_at': createdAt.toIso8601String(),
     'streak': 0,
     'total_workouts': 0,
+    'gender': gender,
+    if (referredBy != null && referredBy!.isNotEmpty) 'referred_by': referredBy,
   };
 
   factory UserProfile.fromMap(Map<String, dynamic> m) => UserProfile(
@@ -78,6 +86,8 @@ class UserProfile {
     createdAt: m['created_at'] != null
         ? DateTime.tryParse(m['created_at']) ?? DateTime.now()
         : DateTime.now(),
+    gender: m['gender'] ?? 'mujer',
+    referredBy: m['referred_by'],
   );
 }
 
@@ -105,6 +115,8 @@ class AuthService {
     required double weight,
     required double height,
     required int age,
+    String gender = 'mujer',
+    String? referredBy,
   }) async {
     try {
       final response = await _supabase.auth.signUp(
@@ -186,6 +198,8 @@ class AuthService {
     required double weight,
     required double height,
     required int age,
+    String gender = 'mujer',
+    String? referredBy,
   }) async {
     try {
       await _supabase.from('user_profiles').upsert({
@@ -198,6 +212,9 @@ class AuthService {
         'age':            age,
         'streak':         0,
         'total_workouts': 0,
+        'gender':         gender,
+        if (referredBy != null && referredBy.isNotEmpty)
+          'referred_by': referredBy,
       });
       return await getUserProfile(user.uid);
     } catch (_) {

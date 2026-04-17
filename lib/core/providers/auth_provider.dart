@@ -105,12 +105,15 @@ class AuthProvider extends ChangeNotifier {
     required double weight,
     required double height,
     required int    age,
+    String gender = 'mujer',
+    String? referredBy,
   }) async {
     _setLoading(true);
     _clearError();
     final result = await _service.register(
       name: name, email: email, password: password,
       goal: goal, weight: weight, height: height, age: age,
+      gender: gender, referredBy: referredBy,
     );
     if (!result.success) {
       _errorMessage = result.errorMessage;
@@ -121,12 +124,14 @@ class AuthProvider extends ChangeNotifier {
     _status = AuthStatus.authenticated;
     _setLoading(false);
     _profile = await _service.createProfileWithData(
-      user:   result.user!,
-      name:   name,
-      goal:   goal,
-      weight: weight,
-      height: height,
-      age:    age,
+      user:       result.user!,
+      name:       name,
+      goal:       goal,
+      weight:     weight,
+      height:     height,
+      age:        age,
+      gender:     gender,
+      referredBy: referredBy,
     );
     notifyListeners();
     return true;
