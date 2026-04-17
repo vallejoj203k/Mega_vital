@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
 import '../core/providers/nav_provider.dart';
 import '../core/providers/auth_provider.dart';
+import '../core/providers/community_provider.dart';
 import '../core/providers/nutrition_provider.dart';
 import '../core/providers/workout_log_provider.dart';
 import '../services/api_key_manager.dart';
@@ -30,7 +31,7 @@ class GymApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NutritionProvider()..init()),
         // WorkoutLogProvider carga historial y pesos guardados
         ChangeNotifierProvider(create: (_) => WorkoutLogProvider()..init()),
-
+        ChangeNotifierProvider(create: (_) => CommunityProvider()),
       ],
       child: MaterialApp(
         title: 'Mega Vital',
