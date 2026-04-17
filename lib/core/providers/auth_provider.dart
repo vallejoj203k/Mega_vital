@@ -120,7 +120,14 @@ class AuthProvider extends ChangeNotifier {
     _user   = result.user;
     _status = AuthStatus.authenticated;
     _setLoading(false);
-    _profile = await _service.ensureUserProfile(result.user!);
+    _profile = await _service.createProfileWithData(
+      user:   result.user!,
+      name:   name,
+      goal:   goal,
+      weight: weight,
+      height: height,
+      age:    age,
+    );
     notifyListeners();
     return true;
   }
