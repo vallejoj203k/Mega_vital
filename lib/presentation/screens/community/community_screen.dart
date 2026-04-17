@@ -1109,10 +1109,11 @@ class _PointsLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const items = [
-      (Icons.fitness_center_rounded, 'Completar entrenamiento', '+100'),
-      (Icons.post_add_rounded,       'Publicar en el feed',     '+ 20'),
-      (Icons.favorite_rounded,       'Recibir un like',         '+  3'),
-      (Icons.chat_bubble_rounded,    'Dejar un comentario',     '+  5'),
+      (Icons.fitness_center_rounded,    'Completar entrenamiento',    '+100'),
+      (Icons.restaurant_menu_rounded,   'Cumplir meta calórica diaria', '+ 50'),
+      (Icons.post_add_rounded,          'Publicar en el feed',         '+ 20'),
+      (Icons.favorite_rounded,          'Recibir un like',             '+  3'),
+      (Icons.chat_bubble_rounded,       'Dejar un comentario',         '+  5'),
     ];
     return DarkCard(
       padding: const EdgeInsets.all(14),

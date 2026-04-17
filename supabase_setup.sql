@@ -208,7 +208,7 @@ CREATE TABLE IF NOT EXISTS public.point_events (
   user_id    TEXT NOT NULL,
   user_name  TEXT NOT NULL,
   amount     INTEGER NOT NULL,
-  reason     TEXT NOT NULL, -- 'post' | 'like_received' | 'comment' | 'workout' | 'streak' | 'achievement'
+  reason     TEXT NOT NULL, -- 'post' | 'like_received' | 'comment' | 'workout' | 'nutrition_goal' | 'streak' | 'achievement'
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

@@ -11,6 +11,7 @@
 
 import 'package:flutter/material.dart';
 import '../../services/food_log_service.dart';
+import '../../services/points_service.dart';
 
 class NutritionProvider extends ChangeNotifier {
   final FoodLogService _service = FoodLogService.instance;
@@ -119,5 +120,18 @@ class NutritionProvider extends ChangeNotifier {
     await _service.clearDay(_selectedDate);
     _log = FoodLog.empty(_selectedDate);
     notifyListeners();
+  }
+
+  // ── Meta nutricional diaria ───────────────────────────────────
+  // Llama esto después de addEntry cuando sea el día de hoy.
+  // goalCalories: meta calculada por FitnessCalculator del perfil.
+  // Solo otorga puntos si la meta se cumple y no se han otorgado hoy.
+  Future<void> checkAndAwardNutritionGoal({
+    required int goalCalories,
+    required String userName,
+  }) async {
+    if (!isToday) return;
+    if (totalCalories < goalCalories) return;
+    await PointsService.instance.awardNutritionGoal(userName);
   }
 }
