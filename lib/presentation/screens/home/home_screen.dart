@@ -67,8 +67,10 @@ class _HomeScreenState extends State<HomeScreen>
     final auth    = context.watch<AuthProvider>();
     final profile = auth.profile;
 
-    // Si el perfil aún no cargó mostramos un estado de espera
-    if (profile == null) return const _LoadingHome();
+    if (profile == null) {
+      if (auth.profileLoading) return const _LoadingHome();
+      return _ErrorHome(onRetry: () => context.read<AuthProvider>().reloadProfile());
+    }
 
     final calc = FitnessCalculator(
       weight: profile.weight,
@@ -325,6 +327,40 @@ class _LoadingHome extends StatelessWidget {
   Widget build(BuildContext context) => const Scaffold(
     backgroundColor: AppColors.background,
     body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+  );
+}
+
+class _ErrorHome extends StatelessWidget {
+  final VoidCallback onRetry;
+  const _ErrorHome({required this.onRetry});
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AppColors.background,
+    body: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+      const Icon(Icons.cloud_off_rounded, color: AppColors.textMuted, size: 48),
+      const SizedBox(height: 16),
+      Text('No se pudo cargar tu perfil',
+          style: AppTextStyles.headingSmall),
+      const SizedBox(height: 8),
+      Text('Verifica tu conexión y vuelve a intentarlo.',
+          style: AppTextStyles.bodyMedium
+              .copyWith(color: AppColors.textSecondary),
+          textAlign: TextAlign.center),
+      const SizedBox(height: 24),
+      GestureDetector(
+        onTap: onRetry,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: AppColors.primaryGradient,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text('Reintentar',
+              style: AppTextStyles.labelLarge
+                  .copyWith(color: AppColors.background)),
+        ),
+      ),
+    ])),
   );
 }
 

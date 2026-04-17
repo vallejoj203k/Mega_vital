@@ -14,6 +14,7 @@ class AuthProvider extends ChangeNotifier {
   UserProfile? _profile;
   String?      _errorMessage;
   bool         _isLoading = false;
+  bool         _profileLoading = false;
   StreamSubscription? _authSub;
 
   AuthProvider({AuthService? service})
@@ -21,13 +22,14 @@ class AuthProvider extends ChangeNotifier {
     _init();
   }
 
-  AuthStatus   get status        => _status;
-  AppUser?     get firebaseUser  => _user;
-  UserProfile? get profile       => _profile;
-  String?      get errorMessage  => _errorMessage;
-  bool         get isLoading     => _isLoading;
-  bool         get isLoggedIn    => _status == AuthStatus.authenticated;
-  bool         get isInitializing=> _status == AuthStatus.initial;
+  AuthStatus   get status         => _status;
+  AppUser?     get firebaseUser   => _user;
+  UserProfile? get profile        => _profile;
+  String?      get errorMessage   => _errorMessage;
+  bool         get isLoading      => _isLoading;
+  bool         get profileLoading => _profileLoading;
+  bool         get isLoggedIn     => _status == AuthStatus.authenticated;
+  bool         get isInitializing => _status == AuthStatus.initial;
 
   String get displayName =>
       _profile?.name ?? _user?.displayName ?? 'Usuario';
@@ -44,16 +46,19 @@ class AuthProvider extends ChangeNotifier {
     try {
       final current = _service.currentUser;
       if (current != null) {
-        _user   = current;
-        _status = AuthStatus.authenticated;
+        _user           = current;
+        _status         = AuthStatus.authenticated;
+        _profileLoading = true;
         notifyListeners();
-        _profile = await _service.getUserProfile(current.uid);
+        _profile        = await _service.getUserProfile(current.uid);
+        _profileLoading = false;
         notifyListeners();
       } else {
         _status = AuthStatus.unauthenticated;
         notifyListeners();
       }
     } catch (_) {
+      _profileLoading = false;
       _status = AuthStatus.unauthenticated;
       notifyListeners();
     }
@@ -61,12 +66,15 @@ class AuthProvider extends ChangeNotifier {
     _authSub = _service.authStateChanges.listen((user) async {
       _user = user;
       if (user != null) {
-        _status = AuthStatus.authenticated;
+        _status         = AuthStatus.authenticated;
+        _profileLoading = true;
         notifyListeners();
-        _profile = await _service.getUserProfile(user.uid);
+        _profile        = await _service.getUserProfile(user.uid);
+        _profileLoading = false;
       } else {
-        _status  = AuthStatus.unauthenticated;
-        _profile = null;
+        _status         = AuthStatus.unauthenticated;
+        _profileLoading = false;
+        _profile        = null;
       }
       notifyListeners();
     });
@@ -143,6 +151,16 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
     }
     return ok;
+  }
+
+  Future<void> reloadProfile() async {
+    final uid = _user?.uid;
+    if (uid == null) return;
+    _profileLoading = true;
+    notifyListeners();
+    _profile        = await _service.getUserProfile(uid);
+    _profileLoading = false;
+    notifyListeners();
   }
 
   void clearError() => _clearError();
