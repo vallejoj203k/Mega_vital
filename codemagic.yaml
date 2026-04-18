@@ -1,0 +1,55 @@
+workflows:
+
+  # ─── iOS → TestFlight ───────────────────────────────────────────────────────
+  # Compila la app para iPhone y la sube a TestFlight automáticamente.
+  # NO toca nada de Android.
+  #
+  # Variables que debes configurar en Codemagic Dashboard → Environment variables:
+  #   APP_STORE_CONNECT_KEY_IDENTIFIER  → Key ID de tu App Store Connect API key
+  #   APP_STORE_CONNECT_ISSUER_ID       → Issuer ID de App Store Connect
+  #   APP_STORE_CONNECT_PRIVATE_KEY     → Contenido del archivo .p8 (API key)
+  #   CERTIFICATE_PRIVATE_KEY           → Clave privada del certificado de distribución
+  # ────────────────────────────────────────────────────────────────────────────
+
+  ios-testflight:
+    name: iOS → TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.example.gymApp  # Cambia esto por tu bundle ID real
+      vars:
+        APP_STORE_CONNECT_KEY_IDENTIFIER: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
+        APP_STORE_CONNECT_PRIVATE_KEY: $APP_STORE_CONNECT_PRIVATE_KEY
+        CERTIFICATE_PRIVATE_KEY: $CERTIFICATE_PRIVATE_KEY
+
+    scripts:
+      - name: Instalar dependencias
+        script: flutter pub get
+
+      - name: Resolver pods de iOS
+        script: |
+          cd ios
+          pod install
+
+      - name: Compilar iOS (release)
+        script: |
+          flutter build ipa \
+            --release \
+            --export-options-plist=/Users/builder/export_options.plist
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
