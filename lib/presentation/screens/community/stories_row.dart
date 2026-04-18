@@ -235,6 +235,7 @@ class _StoryViewerPageState extends State<StoryViewerPage>
   int _sIdx = 0;
   Timer? _timer;
   late AnimationController _progress;
+  bool _paused = false;
 
   @override
   void initState() {
@@ -260,6 +261,20 @@ class _StoryViewerPageState extends State<StoryViewerPage>
     _progress.forward();
     context.read<StoriesProvider>().markViewed(_story.id);
     _timer = Timer(_kStoryDuration, _next);
+  }
+
+  void _pause() {
+    _timer?.cancel();
+    _progress.stop();
+    if (mounted) setState(() => _paused = true);
+  }
+
+  void _resume() {
+    if (!mounted) return;
+    setState(() => _paused = false);
+    final remaining = _kStoryDuration * (1 - _progress.value);
+    _progress.forward();
+    _timer = Timer(remaining, _next);
   }
 
   void _next() {
@@ -301,10 +316,12 @@ class _StoryViewerPageState extends State<StoryViewerPage>
       backgroundColor: Colors.black,
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTapDown: (d) {
+        onTapUp: (d) {
           final w = MediaQuery.of(context).size.width;
           if (d.globalPosition.dx < w / 2) _prev() else _next();
         },
+        onLongPressStart: (_) => _pause(),
+        onLongPressEnd:   (_) => _resume(),
         child: Stack(children: [
 
           // ── Fondo e imagen ────────────────────────────────────────
@@ -312,7 +329,7 @@ class _StoryViewerPageState extends State<StoryViewerPage>
             Positioned.fill(
               child: Image.network(
                 story.imageUrl!,
-                fit: BoxFit.cover,
+                fit: BoxFit.contain,
                 loadingBuilder: (_, child, progress) => progress == null
                     ? child
                     : Container(
