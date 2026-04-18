@@ -2,13 +2,24 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthResult {
   final bool success;
+  final bool requiresEmailConfirmation;
   final String? errorMessage;
   final AppUser? user;
 
-  const AuthResult._({required this.success, this.errorMessage, this.user});
+  const AuthResult._({
+    required this.success,
+    this.requiresEmailConfirmation = false,
+    this.errorMessage,
+    this.user,
+  });
 
   factory AuthResult.ok(AppUser user) =>
       AuthResult._(success: true, user: user);
+
+  // signUp exitoso pero Supabase requiere confirmar el correo antes de dar sesión.
+  factory AuthResult.emailPending(AppUser user) =>
+      AuthResult._(success: false, requiresEmailConfirmation: true, user: user);
+
   factory AuthResult.fail(String message) =>
       AuthResult._(success: false, errorMessage: message);
 }
@@ -43,7 +54,7 @@ class UserProfile {
   final int age;
   final DateTime createdAt;
   final String gender;       // 'hombre' | 'mujer'
-  final String? referredBy;  // nombre de quien recomendó el gimnasio
+  final String? referredBy;
 
   const UserProfile({
     required this.uid,
@@ -119,15 +130,31 @@ class AuthService {
     String? referredBy,
   }) async {
     try {
+      // Guardamos todos los datos del perfil en metadata para poder recuperarlos
+      // si Supabase requiere confirmación de correo y la sesión no se activa ahora.
       final response = await _supabase.auth.signUp(
         email: email.trim(),
         password: password,
-        data: {'name': name.trim()},
+        data: {
+          'name': name.trim(),
+          'goal': goal,
+          'weight': weight,
+          'height': height,
+          'age': age,
+          'gender': gender,
+          if (referredBy != null && referredBy.isNotEmpty)
+            'referred_by': referredBy,
+        },
       );
 
       final supaUser = response.user;
       if (supaUser == null) {
         return AuthResult.fail('No se pudo crear la cuenta. Intenta de nuevo.');
+      }
+
+      // Si no hay sesión, Supabase requiere confirmación de correo electrónico.
+      if (response.session == null) {
+        return AuthResult.emailPending(AppUser.fromSupabase(supaUser));
       }
 
       return AuthResult.ok(AppUser.fromSupabase(supaUser));
@@ -201,7 +228,7 @@ class AuthService {
     String gender = 'mujer',
     String? referredBy,
   }) async {
-    // Construye el perfil con los datos del usuario como fallback local.
+    // Construye el perfil local como fallback si la lectura post-upsert falla.
     UserProfile buildLocal(UserProfile? saved) => UserProfile(
       uid:        saved?.uid ?? user.uid,
       name:       saved?.name ?? name.trim(),
@@ -230,11 +257,11 @@ class AuthService {
         if (referredBy != null && referredBy.isNotEmpty)
           'referred_by': referredBy,
       });
-      // Aunque la lectura falle, el upsert ya guardó los datos reales.
+      // El upsert guardó los datos reales; construimos local si la lectura falla.
       final saved = await getUserProfile(user.uid);
       return buildLocal(saved);
-    } catch (e) {
-      // Si falla por columna gender/referred_by faltante, reintentamos sin ellas.
+    } catch (_) {
+      // Si falla (ej. columna gender faltante), reintentamos sin campos opcionales.
       try {
         await _supabase.from('user_profiles').upsert({
           'uid':            user.uid,
@@ -255,9 +282,46 @@ class AuthService {
     }
   }
 
-  // Carga el perfil existente del usuario. Retorna null si no existe.
+  // Carga el perfil del usuario. Si no existe y hay metadatos del registro,
+  // crea el perfil desde esos datos (útil al confirmar correo y hacer login).
   Future<UserProfile?> ensureUserProfile(AppUser user) async {
-    return await getUserProfile(user.uid);
+    final existing = await getUserProfile(user.uid);
+    if (existing != null) return existing;
+
+    // Sin sesión activa no podemos escribir en la DB (RLS requiere auth.uid()).
+    final session = _supabase.auth.currentSession;
+    if (session == null) return null;
+
+    // Intentar crear el perfil desde los metadatos guardados durante el registro.
+    final meta = _supabase.auth.currentUser?.userMetadata;
+    if (meta == null) return null;
+
+    final metaName      = (meta['name'] as String?)?.trim() ?? '';
+    final metaGoal      = meta['goal'] as String?;
+    final metaWeight    = (meta['weight'] as num?)?.toDouble();
+    final metaHeight    = (meta['height'] as num?)?.toDouble();
+    final metaAge       = (meta['age'] as num?)?.toInt();
+    final metaGender    = meta['gender'] as String?;
+    final metaReferred  = meta['referred_by'] as String?;
+
+    // Solo crear si hay datos reales del formulario de registro.
+    if (metaGoal == null || metaWeight == null || metaHeight == null || metaAge == null) {
+      return null;
+    }
+
+    final name = metaName.isNotEmpty ? metaName
+        : (user.displayName.isNotEmpty ? user.displayName : 'Usuario');
+
+    return await createProfileWithData(
+      user:       user,
+      name:       name,
+      goal:       metaGoal,
+      weight:     metaWeight,
+      height:     metaHeight,
+      age:        metaAge,
+      gender:     metaGender ?? 'mujer',
+      referredBy: metaReferred,
+    );
   }
 
   Future<bool> updateUserProfile(String uid, Map<String, dynamic> data) async {

@@ -6,8 +6,10 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/community_provider.dart';
+import '../../../core/providers/stories_provider.dart';
 import '../../../services/community_service.dart';
 import '../../widgets/shared_widgets.dart';
+import 'stories_row.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -29,6 +31,7 @@ class _CommunityScreenState extends State<CommunityScreen>
     _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CommunityProvider>().init();
+      context.read<StoriesProvider>().load();
     });
   }
 
@@ -43,6 +46,14 @@ class _CommunityScreenState extends State<CommunityScreen>
     return profile?.name ?? 'Usuario';
   }
 
+  String _currentUserId(BuildContext ctx) {
+    final auth = ctx.watch<AuthProvider>();
+    return auth.firebaseUser?.uid ?? auth.profile?.uid ?? '';
+  }
+
+  String _currentUserInitials(BuildContext ctx) =>
+      ctx.watch<AuthProvider>().userInitials;
+
   void _openPublishDialog(String userName) {
     showModalBottomSheet(
       context: context,
@@ -55,7 +66,9 @@ class _CommunityScreenState extends State<CommunityScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final userName = _currentUserName(context);
+    final userName     = _currentUserName(context);
+    final userId       = _currentUserId(context);
+    final userInitials = _currentUserInitials(context);
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -86,7 +99,11 @@ class _CommunityScreenState extends State<CommunityScreen>
                 controller: _tabController,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
-                  _FeedTab(currentUserName: userName),
+                  _FeedTab(
+                currentUserName:     userName,
+                currentUserId:       userId,
+                currentUserInitials: userInitials,
+              ),
                   const _LeaderboardTab(),
                 ],
               ),
@@ -137,52 +154,81 @@ class _CustomTabBar extends StatelessWidget {
 
 class _FeedTab extends StatelessWidget {
   final String currentUserName;
-  const _FeedTab({required this.currentUserName});
+  final String currentUserId;
+  final String currentUserInitials;
+
+  const _FeedTab({
+    required this.currentUserName,
+    required this.currentUserId,
+    required this.currentUserInitials,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<CommunityProvider>(
-      builder: (context, provider, _) {
-        if (provider.loadingPosts && provider.posts.isEmpty) {
-          return const Center(
-            child: CircularProgressIndicator(color: AppColors.primary),
-          );
-        }
-        if (provider.posts.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.people_outline_rounded,
-                    size: 56, color: AppColors.textMuted),
-                const SizedBox(height: 12),
-                Text('Aún no hay publicaciones',
-                    style: AppTextStyles.bodyMedium
-                        .copyWith(color: AppColors.textMuted)),
-                const SizedBox(height: 6),
-                Text('¡Sé el primero en compartir algo!',
-                    style: AppTextStyles.caption),
-              ],
-            ),
-          );
-        }
-        return RefreshIndicator(
-          color: AppColors.primary,
-          backgroundColor: AppColors.surface,
-          onRefresh: () => provider.loadPosts(),
-          child: ListView.separated(
-            physics: const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics()),
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: provider.posts.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (_, i) => _PostCard(
-              post: provider.posts[i],
-              currentUserName: currentUserName,
-            ),
+    return Column(
+      children: [
+        // ── Fila de historias ──
+        Consumer<StoriesProvider>(
+          builder: (ctx, sp, _) => StoriesRow(
+            groups:              sp.groups,
+            isLoading:           sp.isLoading,
+            currentUserId:       currentUserId,
+            currentUserName:     currentUserName,
+            currentUserInitials: currentUserInitials,
           ),
-        );
-      },
+        ),
+        const Divider(height: 1, thickness: 0.5, color: AppColors.divider),
+        const SizedBox(height: 4),
+        // ── Posts ──
+        Expanded(
+          child: Consumer<CommunityProvider>(
+            builder: (context, provider, _) {
+              if (provider.loadingPosts && provider.posts.isEmpty) {
+                return const Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                );
+              }
+              if (provider.posts.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.people_outline_rounded,
+                          size: 56, color: AppColors.textMuted),
+                      const SizedBox(height: 12),
+                      Text('Aún no hay publicaciones',
+                          style: AppTextStyles.bodyMedium
+                              .copyWith(color: AppColors.textMuted)),
+                      const SizedBox(height: 6),
+                      Text('¡Sé el primero en compartir algo!',
+                          style: AppTextStyles.caption),
+                    ],
+                  ),
+                );
+              }
+              return RefreshIndicator(
+                color: AppColors.primary,
+                backgroundColor: AppColors.surface,
+                onRefresh: () async {
+                  await provider.loadPosts();
+                  await context.read<StoriesProvider>().load();
+                },
+                child: ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics()),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: provider.posts.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (_, i) => _PostCard(
+                    post: provider.posts[i],
+                    currentUserName: currentUserName,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
