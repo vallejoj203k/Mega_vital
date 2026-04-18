@@ -115,6 +115,7 @@ class _HomeScreenState extends State<HomeScreen>
                 saludo:     _saludo,
                 saludoIcon: _saludoIcon,
                 fecha:      _fechaHoy,
+                streak:     0,
               ),
             )),
 
@@ -379,8 +380,10 @@ class _ErrorHome extends StatelessWidget {
 class _TopBar extends StatelessWidget {
   final String nombre, iniciales, saludo, fecha;
   final IconData saludoIcon;
+  final int streak;
   const _TopBar({required this.nombre, required this.iniciales,
-    required this.saludo, required this.saludoIcon, required this.fecha});
+    required this.saludo, required this.saludoIcon, required this.fecha,
+    required this.streak});
 
   @override
   Widget build(BuildContext context) => Row(children: [
@@ -401,7 +404,7 @@ class _TopBar extends StatelessWidget {
             .copyWith(color: AppColors.textMuted, fontSize: 11)),
       ],
     )),
-    StreakBadge(days: MockData.currentUser.streak),
+    StreakBadge(days: streak),
     const SizedBox(width: 10),
     GestureDetector(
       onTap: () {},
