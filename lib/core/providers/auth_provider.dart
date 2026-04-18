@@ -119,15 +119,27 @@ class AuthProvider extends ChangeNotifier {
       goal: goal, weight: weight, height: height, age: age,
       gender: gender, referredBy: referredBy,
     );
-    if (!result.success) {
-      _errorMessage = result.errorMessage;
+
+    // Supabase requiere confirmar el correo antes de dar sesión activa.
+    if (result.requiresEmailConfirmation) {
+      _errorMessage  = 'Registro exitoso. Revisa tu correo y confirma tu cuenta para iniciar sesión.';
       _isRegistering = false;
       _setLoading(false);
       return false;
     }
-    _user   = result.user;
-    _status = AuthStatus.authenticated;
-    _setLoading(false);
+
+    if (!result.success || result.user == null) {
+      _errorMessage  = result.errorMessage ?? 'Error al crear la cuenta.';
+      _isRegistering = false;
+      _setLoading(false);
+      return false;
+    }
+
+    _user           = result.user;
+    _status         = AuthStatus.authenticated;
+    _profileLoading = true;   // El home mostrará spinner en lugar de error.
+    _setLoading(false);       // notifyListeners() — AuthWrapper navega a MainScreen.
+
     _profile = await _service.createProfileWithData(
       user:       result.user!,
       name:       name,
@@ -138,7 +150,9 @@ class AuthProvider extends ChangeNotifier {
       gender:     gender,
       referredBy: referredBy,
     );
-    _isRegistering = false;
+
+    _profileLoading = false;
+    _isRegistering  = false;
     notifyListeners();
     return true;
   }
