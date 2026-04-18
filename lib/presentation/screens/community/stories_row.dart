@@ -322,7 +322,7 @@ class _StoryViewerPageState extends State<StoryViewerPage>
         },
         onLongPressStart: (_) => _pause(),
         onLongPressEnd:   (_) => _resume(),
-        child: Stack(children: [
+        child: Stack(fit: StackFit.expand, children: [
 
           // ── Fondo e imagen ────────────────────────────────────────
           if (story.hasImage)
