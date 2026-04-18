@@ -330,3 +330,129 @@ RETURNS TABLE(uid TEXT, name TEXT, points BIGINT, rank BIGINT)
 LANGUAGE SQL SECURITY DEFINER STABLE AS $$
   SELECT * FROM public.get_leaderboard_total();
 $$;
+
+
+-- ─── 9. user_stories ────────────────────────────────────────────────────────
+-- Historias de 24 horas. image_url apunta al bucket 'stories' de Supabase Storage.
+
+CREATE TABLE IF NOT EXISTS public.user_stories (
+  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    TEXT        NOT NULL,
+  user_name  TEXT        NOT NULL,
+  content    TEXT,
+  image_url  TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL
+);
+
+-- Si la tabla ya existía sin image_url, añadirla (idempotente):
+ALTER TABLE public.user_stories ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+ALTER TABLE public.user_stories ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated can view stories" ON public.user_stories;
+DROP POLICY IF EXISTS "Users can insert own stories"   ON public.user_stories;
+DROP POLICY IF EXISTS "Users can update own stories"   ON public.user_stories;
+DROP POLICY IF EXISTS "Users can delete own stories"   ON public.user_stories;
+
+CREATE POLICY "Authenticated can view stories"
+  ON public.user_stories FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Users can insert own stories"
+  ON public.user_stories FOR INSERT
+  WITH CHECK (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can update own stories"
+  ON public.user_stories FOR UPDATE
+  USING (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can delete own stories"
+  ON public.user_stories FOR DELETE
+  USING (auth.uid()::text = user_id);
+
+
+-- ─── 10. story_views ────────────────────────────────────────────────────────
+-- Registra qué usuario vio cada historia (evita duplicados con UNIQUE).
+
+CREATE TABLE IF NOT EXISTS public.story_views (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  story_id   UUID NOT NULL REFERENCES public.user_stories(id) ON DELETE CASCADE,
+  viewer_id  TEXT NOT NULL,
+  UNIQUE(story_id, viewer_id)
+);
+
+ALTER TABLE public.story_views ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated can view story_views" ON public.story_views;
+DROP POLICY IF EXISTS "Users can insert own story_views"   ON public.story_views;
+
+CREATE POLICY "Authenticated can view story_views"
+  ON public.story_views FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Users can insert own story_views"
+  ON public.story_views FOR INSERT
+  WITH CHECK (auth.uid()::text = viewer_id);
+
+
+-- ─── 11. Storage: bucket 'stories' ──────────────────────────────────────────
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('stories', 'stories', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- Limpiar políticas anteriores para evitar conflictos:
+DROP POLICY IF EXISTS "Authenticated can view story images" ON storage.objects;
+DROP POLICY IF EXISTS "Public read stories"                 ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload own story images"   ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload own stories"        ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete own story images"   ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete own stories"        ON storage.objects;
+DROP POLICY IF EXISTS "stories_select"                      ON storage.objects;
+DROP POLICY IF EXISTS "stories_insert"                      ON storage.objects;
+DROP POLICY IF EXISTS "stories_delete"                      ON storage.objects;
+
+-- Lectura pública (las imágenes se acceden por URL pública):
+CREATE POLICY "stories_select"
+  ON storage.objects FOR SELECT TO public
+  USING (bucket_id = 'stories');
+
+-- Solo el dueño puede subir a su carpeta ({uid}/...):
+CREATE POLICY "stories_insert"
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'stories'
+    AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Solo el dueño puede borrar sus propias imágenes:
+CREATE POLICY "stories_delete"
+  ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'stories'
+    AND (storage.foldername(name))[1] = auth.uid()::text);
+
+
+-- ─── 12. Limpieza automática de historias expiradas ─────────────────────────
+-- Borra la imagen del Storage y luego el registro de la BD cada hora.
+
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+CREATE EXTENSION IF NOT EXISTS pg_net;
+
+CREATE OR REPLACE FUNCTION public.cleanup_expired_stories()
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN
+    SELECT id, user_id FROM public.user_stories WHERE expires_at < NOW()
+  LOOP
+    PERFORM net.http_delete(
+      url     := 'https://ntxbjwmkxnewzzducfzz.supabase.co/storage/v1/object/stories/' || r.user_id || '/' || r.id,
+      headers := jsonb_build_object('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50eGJqd21reG5ld3p6ZHVjZnp6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjQwNDk4NiwiZXhwIjoyMDkxOTgwOTg2fQ.s9smfIGih_6ksWqQpIbkhDxo6KzSMwf0Aeoq9gXcZxc')
+    );
+    DELETE FROM public.user_stories WHERE id = r.id;
+  END LOOP;
+END;
+$$;
+
+SELECT cron.unschedule('cleanup-expired-stories');
+SELECT cron.schedule('cleanup-expired-stories', '0 * * * *',
+  'SELECT public.cleanup_expired_stories()');
