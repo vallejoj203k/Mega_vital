@@ -318,7 +318,7 @@ class _StoryViewerPageState extends State<StoryViewerPage>
         behavior: HitTestBehavior.opaque,
         onTapUp: (d) {
           final w = MediaQuery.of(context).size.width;
-          if (d.globalPosition.dx < w / 2) _prev() else _next();
+          if (d.globalPosition.dx < w / 2) { _prev(); } else { _next(); }
         },
         onLongPressStart: (_) => _pause(),
         onLongPressEnd:   (_) => _resume(),
