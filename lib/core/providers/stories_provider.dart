@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../services/stories_service.dart';
 
@@ -26,10 +27,14 @@ class StoriesProvider extends ChangeNotifier {
   Future<bool> addStory({
     required String userId,
     required String userName,
-    required String content,
+    String? content,
+    File? imageFile,
   }) async {
     final ok = await _svc.add(
-      userId: userId, userName: userName, content: content,
+      userId:    userId,
+      userName:  userName,
+      content:   content,
+      imageFile: imageFile,
     );
     if (ok) await load();
     return ok;

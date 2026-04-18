@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class StoryModel {
@@ -5,6 +6,7 @@ class StoryModel {
   final String userId;
   final String userName;
   final String? content;
+  final String? imageUrl;   // URL pública en Supabase Storage
   final DateTime createdAt;
   final DateTime expiresAt;
   final bool viewedByMe;
@@ -14,10 +16,13 @@ class StoryModel {
     required this.userId,
     required this.userName,
     this.content,
+    this.imageUrl,
     required this.createdAt,
     required this.expiresAt,
     this.viewedByMe = false,
   });
+
+  bool get hasImage => imageUrl != null && imageUrl!.isNotEmpty;
 
   String get initials {
     final parts = userName.trim().split(' ');
@@ -27,12 +32,13 @@ class StoryModel {
 
   factory StoryModel.fromMap(Map<String, dynamic> m, {bool viewedByMe = false}) =>
       StoryModel(
-        id: m['id'] as String,
-        userId: m['user_id'] as String,
-        userName: m['user_name'] as String,
-        content: m['content'] as String?,
-        createdAt: DateTime.parse(m['created_at'] as String),
-        expiresAt: DateTime.parse(m['expires_at'] as String),
+        id:         m['id'] as String,
+        userId:     m['user_id'] as String,
+        userName:   m['user_name'] as String,
+        content:    m['content'] as String?,
+        imageUrl:   m['image_url'] as String?,
+        createdAt:  DateTime.parse(m['created_at'] as String),
+        expiresAt:  DateTime.parse(m['expires_at'] as String),
         viewedByMe: viewedByMe,
       );
 }
@@ -63,6 +69,8 @@ class UserStoriesGroup {
 }
 
 class StoriesService {
+  static const _bucket = 'stories';
+
   final _db = Supabase.instance.client;
   String? get _uid => _db.auth.currentUser?.id;
 
@@ -89,25 +97,21 @@ class StoriesService {
 
       final seen = {for (final v in (views as List)) v['story_id'] as String};
 
-      final stories = rows
-          .map((r) => StoryModel.fromMap(
-                r as Map<String, dynamic>,
-                viewedByMe: seen.contains(r['id'] as String),
-              ))
-          .toList();
+      final stories = rows.map((r) => StoryModel.fromMap(
+            r as Map<String, dynamic>,
+            viewedByMe: seen.contains(r['id'] as String),
+          )).toList();
 
       final Map<String, List<StoryModel>> map = {};
       for (final s in stories) {
         map.putIfAbsent(s.userId, () => []).add(s);
       }
 
-      return map.entries
-          .map((e) => UserStoriesGroup(
-                userId: e.key,
-                userName: e.value.first.userName,
-                stories: e.value,
-              ))
-          .toList()
+      return map.entries.map((e) => UserStoriesGroup(
+            userId:   e.key,
+            userName: e.value.first.userName,
+            stories:  e.value,
+          )).toList()
         ..sort((a, b) {
           if (a.userId == uid) return -1;
           if (b.userId == uid) return 1;
@@ -123,20 +127,59 @@ class StoriesService {
   Future<bool> add({
     required String userId,
     required String userName,
-    required String content,
+    String? content,
+    File? imageFile,
   }) async {
     try {
-      await _db.from('user_stories').insert({
+      // 1. Insertar el registro y obtener el ID generado por Supabase.
+      final rows = await _db.from('user_stories').insert({
         'user_id':    userId,
         'user_name':  userName,
-        'content':    content,
+        if (content != null && content.isNotEmpty) 'content': content,
         'expires_at': DateTime.now()
             .add(const Duration(hours: 24))
             .toIso8601String(),
-      });
+      }).select('id');
+
+      if ((rows as List).isEmpty) return false;
+      final storyId = rows.first['id'] as String;
+
+      // 2. Subir imagen al Storage si se proporcionó.
+      if (imageFile != null) {
+        final imageUrl = await _uploadImage(
+          file:    imageFile,
+          userId:  userId,
+          storyId: storyId,
+        );
+        if (imageUrl != null) {
+          await _db
+              .from('user_stories')
+              .update({'image_url': imageUrl})
+              .eq('id', storyId);
+        }
+      }
+
       return true;
     } catch (_) {
       return false;
+    }
+  }
+
+  Future<String?> _uploadImage({
+    required File file,
+    required String userId,
+    required String storyId,
+  }) async {
+    try {
+      final path = '$userId/$storyId';
+      await _db.storage.from(_bucket).upload(
+        path,
+        file,
+        fileOptions: const FileOptions(cacheControl: '86400', upsert: true),
+      );
+      return _db.storage.from(_bucket).getPublicUrl(path);
+    } catch (_) {
+      return null;
     }
   }
 
@@ -153,7 +196,24 @@ class StoriesService {
 
   Future<bool> delete(String storyId) async {
     try {
+      // Obtener datos antes de borrar para poder limpiar el Storage.
+      final rows = await _db
+          .from('user_stories')
+          .select('user_id, image_url')
+          .eq('id', storyId)
+          .limit(1);
+
       await _db.from('user_stories').delete().eq('id', storyId);
+
+      // Borrar imagen del Storage si existía.
+      if ((rows as List).isNotEmpty) {
+        final row = rows.first as Map<String, dynamic>;
+        if (row['image_url'] != null) {
+          final uid = row['user_id'] as String;
+          await _db.storage.from(_bucket).remove(['$uid/$storyId']);
+        }
+      }
+
       return true;
     } catch (_) {
       return false;

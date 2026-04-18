@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
@@ -25,7 +27,6 @@ class StoriesRow extends StatelessWidget {
     required this.currentUserInitials,
   });
 
-  // Stories de otros usuarios (sin el propio para evitar duplicado con "Tú")
   List<UserStoriesGroup> get _others =>
       groups.where((g) => g.userId != currentUserId).toList();
 
@@ -80,24 +81,20 @@ class _MyCircle extends StatelessWidget {
       onTap: () => _openSheet(context),
       child: _CircleLayout(
         label: 'Tú',
-        avatar: Stack(
-          children: [
-            // Anillo verde
-            _Ring(hasNew: true, child: _AvatarContent(initials: initials, hasNew: true)),
-            // Botón "+"
-            Positioned(
-              right: 0, bottom: 0,
-              child: Container(
-                width: 22, height: 22,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: AppColors.primaryGradient,
-                ),
-                child: const Icon(Icons.add, size: 14, color: AppColors.background),
+        avatar: Stack(children: [
+          _Ring(hasNew: true, child: _AvatarContent(initials: initials, hasNew: true)),
+          Positioned(
+            right: 0, bottom: 0,
+            child: Container(
+              width: 22, height: 22,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppColors.primaryGradient,
               ),
+              child: const Icon(Icons.add, size: 14, color: AppColors.background),
             ),
-          ],
-        ),
+          ),
+        ]),
       ),
     );
   }
@@ -189,10 +186,7 @@ class _Ring extends StatelessWidget {
     alignment: Alignment.center,
     child: Container(
       width: 60, height: 60,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.background,
-      ),
+      decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.background),
       alignment: Alignment.center,
       child: child,
     ),
@@ -229,12 +223,7 @@ class _AvatarContent extends StatelessWidget {
 class StoryViewerPage extends StatefulWidget {
   final List<UserStoriesGroup> groups;
   final int initialGroupIndex;
-
-  const StoryViewerPage({
-    super.key,
-    required this.groups,
-    required this.initialGroupIndex,
-  });
+  const StoryViewerPage({super.key, required this.groups, required this.initialGroupIndex});
 
   @override
   State<StoryViewerPage> createState() => _StoryViewerPageState();
@@ -289,10 +278,7 @@ class _StoryViewerPageState extends State<StoryViewerPage>
     if (_sIdx > 0) {
       setState(() => _sIdx--);
     } else if (_gIdx > 0) {
-      setState(() {
-        _gIdx--;
-        _sIdx = widget.groups[_gIdx].stories.length - 1;
-      });
+      setState(() { _gIdx--; _sIdx = widget.groups[_gIdx].stories.length - 1; });
     }
     _start();
   }
@@ -321,43 +307,99 @@ class _StoryViewerPageState extends State<StoryViewerPage>
         },
         child: Stack(children: [
 
-          // ── Contenido de la historia ──
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 36),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 88, height: 88,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: AppColors.primaryGradient,
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      group.initials,
-                      style: AppTextStyles.displayLarge
-                          .copyWith(color: AppColors.background),
-                    ),
-                  ),
-                  const SizedBox(height: 36),
-                  if (story.content != null)
-                    Text(
-                      story.content!,
-                      style: AppTextStyles.headingMedium.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                        height: 1.6,
+          // ── Fondo e imagen ────────────────────────────────────────
+          if (story.hasImage)
+            Positioned.fill(
+              child: Image.network(
+                story.imageUrl!,
+                fit: BoxFit.cover,
+                loadingBuilder: (_, child, progress) => progress == null
+                    ? child
+                    : Container(
+                        color: Colors.black,
+                        alignment: Alignment.center,
+                        child: const CircularProgressIndicator(
+                            color: AppColors.primary, strokeWidth: 2),
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                ],
+                errorBuilder: (_, __, ___) => Container(
+                  color: Colors.black,
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.broken_image_outlined,
+                      color: AppColors.textMuted, size: 48),
+                ),
               ),
             ),
-          ),
 
-          // ── Barra superior: progreso + info de usuario ──
+          // Gradiente inferior para que el texto sea legible sobre la foto
+          if (story.hasImage && story.content != null && story.content!.isNotEmpty)
+            Positioned(
+              left: 0, right: 0, bottom: 0,
+              height: 180,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [Colors.black87, Colors.transparent],
+                  ),
+                ),
+              ),
+            ),
+
+          // ── Texto centrado (sin foto) o sobre la foto ─────────────
+          if (!story.hasImage)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 36),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 88, height: 88,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: AppColors.primaryGradient,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(group.initials,
+                          style: AppTextStyles.displayLarge
+                              .copyWith(color: AppColors.background)),
+                    ),
+                    const SizedBox(height: 36),
+                    if (story.content != null && story.content!.isNotEmpty)
+                      Text(
+                        story.content!,
+                        style: AppTextStyles.headingMedium.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                          height: 1.6,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Texto sobre la foto (posición inferior)
+          if (story.hasImage && story.content != null && story.content!.isNotEmpty)
+            Positioned(
+              left: 20, right: 20, bottom: 40,
+              child: Text(
+                story.content!,
+                style: AppTextStyles.headingMedium.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  height: 1.5,
+                  shadows: [
+                    const Shadow(blurRadius: 8, color: Colors.black87),
+                  ],
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+
+          // ── Barra superior: progreso + info ───────────────────────
           SafeArea(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -415,17 +457,12 @@ class _StoryViewerPageState extends State<StoryViewerPage>
                           )),
                     ),
                     const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(group.userName,
-                            style: AppTextStyles.labelLarge
-                                .copyWith(color: Colors.white)),
-                        Text(_timeAgo(story.createdAt),
-                            style: AppTextStyles.caption
-                                .copyWith(color: Colors.white60)),
-                      ],
-                    ),
+                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(group.userName,
+                          style: AppTextStyles.labelLarge.copyWith(color: Colors.white)),
+                      Text(_timeAgo(story.createdAt),
+                          style: AppTextStyles.caption.copyWith(color: Colors.white60)),
+                    ]),
                     const Spacer(),
                     GestureDetector(
                       onTap: () => Navigator.of(context).pop(),
@@ -454,22 +491,85 @@ class AddStorySheet extends StatefulWidget {
 }
 
 class _AddStorySheetState extends State<AddStorySheet> {
-  final _ctrl     = TextEditingController();
-  bool  _posting  = false;
-  static const _max = 200;
+  final _ctrl    = TextEditingController();
+  final _picker  = ImagePicker();
+  XFile? _image;
+  bool   _posting = false;
+  static const _maxChars = 200;
 
   @override
   void dispose() { _ctrl.dispose(); super.dispose(); }
 
-  Future<void> _publish() async {
-    final text = _ctrl.text.trim();
-    if (text.isEmpty) return;
-    setState(() => _posting = true);
-    final ok = await context.read<StoriesProvider>().addStory(
-      userId: widget.userId, userName: widget.userName, content: text,
+  Future<void> _pickImage(ImageSource source) async {
+    final file = await _picker.pickImage(
+      source: source,
+      imageQuality: 72,    // compresión razonable
+      maxWidth:     1080,
     );
+    if (file != null) setState(() => _image = file);
+  }
+
+  void _showSourcePicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const SizedBox(height: 8),
+          Container(width: 36, height: 4,
+              decoration: BoxDecoration(color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2))),
+          const SizedBox(height: 16),
+          ListTile(
+            leading: Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
+            ),
+            title: Text('Cámara', style: AppTextStyles.bodyLarge),
+            onTap: () { Navigator.pop(context); _pickImage(ImageSource.camera); },
+          ),
+          ListTile(
+            leading: Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.accentBlue.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.photo_library_rounded, color: AppColors.accentBlue),
+            ),
+            title: Text('Galería', style: AppTextStyles.bodyLarge),
+            onTap: () { Navigator.pop(context); _pickImage(ImageSource.gallery); },
+          ),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _publish() async {
+    final text  = _ctrl.text.trim();
+    final hasContent = text.isNotEmpty || _image != null;
+    if (!hasContent) return;
+
+    setState(() => _posting = true);
+
+    final ok = await context.read<StoriesProvider>().addStory(
+      userId:    widget.userId,
+      userName:  widget.userName,
+      content:   text.isEmpty ? null : text,
+      imageFile: _image != null ? File(_image!.path) : null,
+    );
+
     if (!mounted) return;
     setState(() => _posting = false);
+
     if (ok) {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -481,10 +581,11 @@ class _AddStorySheetState extends State<AddStorySheet> {
     }
   }
 
+  bool get _canPost => (_ctrl.text.trim().isNotEmpty || _image != null) && !_posting;
+
   @override
   Widget build(BuildContext context) {
-    final bottom   = MediaQuery.of(context).viewInsets.bottom;
-    final canPost  = _ctrl.text.trim().isNotEmpty && !_posting;
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
 
     return Container(
       margin: EdgeInsets.fromLTRB(12, 0, 12, 12 + bottom),
@@ -502,24 +603,114 @@ class _AddStorySheetState extends State<AddStorySheet> {
           Center(child: Container(
             width: 36, height: 4,
             margin: const EdgeInsets.only(bottom: 20),
-            decoration: BoxDecoration(
-              color: AppColors.border, borderRadius: BorderRadius.circular(2),
-            ),
+            decoration: BoxDecoration(color: AppColors.border,
+                borderRadius: BorderRadius.circular(2)),
           )),
-          Text('Nueva historia', style: AppTextStyles.headingMedium),
-          const SizedBox(height: 4),
-          Text('Visible durante 24 horas',
-              style: AppTextStyles.caption.copyWith(color: AppColors.textMuted)),
+
+          Row(children: [
+            Text('Nueva historia', style: AppTextStyles.headingMedium),
+            const Spacer(),
+            Text('24 h', style: AppTextStyles.caption.copyWith(
+              color: AppColors.textMuted,
+            )),
+          ]),
           const SizedBox(height: 16),
+
+          // ── Selector de foto ──
+          GestureDetector(
+            onTap: _showSourcePicker,
+            child: _image == null
+                ? Container(
+                    width: double.infinity, height: 130,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceVariant,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColors.border,
+                        width: 1,
+                        style: BorderStyle.solid,
+                      ),
+                    ),
+                    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Container(
+                        width: 48, height: 48,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.add_a_photo_rounded,
+                            color: AppColors.primary, size: 22),
+                      ),
+                      const SizedBox(height: 10),
+                      Text('Añadir foto',
+                          style: AppTextStyles.labelLarge.copyWith(
+                            color: AppColors.primary,
+                          )),
+                      const SizedBox(height: 2),
+                      Text('Cámara o galería',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.textMuted,
+                          )),
+                    ]),
+                  )
+                : Stack(children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.file(
+                        File(_image!.path),
+                        width: double.infinity,
+                        height: 200,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Positioned(
+                      top: 8, right: 8,
+                      child: GestureDetector(
+                        onTap: () => setState(() => _image = null),
+                        child: Container(
+                          width: 30, height: 30,
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.close, color: Colors.white, size: 16),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 8, right: 8,
+                      child: GestureDetector(
+                        onTap: _showSourcePicker,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.edit_rounded, color: Colors.white, size: 13),
+                            const SizedBox(width: 4),
+                            Text('Cambiar', style: AppTextStyles.caption
+                                .copyWith(color: Colors.white)),
+                          ]),
+                        ),
+                      ),
+                    ),
+                  ]),
+          ),
+          const SizedBox(height: 12),
+
+          // ── Texto (opcional) ──
           TextField(
             controller: _ctrl,
-            maxLines: 5,
-            maxLength: _max,
-            autofocus: true,
+            maxLines: 3,
+            maxLength: _maxChars,
             style: AppTextStyles.bodyLarge,
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
-              hintText: '¿Qué quieres compartir hoy?',
+              hintText: _image != null
+                  ? 'Añadir texto (opcional)…'
+                  : '¿Qué quieres compartir?',
               hintStyle: AppTextStyles.bodyLarge.copyWith(color: AppColors.textMuted),
               filled: true,
               fillColor: AppColors.surfaceVariant,
@@ -527,42 +718,41 @@ class _AddStorySheetState extends State<AddStorySheet> {
                 borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide.none,
               ),
-              contentPadding: const EdgeInsets.all(16),
+              contentPadding: const EdgeInsets.all(14),
               counterStyle: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
             ),
           ),
           const SizedBox(height: 12),
+
+          // ── Botón publicar ──
           SizedBox(
-            width: double.infinity,
-            height: 50,
+            width: double.infinity, height: 50,
             child: _posting
-                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary))
                 : GestureDetector(
-                    onTap: canPost ? _publish : null,
+                    onTap: _canPost ? _publish : null,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
-                        gradient: canPost ? AppColors.primaryGradient : null,
-                        color: canPost ? null : AppColors.surfaceVariant,
+                        gradient: _canPost ? AppColors.primaryGradient : null,
+                        color: _canPost ? null : AppColors.surfaceVariant,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       alignment: Alignment.center,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.auto_awesome_rounded, size: 16,
-                              color: canPost
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.auto_awesome_rounded, size: 16,
+                            color: _canPost
+                                ? AppColors.background
+                                : AppColors.textMuted),
+                        const SizedBox(width: 8),
+                        Text('Publicar historia',
+                            style: AppTextStyles.labelLarge.copyWith(
+                              color: _canPost
                                   ? AppColors.background
-                                  : AppColors.textMuted),
-                          const SizedBox(width: 8),
-                          Text('Publicar historia',
-                              style: AppTextStyles.labelLarge.copyWith(
-                                color: canPost
-                                    ? AppColors.background
-                                    : AppColors.textMuted,
-                              )),
-                        ],
-                      ),
+                                  : AppColors.textMuted,
+                            )),
+                      ]),
                     ),
                   ),
           ),
