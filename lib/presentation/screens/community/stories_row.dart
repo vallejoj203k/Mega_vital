@@ -30,6 +30,11 @@ class StoriesRow extends StatelessWidget {
   List<UserStoriesGroup> get _others =>
       groups.where((g) => g.userId != currentUserId).toList();
 
+  UserStoriesGroup? get _myGroup {
+    final matches = groups.where((g) => g.userId == currentUserId);
+    return matches.isEmpty ? null : matches.first;
+  }
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -44,6 +49,7 @@ class StoriesRow extends StatelessWidget {
               userId:   currentUserId,
               userName: currentUserName,
               initials: currentUserInitials,
+              myGroup:  _myGroup,
             );
           }
           final group = _others[i - 1];
@@ -73,30 +79,51 @@ class StoriesRow extends StatelessWidget {
 
 class _MyCircle extends StatelessWidget {
   final String userId, userName, initials;
-  const _MyCircle({required this.userId, required this.userName, required this.initials});
+  final UserStoriesGroup? myGroup;
+  const _MyCircle({
+    required this.userId,
+    required this.userName,
+    required this.initials,
+    this.myGroup,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => _openSheet(context),
+      onTap: () => myGroup != null ? _openViewer(context) : _openSheet(context),
       child: _CircleLayout(
         label: 'Tú',
         avatar: Stack(children: [
           _Ring(hasNew: true, child: _AvatarContent(initials: initials, hasNew: true)),
           Positioned(
             right: 0, bottom: 0,
-            child: Container(
-              width: 22, height: 22,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppColors.primaryGradient,
+            child: GestureDetector(
+              onTap: () => _openSheet(context),
+              child: Container(
+                width: 22, height: 22,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppColors.primaryGradient,
+                ),
+                child: const Icon(Icons.add, size: 14, color: AppColors.background),
               ),
-              child: const Icon(Icons.add, size: 14, color: AppColors.background),
             ),
           ),
         ]),
       ),
     );
+  }
+
+  void _openViewer(BuildContext ctx) {
+    Navigator.of(ctx).push(PageRouteBuilder(
+      opaque: false,
+      barrierDismissible: true,
+      barrierColor: Colors.black,
+      pageBuilder: (_, __, ___) => StoryViewerPage(
+        groups: [myGroup!],
+        initialGroupIndex: 0,
+      ),
+    ));
   }
 
   void _openSheet(BuildContext ctx) {
@@ -241,7 +268,7 @@ class _StoryViewerPageState extends State<StoryViewerPage>
     super.initState();
     _gIdx = widget.initialGroupIndex;
     _progress = AnimationController(vsync: this, duration: _kStoryDuration);
-    _start();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _start());
   }
 
   @override
