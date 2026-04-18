@@ -48,8 +48,9 @@ class StoriesProvider extends ChangeNotifier {
       stories: g.stories.map((s) => s.id == storyId
           ? StoryModel(
               id: s.id, userId: s.userId, userName: s.userName,
-              content: s.content, createdAt: s.createdAt,
-              expiresAt: s.expiresAt, viewedByMe: true,
+              content: s.content, imageUrl: s.imageUrl,
+              createdAt: s.createdAt, expiresAt: s.expiresAt,
+              viewedByMe: true,
             )
           : s).toList(),
     )).toList();
