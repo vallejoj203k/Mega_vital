@@ -201,6 +201,20 @@ class AuthService {
     String gender = 'mujer',
     String? referredBy,
   }) async {
+    // Construye el perfil con los datos del usuario como fallback local.
+    UserProfile buildLocal(UserProfile? saved) => UserProfile(
+      uid:        saved?.uid ?? user.uid,
+      name:       saved?.name ?? name.trim(),
+      email:      saved?.email ?? user.email,
+      goal:       saved?.goal ?? goal,
+      weight:     saved?.weight ?? weight,
+      height:     saved?.height ?? height,
+      age:        saved?.age ?? age,
+      createdAt:  saved?.createdAt ?? DateTime.now(),
+      gender:     gender,
+      referredBy: referredBy,
+    );
+
     try {
       await _supabase.from('user_profiles').upsert({
         'uid':            user.uid,
@@ -216,21 +230,11 @@ class AuthService {
         if (referredBy != null && referredBy.isNotEmpty)
           'referred_by': referredBy,
       });
+      // Aunque la lectura falle, el upsert ya guardó los datos reales.
       final saved = await getUserProfile(user.uid);
-      // Si gender no llegó a guardarse (columna faltante en DB), devolvemos
-      // un perfil local con los datos correctos para que la sesión sea funcional.
-      if (saved != null && saved.gender != gender) {
-        return UserProfile(
-          uid: saved.uid, name: saved.name, email: saved.email,
-          goal: saved.goal, weight: saved.weight, height: saved.height,
-          age: saved.age, createdAt: saved.createdAt,
-          gender: gender, referredBy: referredBy,
-        );
-      }
-      return saved;
+      return buildLocal(saved);
     } catch (e) {
-      // Columna gender/referred_by puede no existir aún en la DB.
-      // Intentamos guardar sin esos campos y devolvemos perfil local con gender.
+      // Si falla por columna gender/referred_by faltante, reintentamos sin ellas.
       try {
         await _supabase.from('user_profiles').upsert({
           'uid':            user.uid,
@@ -244,42 +248,16 @@ class AuthService {
           'total_workouts': 0,
         });
         final saved = await getUserProfile(user.uid);
-        if (saved == null) return null;
-        // Devolver perfil con gender correcto aunque no esté en DB
-        return UserProfile(
-          uid: saved.uid, name: saved.name, email: saved.email,
-          goal: saved.goal, weight: saved.weight, height: saved.height,
-          age: saved.age, createdAt: saved.createdAt,
-          gender: gender, referredBy: referredBy,
-        );
+        return buildLocal(saved);
       } catch (_) {
         return null;
       }
     }
   }
 
-  // Carga el perfil, y si no existe lo crea con valores por defecto (fallback para login).
+  // Carga el perfil existente del usuario. Retorna null si no existe.
   Future<UserProfile?> ensureUserProfile(AppUser user) async {
-    final existing = await getUserProfile(user.uid);
-    if (existing != null) return existing;
-
-    try {
-      final name = user.displayName.isNotEmpty ? user.displayName : 'Usuario';
-      await _supabase.from('user_profiles').upsert({
-        'uid':            user.uid,
-        'name':           name,
-        'email':          user.email,
-        'goal':           'Ganar músculo',
-        'weight':         70.0,
-        'height':         170.0,
-        'age':            25,
-        'streak':         0,
-        'total_workouts': 0,
-      });
-      return await getUserProfile(user.uid);
-    } catch (_) {
-      return null;
-    }
+    return await getUserProfile(user.uid);
   }
 
   Future<bool> updateUserProfile(String uid, Map<String, dynamic> data) async {
