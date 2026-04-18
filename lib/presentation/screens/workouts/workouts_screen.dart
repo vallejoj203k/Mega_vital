@@ -609,32 +609,14 @@ Path _imgIsquiotibiales() {
   return p;
 }
 
-// ISQUIOTIBIALES
-Path _imgIsquiotibiales() {
-  final p = Path();
-  // izq
-  p.moveTo(85, 263);
-  p.lineTo(143, 256);
-  p.lineTo(130, 337);
-  p.lineTo(93, 325);
-  p.close();
-  // der
-  p.moveTo(151, 251);
-  p.lineTo(202, 249);
-  p.lineTo(203, 337);
-  p.lineTo(152, 325);
-  p.close();
-  return p;
-}
-
 // Mapa de paths para cada músculo en espacio 270×470
 Map<String, Path> _frontPaths() => {
   'pecho':      _imgPecho(),
   'hombros':    _imgHombros(),
   'biceps':     _imgBiceps(),
-  'abs':        _imgAbs(),
-  'cuadriceps': _imgCuads(),
-  'gemelos':    _imgGemelosF(),
+  'abs':        _imgAbdomen(),
+  'cuadriceps': _imgCuadriceps(),
+  'gemelos':    _imgGemelos(),
 };
 
 Map<String, Path> _backPaths() => {
@@ -643,8 +625,8 @@ Map<String, Path> _backPaths() => {
   'triceps':  _imgTriceps(),
   'lumbar':   _imgLumbar(),
   'gluteos':  _imgGluteos(),
-  'isquio':   _imgIsquios(),
-  'gemelos':  _imgGemelosB(),
+  'isquio':   _imgIsquiotibiales(),
+  'gemelos':  _imgGemelos(),
 };
 
 // Detecta músculo en coordenadas de imagen (270×470)
