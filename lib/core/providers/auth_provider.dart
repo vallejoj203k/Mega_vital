@@ -15,6 +15,7 @@ class AuthProvider extends ChangeNotifier {
   String?      _errorMessage;
   bool         _isLoading = false;
   bool         _profileLoading = false;
+  bool         _isRegistering = false;
   StreamSubscription? _authSub;
 
   AuthProvider({AuthService? service})
@@ -66,6 +67,8 @@ class AuthProvider extends ChangeNotifier {
     _authSub = _service.authStateChanges.listen((user) async {
       _user = user;
       if (user != null) {
+        // Skip reload during register() — it sets _profile itself with gender data.
+        if (_isRegistering) return;
         _status         = AuthStatus.authenticated;
         _profileLoading = true;
         notifyListeners();
@@ -108,6 +111,7 @@ class AuthProvider extends ChangeNotifier {
     String gender = 'mujer',
     String? referredBy,
   }) async {
+    _isRegistering = true;
     _setLoading(true);
     _clearError();
     final result = await _service.register(
@@ -117,6 +121,7 @@ class AuthProvider extends ChangeNotifier {
     );
     if (!result.success) {
       _errorMessage = result.errorMessage;
+      _isRegistering = false;
       _setLoading(false);
       return false;
     }
@@ -133,6 +138,7 @@ class AuthProvider extends ChangeNotifier {
       gender:     gender,
       referredBy: referredBy,
     );
+    _isRegistering = false;
     notifyListeners();
     return true;
   }

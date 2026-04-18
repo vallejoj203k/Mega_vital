@@ -216,9 +216,45 @@ class AuthService {
         if (referredBy != null && referredBy.isNotEmpty)
           'referred_by': referredBy,
       });
-      return await getUserProfile(user.uid);
-    } catch (_) {
-      return null;
+      final saved = await getUserProfile(user.uid);
+      // Si gender no llegó a guardarse (columna faltante en DB), devolvemos
+      // un perfil local con los datos correctos para que la sesión sea funcional.
+      if (saved != null && saved.gender != gender) {
+        return UserProfile(
+          uid: saved.uid, name: saved.name, email: saved.email,
+          goal: saved.goal, weight: saved.weight, height: saved.height,
+          age: saved.age, createdAt: saved.createdAt,
+          gender: gender, referredBy: referredBy,
+        );
+      }
+      return saved;
+    } catch (e) {
+      // Columna gender/referred_by puede no existir aún en la DB.
+      // Intentamos guardar sin esos campos y devolvemos perfil local con gender.
+      try {
+        await _supabase.from('user_profiles').upsert({
+          'uid':            user.uid,
+          'name':           name.trim(),
+          'email':          user.email,
+          'goal':           goal,
+          'weight':         weight,
+          'height':         height,
+          'age':            age,
+          'streak':         0,
+          'total_workouts': 0,
+        });
+        final saved = await getUserProfile(user.uid);
+        if (saved == null) return null;
+        // Devolver perfil con gender correcto aunque no esté en DB
+        return UserProfile(
+          uid: saved.uid, name: saved.name, email: saved.email,
+          goal: saved.goal, weight: saved.weight, height: saved.height,
+          age: saved.age, createdAt: saved.createdAt,
+          gender: gender, referredBy: referredBy,
+        );
+      } catch (_) {
+        return null;
+      }
     }
   }
 
