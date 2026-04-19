@@ -422,7 +422,17 @@ class _PostCard extends StatelessWidget {
                               color: AppColors.primary, strokeWidth: 2),
                         ),
                       ),
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                errorBuilder: (_, __, ___) => Container(
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.broken_image_outlined,
+                        color: AppColors.textMuted, size: 32),
+                  ),
+                ),
               ),
             ),
           ],
