@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ─── Models ─────────────────────────────────────────────────────────────────
@@ -186,26 +187,25 @@ class CommunityService {
     final uid = _uid;
     if (uid == null) return 'No hay sesión activa.';
     try {
-      final rows = await _db.from('community_posts').insert({
+      // Generate post ID on the client so the image can be uploaded before INSERT.
+      final postId = _generateId();
+
+      String? imageUrl;
+      if (imageFile != null) {
+        imageUrl = await _uploadPostImage(uid: uid, postId: postId, file: imageFile);
+        if (imageUrl == null) return 'warn:image';
+      }
+
+      await _db.from('community_posts').insert({
+        'id': postId,
         'user_id': uid,
         'user_name': userName.isEmpty ? 'Usuario' : userName.trim(),
         'content': content.trim(),
         if (achievement != null && achievement.trim().isNotEmpty)
           'achievement': achievement.trim(),
-      }).select('id');
+        if (imageUrl != null) 'image_url': imageUrl,
+      });
 
-      if (imageFile != null && (rows as List).isNotEmpty) {
-        final postId = rows.first['id'] as String;
-        final imageUrl = await _uploadPostImage(uid: uid, postId: postId, file: imageFile);
-        if (imageUrl != null) {
-          await _db.from('community_posts')
-              .update({'image_url': imageUrl})
-              .eq('id', postId);
-        } else {
-          // Post creado, pero la imagen no pudo subirse (bucket no configurado).
-          return 'warn:image';
-        }
-      }
       return null;
     } catch (e) {
       return e.toString();
@@ -228,6 +228,16 @@ class CommunityService {
     } catch (_) {
       return null;
     }
+  }
+
+  static String _generateId() {
+    final rng = Random.secure();
+    final bytes = List<int>.generate(16, (_) => rng.nextInt(256));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    final h = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    return '${h.substring(0, 8)}-${h.substring(8, 12)}-'
+        '${h.substring(12, 16)}-${h.substring(16, 20)}-${h.substring(20)}';
   }
 
   Future<bool> deletePost(String postId) async {
