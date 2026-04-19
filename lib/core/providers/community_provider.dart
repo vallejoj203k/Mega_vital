@@ -115,6 +115,7 @@ class CommunityProvider extends ChangeNotifier {
           content: post.content,
           achievement: post.achievement,
           imageUrl: post.imageUrl,
+          avatarUrl: post.avatarUrl,
           createdAt: post.createdAt,
           likesCount: post.likesCount,
           commentsCount: post.commentsCount + 1,

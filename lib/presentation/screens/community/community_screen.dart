@@ -74,9 +74,10 @@ class _CommunityScreenState extends State<CommunityScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final userName     = _currentUserName(context);
-    final userId       = _currentUserId(context);
-    final userInitials = _currentUserInitials(context);
+    final userName      = _currentUserName(context);
+    final userId        = _currentUserId(context);
+    final userInitials  = _currentUserInitials(context);
+    final userAvatarUrl = context.watch<AuthProvider>().profile?.avatarUrl;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -149,9 +150,10 @@ class _CommunityScreenState extends State<CommunityScreen>
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
                   _FeedTab(
-                currentUserName:     userName,
-                currentUserId:       userId,
-                currentUserInitials: userInitials,
+                currentUserName:      userName,
+                currentUserId:        userId,
+                currentUserInitials:  userInitials,
+                currentUserAvatarUrl: userAvatarUrl,
               ),
                   const _LeaderboardTab(),
                 ],
@@ -205,11 +207,13 @@ class _FeedTab extends StatelessWidget {
   final String currentUserName;
   final String currentUserId;
   final String currentUserInitials;
+  final String? currentUserAvatarUrl;
 
   const _FeedTab({
     required this.currentUserName,
     required this.currentUserId,
     required this.currentUserInitials,
+    this.currentUserAvatarUrl,
   });
 
   @override
@@ -219,11 +223,12 @@ class _FeedTab extends StatelessWidget {
         // ── Fila de historias ──
         Consumer<StoriesProvider>(
           builder: (ctx, sp, _) => StoriesRow(
-            groups:              sp.groups,
-            isLoading:           sp.isLoading,
-            currentUserId:       currentUserId,
-            currentUserName:     currentUserName,
-            currentUserInitials: currentUserInitials,
+            groups:                sp.groups,
+            isLoading:             sp.isLoading,
+            currentUserId:         currentUserId,
+            currentUserName:       currentUserName,
+            currentUserInitials:   currentUserInitials,
+            currentUserAvatarUrl:  currentUserAvatarUrl,
           ),
         ),
         const Divider(height: 1, thickness: 0.5, color: AppColors.divider),
@@ -344,6 +349,7 @@ class _PostCard extends StatelessWidget {
                   initials: post.userInitials,
                   size: 40,
                   bgColor: AppColors.surfaceVariant,
+                  photoUrl: post.avatarUrl,
                 ),
               ),
               const SizedBox(width: 10),
