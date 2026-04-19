@@ -53,14 +53,15 @@ class CommunityProvider extends ChangeNotifier {
     String? achievement,
     File? imageFile,
   }) async {
-    final error = await _service.createPost(
+    final result = await _service.createPost(
       userName: userName,
       content: content,
       achievement: achievement,
       imageFile: imageFile,
     );
-    if (error == null) await loadPosts();
-    return error;
+    // Recargar aunque sea sólo advertencia de imagen
+    if (result == null || result == 'warn:image') await loadPosts();
+    return result;
   }
 
   Future<void> toggleLike(String postId) async {
