@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../services/community_service.dart';
 
@@ -50,11 +51,13 @@ class CommunityProvider extends ChangeNotifier {
     String userName,
     String content, {
     String? achievement,
+    File? imageFile,
   }) async {
     final error = await _service.createPost(
       userName: userName,
       content: content,
       achievement: achievement,
+      imageFile: imageFile,
     );
     if (error == null) await loadPosts();
     return error;
@@ -110,6 +113,7 @@ class CommunityProvider extends ChangeNotifier {
           userInitials: post.userInitials,
           content: post.content,
           achievement: post.achievement,
+          imageUrl: post.imageUrl,
           createdAt: post.createdAt,
           likesCount: post.likesCount,
           commentsCount: post.commentsCount + 1,

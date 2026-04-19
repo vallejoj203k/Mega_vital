@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 
@@ -183,6 +184,17 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
     }
     return ok;
+  }
+
+  Future<String?> uploadAvatar(File file) async {
+    final uid = _user?.uid;
+    if (uid == null) return null;
+    final url = await _service.uploadAvatar(uid, file);
+    if (url != null) {
+      _profile = await _service.getUserProfile(uid);
+      notifyListeners();
+    }
+    return url;
   }
 
   Future<void> reloadProfile() async {

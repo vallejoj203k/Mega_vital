@@ -1,14 +1,19 @@
 // lib/presentation/screens/community/community_screen.dart
 
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/community_provider.dart';
+import '../../../core/providers/follow_provider.dart';
+import '../../../core/providers/notification_provider.dart';
 import '../../../core/providers/stories_provider.dart';
 import '../../../services/community_service.dart';
 import '../../widgets/shared_widgets.dart';
+import '../notifications/notifications_screen.dart';
 import 'stories_row.dart';
 
 class CommunityScreen extends StatefulWidget {
@@ -32,6 +37,8 @@ class _CommunityScreenState extends State<CommunityScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CommunityProvider>().init();
       context.read<StoriesProvider>().load();
+      context.read<FollowProvider>().load();
+      context.read<NotificationProvider>().load();
     });
   }
 
@@ -77,9 +84,50 @@ class _CommunityScreenState extends State<CommunityScreen>
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Comunidad', style: AppTextStyles.displayMedium),
+                  const Spacer(),
+                  // Campana de notificaciones
+                  Consumer<NotificationProvider>(
+                    builder: (_, np, __) => GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const NotificationsScreen()),
+                      ).then((_) => np.load()),
+                      child: Stack(clipBehavior: Clip.none, children: [
+                        Container(
+                          width: 40, height: 40,
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.border, width: 0.5),
+                          ),
+                          child: const Icon(Icons.notifications_outlined,
+                              color: AppColors.textSecondary, size: 20),
+                        ),
+                        if (np.unreadCount > 0)
+                          Positioned(
+                            top: -4, right: -4,
+                            child: Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(
+                                color: AppColors.error,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                np.unreadCount > 9 ? '9+' : '${np.unreadCount}',
+                                style: const TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white),
+                              ),
+                            ),
+                          ),
+                      ]),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
                   NeonButton(
                     label: 'Publicar',
                     icon: Icons.add,
@@ -222,6 +270,7 @@ class _FeedTab extends StatelessWidget {
                   itemBuilder: (_, i) => _PostCard(
                     post: provider.posts[i],
                     currentUserName: currentUserName,
+                    currentUserId: currentUserId,
                   ),
                 ),
               );
@@ -238,7 +287,12 @@ class _FeedTab extends StatelessWidget {
 class _PostCard extends StatelessWidget {
   final CommunityPost post;
   final String currentUserName;
-  const _PostCard({required this.post, required this.currentUserName});
+  final String currentUserId;
+  const _PostCard({
+    required this.post,
+    required this.currentUserName,
+    required this.currentUserId,
+  });
 
   String _timeAgo(DateTime dt) {
     final diff = DateTime.now().difference(dt);
@@ -264,7 +318,7 @@ class _PostCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.read<CommunityProvider>();
-    final isOwn = post.userName == currentUserName;
+    final isOwn = post.userId == currentUserId;
 
     return DarkCard(
       padding: const EdgeInsets.all(16),
@@ -290,15 +344,13 @@ class _PostCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (!isOwn) _FollowButton(targetId: post.userId),
               if (isOwn)
                 GestureDetector(
                   onTap: () => _confirmDelete(context, provider),
-                  child: Icon(Icons.more_horiz_rounded,
+                  child: const Icon(Icons.more_horiz_rounded,
                       color: AppColors.textMuted, size: 20),
-                )
-              else
-                Icon(Icons.more_horiz_rounded,
-                    color: AppColors.textMuted, size: 20),
+                ),
             ],
           ),
 
@@ -325,6 +377,31 @@ class _PostCard extends StatelessWidget {
 
           const SizedBox(height: 10),
           Text(post.content, style: AppTextStyles.bodyMedium),
+
+          // Post image
+          if (post.imageUrl != null && post.imageUrl!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                post.imageUrl!,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                loadingBuilder: (_, child, progress) => progress == null
+                    ? child
+                    : Container(
+                        height: 200,
+                        color: AppColors.surfaceVariant,
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                              color: AppColors.primary, strokeWidth: 2),
+                        ),
+                      ),
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+          ],
+
           const SizedBox(height: 14),
           Divider(color: AppColors.divider, height: 1),
           const SizedBox(height: 10),
@@ -424,6 +501,44 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
+// ─── Follow button ────────────────────────────────────────────────────────────
+
+class _FollowButton extends StatelessWidget {
+  final String targetId;
+  const _FollowButton({required this.targetId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<FollowProvider>(
+      builder: (_, fp, __) {
+        final following = fp.isFollowing(targetId);
+        return GestureDetector(
+          onTap: () => fp.toggleFollow(targetId),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              gradient: following ? null : AppColors.primaryGradient,
+              color: following ? AppColors.surfaceVariant : null,
+              borderRadius: BorderRadius.circular(20),
+              border: following
+                  ? Border.all(color: AppColors.border, width: 0.5)
+                  : null,
+            ),
+            child: Text(
+              following ? 'Siguiendo' : 'Seguir',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: following ? AppColors.textSecondary : AppColors.background,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 // ─── Publish sheet ────────────────────────────────────────────────────────────
 
 class _PublishSheet extends StatefulWidget {
@@ -439,12 +554,25 @@ class _PublishSheetState extends State<_PublishSheet> {
   final _achievementController = TextEditingController();
   bool _loading = false;
   bool _showAchievement = false;
+  File? _pickedImage;
 
   @override
   void dispose() {
     _controller.dispose();
     _achievementController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final xfile = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1080,
+      imageQuality: 85,
+    );
+    if (xfile != null && mounted) {
+      setState(() => _pickedImage = File(xfile.path));
+    }
   }
 
   Future<void> _submit() async {
@@ -456,7 +584,7 @@ class _PublishSheetState extends State<_PublishSheet> {
         : null;
     final error = await context
         .read<CommunityProvider>()
-        .createPost(widget.userName, text, achievement: achievement);
+        .createPost(widget.userName, text, achievement: achievement, imageFile: _pickedImage);
     if (mounted) {
       if (error == null) {
         Navigator.pop(context);
@@ -552,25 +680,79 @@ class _PublishSheetState extends State<_PublishSheet> {
             ),
           ),
           const SizedBox(height: 10),
-          GestureDetector(
-            onTap: () => setState(() => _showAchievement = !_showAchievement),
-            child: Row(
+
+          // Image preview
+          if (_pickedImage != null) ...[
+            Stack(
               children: [
-                Icon(
-                  _showAchievement
-                      ? Icons.emoji_events_rounded
-                      : Icons.emoji_events_outlined,
-                  color: AppColors.primary,
-                  size: 18,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    _pickedImage!,
+                    width: double.infinity,
+                    height: 180,
+                    fit: BoxFit.cover,
+                  ),
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  'Añadir logro',
-                  style: AppTextStyles.caption
-                      .copyWith(color: AppColors.primary),
+                Positioned(
+                  top: 6, right: 6,
+                  child: GestureDetector(
+                    onTap: () => setState(() => _pickedImage = null),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      padding: const EdgeInsets.all(4),
+                      child: const Icon(Icons.close, color: Colors.white, size: 16),
+                    ),
+                  ),
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+          ],
+
+          Row(
+            children: [
+              GestureDetector(
+                onTap: _pickImage,
+                child: Row(
+                  children: [
+                    Icon(
+                      _pickedImage != null
+                          ? Icons.image_rounded
+                          : Icons.image_outlined,
+                      color: AppColors.primary, size: 18,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _pickedImage != null ? 'Cambiar foto' : 'Añadir foto',
+                      style: AppTextStyles.caption.copyWith(color: AppColors.primary),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 20),
+              GestureDetector(
+                onTap: () => setState(() => _showAchievement = !_showAchievement),
+                child: Row(
+                  children: [
+                    Icon(
+                      _showAchievement
+                          ? Icons.emoji_events_rounded
+                          : Icons.emoji_events_outlined,
+                      color: AppColors.primary, size: 18,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Añadir logro',
+                      style: AppTextStyles.caption.copyWith(color: AppColors.primary),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           if (_showAchievement) ...[
             const SizedBox(height: 10),

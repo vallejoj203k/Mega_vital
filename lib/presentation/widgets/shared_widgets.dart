@@ -117,28 +117,41 @@ class SectionHeader extends StatelessWidget {
   }
 }
 
-// ─── Avatar circular con iniciales ──────────────────────────
+// ─── Avatar circular con foto o iniciales ───────────────────
 class InitialsAvatar extends StatelessWidget {
   final String initials;
   final double size;
   final Color? bgColor;
-  const InitialsAvatar({super.key, required this.initials, this.size = 44, this.bgColor});
+  final String? photoUrl;
+  const InitialsAvatar({super.key, required this.initials, this.size = 44, this.bgColor, this.photoUrl});
 
   @override
   Widget build(BuildContext context) {
+    final hasPhoto = photoUrl != null && photoUrl!.isNotEmpty;
     return Container(
       width: size, height: size,
       decoration: BoxDecoration(
-        gradient: bgColor != null ? null : AppColors.primaryGradient,
-        color: bgColor, shape: BoxShape.circle,
+        gradient: (!hasPhoto && bgColor == null) ? AppColors.primaryGradient : null,
+        color: !hasPhoto ? bgColor : null,
+        shape: BoxShape.circle,
       ),
+      clipBehavior: Clip.antiAlias,
       alignment: Alignment.center,
-      child: Text(initials, style: TextStyle(
-        fontSize: size * 0.36, fontWeight: FontWeight.w700,
-        color: AppColors.background, letterSpacing: 0.5,
-      )),
+      child: hasPhoto
+          ? Image.network(
+              photoUrl!,
+              width: size, height: size,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _initials(),
+            )
+          : _initials(),
     );
   }
+
+  Widget _initials() => Text(initials, style: TextStyle(
+    fontSize: size * 0.36, fontWeight: FontWeight.w700,
+    color: AppColors.background, letterSpacing: 0.5,
+  ));
 }
 
 // ─── Botón neón ──────────────────────────────────────────────

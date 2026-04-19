@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthResult {
@@ -55,6 +56,7 @@ class UserProfile {
   final DateTime createdAt;
   final String gender;       // 'hombre' | 'mujer'
   final String? referredBy;
+  final String? avatarUrl;
 
   const UserProfile({
     required this.uid,
@@ -67,6 +69,7 @@ class UserProfile {
     required this.createdAt,
     this.gender = 'mujer',
     this.referredBy,
+    this.avatarUrl,
   });
 
   bool get isMale => gender == 'hombre';
@@ -84,6 +87,7 @@ class UserProfile {
     'total_workouts': 0,
     'gender': gender,
     if (referredBy != null && referredBy!.isNotEmpty) 'referred_by': referredBy,
+    if (avatarUrl != null) 'avatar_url': avatarUrl,
   };
 
   factory UserProfile.fromMap(Map<String, dynamic> m) => UserProfile(
@@ -99,6 +103,7 @@ class UserProfile {
         : DateTime.now(),
     gender: m['gender'] ?? 'mujer',
     referredBy: m['referred_by'],
+    avatarUrl: m['avatar_url'] as String?,
   );
 }
 
@@ -330,6 +335,26 @@ class AuthService {
       return true;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Sube la imagen al bucket 'avatars' y actualiza avatar_url en el perfil.
+  /// Retorna la URL pública o null si falla.
+  Future<String?> uploadAvatar(String uid, File file) async {
+    try {
+      const bucket = 'avatars';
+      final path = '$uid/avatar';
+      await _supabase.storage.from(bucket).upload(
+        path, file,
+        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+      );
+      final url = _supabase.storage.from(bucket).getPublicUrl(path);
+      // Añadir timestamp para forzar recarga tras actualización
+      final cacheBusted = '$url?t=${DateTime.now().millisecondsSinceEpoch}';
+      await updateUserProfile(uid, {'avatar_url': cacheBusted});
+      return cacheBusted;
+    } catch (_) {
+      return null;
     }
   }
 
