@@ -151,9 +151,10 @@ class CommunityService {
     final uid = _uid;
     if (uid == null) return [];
     try {
+      // select() = SELECT * — resilient si image_url aún no existe en el schema
       final postsRaw = await _db
           .from('community_posts')
-          .select('id, user_id, user_name, content, achievement, image_url, likes_count, comments_count, created_at')
+          .select()
           .order('created_at', ascending: false)
           .limit(50);
 
@@ -200,6 +201,9 @@ class CommunityService {
           await _db.from('community_posts')
               .update({'image_url': imageUrl})
               .eq('id', postId);
+        } else {
+          // Post creado, pero la imagen no pudo subirse (bucket no configurado).
+          return 'warn:image';
         }
       }
       return null;
@@ -257,6 +261,35 @@ class CommunityService {
       return true;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Posts de un usuario específico (para su perfil público).
+  Future<List<CommunityPost>> fetchUserPosts(String userId) async {
+    final uid = _uid;
+    if (uid == null) return [];
+    try {
+      final postsRaw = await _db
+          .from('community_posts')
+          .select()
+          .eq('user_id', userId)
+          .order('created_at', ascending: false)
+          .limit(20);
+
+      final likesRaw = await _db
+          .from('post_likes')
+          .select('post_id')
+          .eq('user_id', uid);
+      final likedIds = <String>{
+        for (final l in likesRaw as List) l['post_id'] as String,
+      };
+
+      return [
+        for (final m in postsRaw as List)
+          CommunityPost.fromMap(m as Map<String, dynamic>, likedIds.contains(m['id'])),
+      ];
+    } catch (_) {
+      return [];
     }
   }
 

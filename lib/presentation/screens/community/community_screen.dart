@@ -15,6 +15,7 @@ import '../../../services/community_service.dart';
 import '../../widgets/shared_widgets.dart';
 import '../notifications/notifications_screen.dart';
 import 'stories_row.dart';
+import 'user_profile_screen.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -328,20 +329,44 @@ class _PostCard extends StatelessWidget {
           // Header
           Row(
             children: [
-              InitialsAvatar(
-                initials: post.userInitials,
-                size: 40,
-                bgColor: AppColors.surfaceVariant,
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => UserProfileScreen(
+                      userId: post.userId,
+                      userName: post.userName,
+                      userInitials: post.userInitials,
+                    ),
+                  ),
+                ),
+                child: InitialsAvatar(
+                  initials: post.userInitials,
+                  size: 40,
+                  bgColor: AppColors.surfaceVariant,
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(post.userName, style: AppTextStyles.labelLarge),
-                    Text(_timeAgo(post.createdAt),
-                        style: AppTextStyles.caption),
-                  ],
+                child: GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => UserProfileScreen(
+                        userId: post.userId,
+                        userName: post.userName,
+                        userInitials: post.userInitials,
+                      ),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(post.userName, style: AppTextStyles.labelLarge),
+                      Text(_timeAgo(post.createdAt),
+                          style: AppTextStyles.caption),
+                    ],
+                  ),
                 ),
               ),
               if (!isOwn) _FollowButton(targetId: post.userId),
@@ -588,6 +613,20 @@ class _PublishSheetState extends State<_PublishSheet> {
     if (mounted) {
       if (error == null) {
         Navigator.pop(context);
+      } else if (error == 'warn:image') {
+        // Post creado pero imagen no pudo subirse (configura el bucket en Supabase)
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Publicación creada, pero la foto no se pudo subir. '
+              'Ejecuta el SQL de configuración en Supabase para habilitar imágenes.',
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: AppColors.accentOrange,
+            duration: Duration(seconds: 6),
+          ),
+        );
       } else {
         setState(() => _loading = false);
         ScaffoldMessenger.of(context).showSnackBar(
