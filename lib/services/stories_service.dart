@@ -46,11 +46,13 @@ class StoryModel {
 class UserStoriesGroup {
   final String userId;
   final String userName;
+  final String? avatarUrl;
   final List<StoryModel> stories;
 
   const UserStoriesGroup({
     required this.userId,
     required this.userName,
+    this.avatarUrl,
     required this.stories,
   });
 
@@ -107,10 +109,13 @@ class StoriesService {
         map.putIfAbsent(s.userId, () => []).add(s);
       }
 
+      final avatars = await _avatarMap(map.keys.toSet());
+
       return map.entries.map((e) => UserStoriesGroup(
-            userId:   e.key,
-            userName: e.value.first.userName,
-            stories:  e.value,
+            userId:    e.key,
+            userName:  e.value.first.userName,
+            avatarUrl: avatars[e.key],
+            stories:   e.value,
           )).toList()
         ..sort((a, b) {
           if (a.userId == uid) return -1;
@@ -192,6 +197,22 @@ class StoriesService {
         'viewer_id': uid,
       });
     } catch (_) {}
+  }
+
+  Future<Map<String, String?>> _avatarMap(Set<String> userIds) async {
+    if (userIds.isEmpty) return {};
+    try {
+      final rows = await _db
+          .from('user_profiles')
+          .select('uid, avatar_url')
+          .inFilter('uid', userIds.toList());
+      return {
+        for (final r in rows as List)
+          r['uid'] as String: r['avatar_url'] as String?,
+      };
+    } catch (_) {
+      return {};
+    }
   }
 
   Future<bool> delete(String storyId) async {

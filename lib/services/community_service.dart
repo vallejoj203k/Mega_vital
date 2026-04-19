@@ -12,6 +12,7 @@ class CommunityPost {
   final String content;
   final String? achievement;
   final String? imageUrl;
+  final String? avatarUrl;
   final DateTime createdAt;
   final int likesCount;
   final int commentsCount;
@@ -25,13 +26,18 @@ class CommunityPost {
     required this.content,
     this.achievement,
     this.imageUrl,
+    this.avatarUrl,
     required this.createdAt,
     required this.likesCount,
     required this.commentsCount,
     required this.likedByMe,
   });
 
-  factory CommunityPost.fromMap(Map<String, dynamic> m, bool likedByMe) {
+  factory CommunityPost.fromMap(
+    Map<String, dynamic> m,
+    bool likedByMe, {
+    String? avatarUrl,
+  }) {
     final name = m['user_name'] as String? ?? 'Usuario';
     return CommunityPost(
       id: m['id'] as String,
@@ -41,6 +47,7 @@ class CommunityPost {
       content: m['content'] as String,
       achievement: m['achievement'] as String?,
       imageUrl: m['image_url'] as String?,
+      avatarUrl: avatarUrl,
       createdAt: DateTime.parse(m['created_at'] as String),
       likesCount: m['likes_count'] as int? ?? 0,
       commentsCount: m['comments_count'] as int? ?? 0,
@@ -56,6 +63,7 @@ class CommunityPost {
     content: content,
     achievement: achievement,
     imageUrl: imageUrl,
+    avatarUrl: avatarUrl,
     createdAt: createdAt,
     likesCount: likesCount ?? this.likesCount,
     commentsCount: commentsCount,
@@ -152,25 +160,29 @@ class CommunityService {
     final uid = _uid;
     if (uid == null) return [];
     try {
-      // select() = SELECT * — resilient si image_url aún no existe en el schema
       final postsRaw = await _db
           .from('community_posts')
           .select()
           .order('created_at', ascending: false)
           .limit(50);
 
-      final likesRaw = await _db
-          .from('post_likes')
-          .select('post_id')
-          .eq('user_id', uid);
+      final results = await Future.wait([
+        _db.from('post_likes').select('post_id').eq('user_id', uid),
+        _avatarMap((postsRaw as List).map((r) => r['user_id'] as String).toSet()),
+      ]);
 
       final likedIds = <String>{
-        for (final l in likesRaw as List) l['post_id'] as String,
+        for (final l in results[0] as List) l['post_id'] as String,
       };
+      final avatars = results[1] as Map<String, String?>;
 
       return [
-        for (final m in postsRaw as List)
-          CommunityPost.fromMap(m as Map<String, dynamic>, likedIds.contains(m['id'])),
+        for (final m in postsRaw)
+          CommunityPost.fromMap(
+            m as Map<String, dynamic>,
+            likedIds.contains(m['id']),
+            avatarUrl: avatars[m['user_id'] as String],
+          ),
       ];
     } catch (_) {
       return [];
@@ -286,20 +298,42 @@ class CommunityService {
           .order('created_at', ascending: false)
           .limit(20);
 
-      final likesRaw = await _db
-          .from('post_likes')
-          .select('post_id')
-          .eq('user_id', uid);
+      final results = await Future.wait([
+        _db.from('post_likes').select('post_id').eq('user_id', uid),
+        _avatarMap({userId}),
+      ]);
+
       final likedIds = <String>{
-        for (final l in likesRaw as List) l['post_id'] as String,
+        for (final l in results[0] as List) l['post_id'] as String,
       };
+      final avatars = results[1] as Map<String, String?>;
 
       return [
         for (final m in postsRaw as List)
-          CommunityPost.fromMap(m as Map<String, dynamic>, likedIds.contains(m['id'])),
+          CommunityPost.fromMap(
+            m as Map<String, dynamic>,
+            likedIds.contains(m['id']),
+            avatarUrl: avatars[userId],
+          ),
       ];
     } catch (_) {
       return [];
+    }
+  }
+
+  Future<Map<String, String?>> _avatarMap(Set<String> userIds) async {
+    if (userIds.isEmpty) return {};
+    try {
+      final rows = await _db
+          .from('user_profiles')
+          .select('uid, avatar_url')
+          .inFilter('uid', userIds.toList());
+      return {
+        for (final r in rows as List)
+          r['uid'] as String: r['avatar_url'] as String?,
+      };
+    } catch (_) {
+      return {};
     }
   }
 

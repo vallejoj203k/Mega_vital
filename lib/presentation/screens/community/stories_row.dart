@@ -17,6 +17,7 @@ class StoriesRow extends StatelessWidget {
   final String currentUserId;
   final String currentUserName;
   final String currentUserInitials;
+  final String? currentUserAvatarUrl;
 
   const StoriesRow({
     super.key,
@@ -25,6 +26,7 @@ class StoriesRow extends StatelessWidget {
     required this.currentUserId,
     required this.currentUserName,
     required this.currentUserInitials,
+    this.currentUserAvatarUrl,
   });
 
   List<UserStoriesGroup> get _others =>
@@ -41,9 +43,10 @@ class StoriesRow extends StatelessWidget {
         itemBuilder: (ctx, i) {
           if (i == 0) {
             return _MyCircle(
-              userId:   currentUserId,
-              userName: currentUserName,
-              initials: currentUserInitials,
+              userId:    currentUserId,
+              userName:  currentUserName,
+              initials:  currentUserInitials,
+              avatarUrl: currentUserAvatarUrl,
             );
           }
           final group = _others[i - 1];
@@ -73,7 +76,8 @@ class StoriesRow extends StatelessWidget {
 
 class _MyCircle extends StatelessWidget {
   final String userId, userName, initials;
-  const _MyCircle({required this.userId, required this.userName, required this.initials});
+  final String? avatarUrl;
+  const _MyCircle({required this.userId, required this.userName, required this.initials, this.avatarUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +86,7 @@ class _MyCircle extends StatelessWidget {
       child: _CircleLayout(
         label: 'Tú',
         avatar: Stack(children: [
-          _Ring(hasNew: true, child: _AvatarContent(initials: initials, hasNew: true)),
+          _Ring(hasNew: true, child: _AvatarContent(initials: initials, hasNew: true, avatarUrl: avatarUrl)),
           Positioned(
             right: 0, bottom: 0,
             child: Container(
@@ -130,6 +134,7 @@ class _UserCircle extends StatelessWidget {
           child: _AvatarContent(
             initials: group.initials,
             hasNew: group.hasUnviewed,
+            avatarUrl: group.avatarUrl,
           ),
         ),
       ),
@@ -196,24 +201,38 @@ class _Ring extends StatelessWidget {
 class _AvatarContent extends StatelessWidget {
   final String initials;
   final bool hasNew;
-  const _AvatarContent({required this.initials, required this.hasNew});
+  final String? avatarUrl;
+  const _AvatarContent({required this.initials, required this.hasNew, this.avatarUrl});
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: 56, height: 56,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: hasNew
-          ? AppColors.primary.withOpacity(0.12)
-          : AppColors.surfaceVariant,
-    ),
-    alignment: Alignment.center,
-    child: Text(
-      initials,
-      style: AppTextStyles.headingMedium.copyWith(
-        color: hasNew ? AppColors.primary : AppColors.textSecondary,
-        fontWeight: FontWeight.w800,
+  Widget build(BuildContext context) {
+    final hasPhoto = avatarUrl != null && avatarUrl!.isNotEmpty;
+    return Container(
+      width: 56, height: 56,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: hasNew
+            ? AppColors.primary.withOpacity(0.12)
+            : AppColors.surfaceVariant,
       ),
+      alignment: Alignment.center,
+      child: hasPhoto
+          ? Image.network(
+              avatarUrl!,
+              width: 56, height: 56,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _initialsWidget(),
+            )
+          : _initialsWidget(),
+    );
+  }
+
+  Widget _initialsWidget() => Text(
+    initials,
+    style: AppTextStyles.headingMedium.copyWith(
+      color: hasNew ? AppColors.primary : AppColors.textSecondary,
+      fontWeight: FontWeight.w800,
     ),
   );
 }
