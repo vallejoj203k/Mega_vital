@@ -166,7 +166,7 @@ class CommunityService {
           .order('created_at', ascending: false)
           .limit(50);
 
-      final results = await Future.wait([
+      final results = await Future.wait<dynamic>([
         _db.from('post_likes').select('post_id').eq('user_id', uid),
         _avatarMap((postsRaw as List).map((r) => r['user_id'] as String).toSet()),
       ]);
@@ -298,7 +298,7 @@ class CommunityService {
           .order('created_at', ascending: false)
           .limit(20);
 
-      final results = await Future.wait([
+      final results = await Future.wait<dynamic>([
         _db.from('post_likes').select('post_id').eq('user_id', uid),
         _avatarMap({userId}),
       ]);
