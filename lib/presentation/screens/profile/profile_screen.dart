@@ -1,5 +1,7 @@
 // lib/presentation/screens/profile/profile_screen.dart
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
@@ -19,12 +21,28 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
   @override
   bool get wantKeepAlive => true;
 
+  bool _uploadingAvatar = false;
+
+  Future<void> _pickAndUploadAvatar(AuthProvider auth) async {
+    final picker = ImagePicker();
+    final xfile = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      imageQuality: 85,
+    );
+    if (xfile == null || !mounted) return;
+    setState(() => _uploadingAvatar = true);
+    await auth.uploadAvatar(File(xfile.path));
+    if (mounted) setState(() => _uploadingAvatar = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
     final auth = context.watch<AuthProvider>();
     final name = auth.profile?.name ?? auth.displayName;
     final initials = auth.userInitials;
+    final avatarUrl = auth.profile?.avatarUrl;
     final goal = auth.profile?.goal ?? MockData.currentUser.goal;
     final weight = auth.profile?.weight ?? MockData.currentUser.weight;
     final height = auth.profile?.height ?? MockData.currentUser.height;
@@ -60,15 +78,32 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
                 gradient: const LinearGradient(colors: [Color(0xFF0F2318), Color(0xFF0A1A10)], begin: Alignment.topLeft, end: Alignment.bottomRight),
                 borderColor: AppColors.primary.withOpacity(0.2),
                 child: Row(children: [
-                  Stack(children: [
-                    InitialsAvatar(initials: initials, size: 72),
-                    Positioned(right: 0, bottom: 0, child: GestureDetector(
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen())),
-                      child: Container(width: 24, height: 24,
-                        decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle, border: Border.all(color: AppColors.background, width: 2)),
-                        child: const Icon(Icons.edit, size: 12, color: AppColors.background)),
-                    )),
-                  ]),
+                  GestureDetector(
+                    onTap: () => _pickAndUploadAvatar(auth),
+                    child: Stack(children: [
+                      _uploadingAvatar
+                          ? Container(
+                              width: 72, height: 72,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.surfaceVariant,
+                              ),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                    color: AppColors.primary, strokeWidth: 2),
+                              ),
+                            )
+                          : InitialsAvatar(
+                              initials: initials, size: 72, photoUrl: avatarUrl),
+                      Positioned(right: 0, bottom: 0, child: Container(
+                        width: 24, height: 24,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary, shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.background, width: 2)),
+                        child: const Icon(Icons.camera_alt, size: 12, color: AppColors.background)),
+                      ),
+                    ]),
+                  ),
                   const SizedBox(width: 16),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(name, style: AppTextStyles.headingMedium),

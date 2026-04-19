@@ -456,3 +456,206 @@ $$;
 SELECT cron.unschedule('cleanup-expired-stories');
 SELECT cron.schedule('cleanup-expired-stories', '0 * * * *',
   'SELECT public.cleanup_expired_stories()');
+
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SECCIÓN 2: Imágenes en posts · Seguir usuarios · Foto de perfil
+-- Ejecutar en: Supabase Dashboard > SQL Editor
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- ─── 13. Nuevas columnas (idempotente) ──────────────────────────────────────
+
+-- Imagen adjunta en publicaciones
+ALTER TABLE public.community_posts ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+-- Foto de perfil del usuario
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+
+-- Permitir que usuarios autenticados vean todos los perfiles (para mostrar
+-- nombres y avatares en la comunidad)
+DROP POLICY IF EXISTS "Users can view own profile"          ON public.user_profiles;
+DROP POLICY IF EXISTS "Authenticated can view all profiles" ON public.user_profiles;
+
+CREATE POLICY "Authenticated can view all profiles"
+  ON public.user_profiles FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+
+-- ─── 14. user_follows ───────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.user_follows (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  follower_id  TEXT NOT NULL,
+  following_id TEXT NOT NULL,
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(follower_id, following_id)
+);
+
+ALTER TABLE public.user_follows ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated can view follows" ON public.user_follows;
+DROP POLICY IF EXISTS "Users can insert own follows"   ON public.user_follows;
+DROP POLICY IF EXISTS "Users can delete own follows"   ON public.user_follows;
+
+CREATE POLICY "Authenticated can view follows"
+  ON public.user_follows FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Users can insert own follows"
+  ON public.user_follows FOR INSERT
+  WITH CHECK (auth.uid()::text = follower_id);
+
+CREATE POLICY "Users can delete own follows"
+  ON public.user_follows FOR DELETE
+  USING (auth.uid()::text = follower_id);
+
+
+-- ─── 15. notifications ──────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    TEXT NOT NULL,
+  type       TEXT NOT NULL,   -- 'new_post' | 'new_follower'
+  title      TEXT NOT NULL,
+  body       TEXT NOT NULL,
+  actor_id   TEXT,
+  actor_name TEXT,
+  post_id    UUID,
+  is_read    BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own notifications"   ON public.notifications;
+DROP POLICY IF EXISTS "Service can insert notifications"   ON public.notifications;
+DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
+
+CREATE POLICY "Users can view own notifications"
+  ON public.notifications FOR SELECT
+  USING (auth.uid()::text = user_id);
+
+-- Los triggers SECURITY DEFINER omiten RLS; esta política es para inserciones
+-- directas desde el cliente si se necesitaran en el futuro.
+CREATE POLICY "Service can insert notifications"
+  ON public.notifications FOR INSERT
+  WITH CHECK (TRUE);
+
+CREATE POLICY "Users can update own notifications"
+  ON public.notifications FOR UPDATE
+  USING (auth.uid()::text = user_id);
+
+
+-- ─── 16. Trigger: notificar seguidores al publicar ──────────────────────────
+
+CREATE OR REPLACE FUNCTION public.notify_followers_on_post()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  INSERT INTO public.notifications
+    (user_id, type, title, body, actor_id, actor_name, post_id)
+  SELECT
+    f.follower_id,
+    'new_post',
+    NEW.user_name || ' publicó algo nuevo',
+    CASE
+      WHEN LENGTH(NEW.content) > 80 THEN LEFT(NEW.content, 80) || '…'
+      ELSE NEW.content
+    END,
+    NEW.user_id,
+    NEW.user_name,
+    NEW.id
+  FROM public.user_follows f
+  WHERE f.following_id = NEW.user_id;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_post_notify_followers ON public.community_posts;
+CREATE TRIGGER on_post_notify_followers
+  AFTER INSERT ON public.community_posts
+  FOR EACH ROW EXECUTE FUNCTION public.notify_followers_on_post();
+
+
+-- ─── 17. Trigger: notificar al seguido cuando alguien le sigue ──────────────
+
+CREATE OR REPLACE FUNCTION public.notify_on_new_follower()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_name TEXT;
+BEGIN
+  SELECT name INTO v_name
+  FROM public.user_profiles WHERE uid = NEW.follower_id;
+
+  INSERT INTO public.notifications
+    (user_id, type, title, body, actor_id, actor_name)
+  VALUES (
+    NEW.following_id,
+    'new_follower',
+    COALESCE(v_name, 'Alguien') || ' te empezó a seguir',
+    'Ahora tienes un nuevo seguidor.',
+    NEW.follower_id,
+    v_name
+  );
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_follow_notify ON public.user_follows;
+CREATE TRIGGER on_follow_notify
+  AFTER INSERT ON public.user_follows
+  FOR EACH ROW EXECUTE FUNCTION public.notify_on_new_follower();
+
+
+-- ─── 18. Storage: buckets 'post_images' y 'avatars' ─────────────────────────
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('post_images', 'post_images', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('avatars', 'avatars', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- Políticas para post_images
+DROP POLICY IF EXISTS "post_images_select" ON storage.objects;
+DROP POLICY IF EXISTS "post_images_insert" ON storage.objects;
+DROP POLICY IF EXISTS "post_images_delete" ON storage.objects;
+
+CREATE POLICY "post_images_select"
+  ON storage.objects FOR SELECT TO public
+  USING (bucket_id = 'post_images');
+
+CREATE POLICY "post_images_insert"
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'post_images'
+    AND (storage.foldername(name))[1] = auth.uid()::text);
+
+CREATE POLICY "post_images_delete"
+  ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'post_images'
+    AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Políticas para avatars
+DROP POLICY IF EXISTS "avatars_select" ON storage.objects;
+DROP POLICY IF EXISTS "avatars_insert" ON storage.objects;
+DROP POLICY IF EXISTS "avatars_update" ON storage.objects;
+DROP POLICY IF EXISTS "avatars_delete" ON storage.objects;
+
+CREATE POLICY "avatars_select"
+  ON storage.objects FOR SELECT TO public
+  USING (bucket_id = 'avatars');
+
+CREATE POLICY "avatars_insert"
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'avatars'
+    AND (storage.foldername(name))[1] = auth.uid()::text);
+
+CREATE POLICY "avatars_update"
+  ON storage.objects FOR UPDATE TO authenticated
+  USING (bucket_id = 'avatars'
+    AND (storage.foldername(name))[1] = auth.uid()::text);
+
+CREATE POLICY "avatars_delete"
+  ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'avatars'
+    AND (storage.foldername(name))[1] = auth.uid()::text);

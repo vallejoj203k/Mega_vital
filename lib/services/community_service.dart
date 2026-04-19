@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ─── Models ─────────────────────────────────────────────────────────────────
@@ -9,6 +10,7 @@ class CommunityPost {
   final String userInitials;
   final String content;
   final String? achievement;
+  final String? imageUrl;
   final DateTime createdAt;
   final int likesCount;
   final int commentsCount;
@@ -21,6 +23,7 @@ class CommunityPost {
     required this.userInitials,
     required this.content,
     this.achievement,
+    this.imageUrl,
     required this.createdAt,
     required this.likesCount,
     required this.commentsCount,
@@ -36,6 +39,7 @@ class CommunityPost {
       userInitials: _initials(name),
       content: m['content'] as String,
       achievement: m['achievement'] as String?,
+      imageUrl: m['image_url'] as String?,
       createdAt: DateTime.parse(m['created_at'] as String),
       likesCount: m['likes_count'] as int? ?? 0,
       commentsCount: m['comments_count'] as int? ?? 0,
@@ -50,6 +54,7 @@ class CommunityPost {
     userInitials: userInitials,
     content: content,
     achievement: achievement,
+    imageUrl: imageUrl,
     createdAt: createdAt,
     likesCount: likesCount ?? this.likesCount,
     commentsCount: commentsCount,
@@ -148,7 +153,7 @@ class CommunityService {
     try {
       final postsRaw = await _db
           .from('community_posts')
-          .select('id, user_id, user_name, content, achievement, likes_count, comments_count, created_at')
+          .select('id, user_id, user_name, content, achievement, image_url, likes_count, comments_count, created_at')
           .order('created_at', ascending: false)
           .limit(50);
 
@@ -175,20 +180,49 @@ class CommunityService {
     required String userName,
     required String content,
     String? achievement,
+    File? imageFile,
   }) async {
     final uid = _uid;
     if (uid == null) return 'No hay sesión activa.';
     try {
-      await _db.from('community_posts').insert({
+      final rows = await _db.from('community_posts').insert({
         'user_id': uid,
         'user_name': userName.isEmpty ? 'Usuario' : userName.trim(),
         'content': content.trim(),
         if (achievement != null && achievement.trim().isNotEmpty)
           'achievement': achievement.trim(),
-      });
+      }).select('id');
+
+      if (imageFile != null && (rows as List).isNotEmpty) {
+        final postId = rows.first['id'] as String;
+        final imageUrl = await _uploadPostImage(uid: uid, postId: postId, file: imageFile);
+        if (imageUrl != null) {
+          await _db.from('community_posts')
+              .update({'image_url': imageUrl})
+              .eq('id', postId);
+        }
+      }
       return null;
     } catch (e) {
       return e.toString();
+    }
+  }
+
+  Future<String?> _uploadPostImage({
+    required String uid,
+    required String postId,
+    required File file,
+  }) async {
+    try {
+      const bucket = 'post_images';
+      final path = '$uid/$postId';
+      await _db.storage.from(bucket).upload(
+        path, file,
+        fileOptions: const FileOptions(cacheControl: '86400', upsert: true),
+      );
+      return _db.storage.from(bucket).getPublicUrl(path);
+    } catch (_) {
+      return null;
     }
   }
 
