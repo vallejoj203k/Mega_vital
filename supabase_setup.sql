@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS public.community_posts (
   user_name      TEXT NOT NULL,
   content        TEXT NOT NULL,
   achievement    TEXT,
+  image_url      TEXT,
   likes_count    INTEGER NOT NULL DEFAULT 0,
   comments_count INTEGER NOT NULL DEFAULT 0,
   created_at     TIMESTAMPTZ DEFAULT NOW()
@@ -77,6 +78,7 @@ ALTER TABLE public.community_posts ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Authenticated can view posts"  ON public.community_posts;
 DROP POLICY IF EXISTS "Users can insert own posts"    ON public.community_posts;
+DROP POLICY IF EXISTS "Users can update own posts"    ON public.community_posts;
 DROP POLICY IF EXISTS "Users can delete own posts"    ON public.community_posts;
 
 CREATE POLICY "Authenticated can view posts"
@@ -85,6 +87,11 @@ CREATE POLICY "Authenticated can view posts"
 
 CREATE POLICY "Users can insert own posts"
   ON public.community_posts FOR INSERT
+  WITH CHECK (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can update own posts"
+  ON public.community_posts FOR UPDATE
+  USING (auth.uid()::text = user_id)
   WITH CHECK (auth.uid()::text = user_id);
 
 CREATE POLICY "Users can delete own posts"
