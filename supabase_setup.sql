@@ -666,3 +666,77 @@ CREATE POLICY "avatars_delete"
   ON storage.objects FOR DELETE TO authenticated
   USING (bucket_id = 'avatars'
     AND (storage.foldername(name))[1] = auth.uid()::text);
+
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SECCIÓN 3: Retos de ejercicio y records
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- ─── 19. challenges ─────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.challenges (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id       TEXT NOT NULL,
+  creator_name     TEXT NOT NULL,
+  title            TEXT NOT NULL,
+  description      TEXT,
+  exercise         TEXT NOT NULL,
+  unit             TEXT NOT NULL DEFAULT 'kg',  -- 'kg' | 'reps' | 'seg' | 'km'
+  higher_is_better BOOLEAN NOT NULL DEFAULT true,
+  deadline         DATE NOT NULL,
+  created_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.challenges ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated can view challenges" ON public.challenges;
+DROP POLICY IF EXISTS "Users can insert own challenges"   ON public.challenges;
+DROP POLICY IF EXISTS "Users can delete own challenges"   ON public.challenges;
+
+CREATE POLICY "Authenticated can view challenges"
+  ON public.challenges FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Users can insert own challenges"
+  ON public.challenges FOR INSERT
+  WITH CHECK (auth.uid()::text = creator_id);
+
+CREATE POLICY "Users can delete own challenges"
+  ON public.challenges FOR DELETE
+  USING (auth.uid()::text = creator_id);
+
+
+-- ─── 20. challenge_records ───────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.challenge_records (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  challenge_id UUID NOT NULL REFERENCES public.challenges(id) ON DELETE CASCADE,
+  user_id      TEXT NOT NULL,
+  user_name    TEXT NOT NULL,
+  value        NUMERIC NOT NULL,
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(challenge_id, user_id)
+);
+
+ALTER TABLE public.challenge_records ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated can view records" ON public.challenge_records;
+DROP POLICY IF EXISTS "Users can upsert own records"   ON public.challenge_records;
+DROP POLICY IF EXISTS "Users can delete own records"   ON public.challenge_records;
+
+CREATE POLICY "Authenticated can view records"
+  ON public.challenge_records FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Users can upsert own records"
+  ON public.challenge_records FOR INSERT
+  WITH CHECK (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can update own records"
+  ON public.challenge_records FOR UPDATE
+  USING (auth.uid()::text = user_id)
+  WITH CHECK (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can delete own records"
+  ON public.challenge_records FOR DELETE
+  USING (auth.uid()::text = user_id);
