@@ -52,11 +52,13 @@ class ChallengesProvider extends ChangeNotifier {
     required String challengeId,
     required String userName,
     required double value,
+    int? reps,
   }) async {
     final err = await _service.upsertRecord(
       challengeId: challengeId,
       userName:    userName,
       value:       value,
+      reps:        reps,
     );
     if (err == null) await load();
     return err;
@@ -65,8 +67,13 @@ class ChallengesProvider extends ChangeNotifier {
   Future<List<ChallengeRecord>> fetchLeaderboard(
     String challengeId, {
     required bool higherIsBetter,
+    required String unit,
   }) =>
-      _service.fetchLeaderboard(challengeId, higherIsBetter: higherIsBetter);
+      _service.fetchLeaderboard(
+        challengeId,
+        higherIsBetter: higherIsBetter,
+        unit:           unit,
+      );
 
   Future<bool> deleteChallenge(String challengeId) async {
     final ok = await _service.deleteChallenge(challengeId);

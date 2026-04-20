@@ -681,7 +681,7 @@ CREATE TABLE IF NOT EXISTS public.challenges (
   title            TEXT NOT NULL,
   description      TEXT,
   exercise         TEXT NOT NULL,
-  unit             TEXT NOT NULL DEFAULT 'kg',  -- 'kg' | 'reps' | 'seg' | 'km'
+  unit             TEXT NOT NULL DEFAULT 'kg',  -- 'kg' | 'reps' | 'seg' | 'km' | 'kg×reps'
   higher_is_better BOOLEAN NOT NULL DEFAULT true,
   deadline         DATE NOT NULL,
   created_at       TIMESTAMPTZ DEFAULT NOW()
@@ -714,9 +714,13 @@ CREATE TABLE IF NOT EXISTS public.challenge_records (
   user_id      TEXT NOT NULL,
   user_name    TEXT NOT NULL,
   value        NUMERIC NOT NULL,
+  reps         INTEGER,               -- solo para unit = 'kg×reps'
   created_at   TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(challenge_id, user_id)
 );
+
+-- Si la tabla ya existía sin la columna reps, añadirla (idempotente):
+ALTER TABLE public.challenge_records ADD COLUMN IF NOT EXISTS reps INTEGER;
 
 ALTER TABLE public.challenge_records ENABLE ROW LEVEL SECURITY;
 
