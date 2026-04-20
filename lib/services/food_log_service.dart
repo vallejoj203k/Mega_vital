@@ -1,39 +1,21 @@
 // lib/services/food_log_service.dart
-// ─────────────────────────────────────────────────────────────────
-// Servicio completo de registro de alimentos.
-//
-// Modelos:
-//   FoodEntry   → un alimento individual (nombre + macros)
-//   FoodLog     → todos los alimentos de un día específico
-//
-// Almacenamiento:
-//   SharedPreferences con clave 'mv_food_YYYY-MM-DD'
-//   Cada día tiene su propio registro independiente.
-//
-// Acceso rápido:
-//   FoodLogService.instance  (singleton)
-// ─────────────────────────────────────────────────────────────────
-
-import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-// ── Prefijo de clave en SharedPreferences ─────────────────────────
-const _kFoodPrefix = 'mv_food_';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ─────────────────────────────────────────────────────────────────
 // MODELO: Un alimento registrado
 // ─────────────────────────────────────────────────────────────────
 class FoodEntry {
-  final String id;          // timestamp único
-  final String name;        // "Pollo a la plancha"
-  final String mealType;    // desayuno | almuerzo | merienda | cena | extra
-  final int    calories;    // kcal
-  final double protein;     // gramos
-  final double carbs;       // gramos
-  final double fat;         // gramos
-  final double portions;    // factor de porción (1.0 = estándar)
-  final DateTime loggedAt;  // cuándo fue registrado
+  final String id;
+  final String name;
+  final String mealType;
+  final int    calories;
+  final double protein;
+  final double carbs;
+  final double fat;
+  final double portions;
+  final DateTime loggedAt;
 
   const FoodEntry({
     required this.id,
@@ -47,13 +29,11 @@ class FoodEntry {
     required this.loggedAt,
   });
 
-  // ── Macros ajustados por porciones ────────────────────────────
   int    get adjustedCalories => (calories * portions).round();
   double get adjustedProtein  => double.parse((protein * portions).toStringAsFixed(1));
   double get adjustedCarbs    => double.parse((carbs * portions).toStringAsFixed(1));
   double get adjustedFat      => double.parse((fat * portions).toStringAsFixed(1));
 
-  // ── Ícono y color según tipo de comida ────────────────────────
   IconData get icon {
     switch (mealType) {
       case 'desayuno':  return Icons.wb_sunny_rounded;
@@ -74,32 +54,32 @@ class FoodEntry {
     }
   }
 
-  // ── Serialización ─────────────────────────────────────────────
-  Map<String, dynamic> toMap() => {
+  factory FoodEntry.fromRow(Map<String, dynamic> r) => FoodEntry(
+    id:       r['id'] as String,
+    name:     r['name'] as String,
+    mealType: r['meal_type'] as String,
+    calories: (r['calories'] as num).toInt(),
+    protein:  (r['protein']  as num).toDouble(),
+    carbs:    (r['carbs']    as num).toDouble(),
+    fat:      (r['fat']      as num).toDouble(),
+    portions: (r['portions'] as num).toDouble(),
+    loggedAt: DateTime.parse(r['logged_at'] as String),
+  );
+
+  Map<String, dynamic> toRow(String userId, DateTime date) => {
     'id':        id,
+    'user_id':   userId,
+    'date':      _dateKey(date),
+    'meal_type': mealType,
     'name':      name,
-    'mealType':  mealType,
     'calories':  calories,
     'protein':   protein,
     'carbs':     carbs,
     'fat':       fat,
     'portions':  portions,
-    'loggedAt':  loggedAt.toIso8601String(),
+    'logged_at': loggedAt.toIso8601String(),
   };
 
-  factory FoodEntry.fromMap(Map<String, dynamic> m) => FoodEntry(
-    id:        m['id']       ?? '',
-    name:      m['name']     ?? '',
-    mealType:  m['mealType'] ?? 'extra',
-    calories:  (m['calories'] ?? 0) as int,
-    protein:   (m['protein']  ?? 0.0).toDouble(),
-    carbs:     (m['carbs']    ?? 0.0).toDouble(),
-    fat:       (m['fat']      ?? 0.0).toDouble(),
-    portions:  (m['portions'] ?? 1.0).toDouble(),
-    loggedAt:  DateTime.tryParse(m['loggedAt'] ?? '') ?? DateTime.now(),
-  );
-
-  // ── Crear copia con porciones distintas ───────────────────────
   FoodEntry copyWithPortions(double p) => FoodEntry(
     id: id, name: name, mealType: mealType,
     calories: calories, protein: protein, carbs: carbs, fat: fat,
@@ -116,13 +96,11 @@ class FoodLog {
 
   const FoodLog({required this.date, required this.entries});
 
-  // ── Totales del día ───────────────────────────────────────────
   int    get totalCalories => entries.fold(0,    (s, e) => s + e.adjustedCalories);
   double get totalProtein  => entries.fold(0.0,  (s, e) => s + e.adjustedProtein);
   double get totalCarbs    => entries.fold(0.0,  (s, e) => s + e.adjustedCarbs);
   double get totalFat      => entries.fold(0.0,  (s, e) => s + e.adjustedFat);
 
-  // ── Entradas agrupadas por tipo de comida ─────────────────────
   Map<String, List<FoodEntry>> get byMealType {
     final map = <String, List<FoodEntry>>{};
     for (final e in entries) {
@@ -131,27 +109,11 @@ class FoodLog {
     return map;
   }
 
-  // ── Lista de tipos de comida en orden ─────────────────────────
   static const mealOrder = ['desayuno', 'almuerzo', 'merienda', 'cena', 'extra'];
 
-  // ── Calorías de un tipo de comida ─────────────────────────────
   int caloriesFor(String mealType) =>
       (byMealType[mealType] ?? []).fold(0, (s, e) => s + e.adjustedCalories);
 
-  // ── Serialización ─────────────────────────────────────────────
-  Map<String, dynamic> toMap() => {
-    'date':    _dateKey(date),
-    'entries': entries.map((e) => e.toMap()).toList(),
-  };
-
-  factory FoodLog.fromMap(Map<String, dynamic> m) => FoodLog(
-    date:    DateTime.tryParse(m['date'] ?? '') ?? DateTime.now(),
-    entries: (m['entries'] as List? ?? [])
-        .map((e) => FoodEntry.fromMap(Map<String, dynamic>.from(e as Map)))
-        .toList(),
-  );
-
-  // Registro vacío para un día dado
   factory FoodLog.empty(DateTime date) => FoodLog(date: date, entries: []);
 }
 
@@ -159,91 +121,127 @@ class FoodLog {
 // SERVICIO
 // ─────────────────────────────────────────────────────────────────
 class FoodLogService {
-  // ── Singleton ─────────────────────────────────────────────────
   static final FoodLogService instance = FoodLogService._();
   FoodLogService._();
 
-  // ── Clave de almacenamiento para una fecha ────────────────────
-  static String _key(DateTime date) => '$_kFoodPrefix${_dateKey(date)}';
+  final _db = Supabase.instance.client;
+  String? get _uid => _db.auth.currentUser?.id;
 
-  // ── Cargar el log de un día ───────────────────────────────────
   Future<FoodLog> loadDay(DateTime date) async {
+    final uid = _uid;
+    if (uid == null) return FoodLog.empty(date);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw   = prefs.getString(_key(date));
-      if (raw == null) return FoodLog.empty(date);
-      return FoodLog.fromMap(jsonDecode(raw));
+      final rows = await _db
+          .from('nutrition_logs')
+          .select()
+          .eq('user_id', uid)
+          .eq('date', _dateKey(date)) as List;
+      return FoodLog(
+        date:    date,
+        entries: rows
+            .map((r) => FoodEntry.fromRow(r as Map<String, dynamic>))
+            .toList(),
+      );
     } catch (_) {
       return FoodLog.empty(date);
     }
   }
 
-  // ── Cargar el log de hoy ──────────────────────────────────────
   Future<FoodLog> loadToday() => loadDay(DateTime.now());
 
-  // ── Guardar el log completo de un día ─────────────────────────
-  Future<void> _saveLog(FoodLog log) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_key(log.date), jsonEncode(log.toMap()));
-  }
-
-  // ── Agregar un alimento al día ────────────────────────────────
   Future<FoodLog> addEntry(FoodEntry entry, {DateTime? date}) async {
+    final uid = _uid;
     final day = date ?? DateTime.now();
-    final log = await loadDay(day);
-    final updated = FoodLog(
-      date:    log.date,
-      entries: [...log.entries, entry],
-    );
-    await _saveLog(updated);
-    return updated;
+    if (uid == null) return FoodLog.empty(day);
+    try {
+      await _db.from('nutrition_logs').insert(entry.toRow(uid, day));
+    } catch (_) {}
+    return loadDay(day);
   }
 
-  // ── Editar un alimento existente ──────────────────────────────
   Future<FoodLog> updateEntry(FoodEntry updated, {DateTime? date}) async {
+    final uid = _uid;
     final day = date ?? DateTime.now();
-    final log = await loadDay(day);
-    final newEntries = log.entries.map((e) => e.id == updated.id ? updated : e).toList();
-    final newLog = FoodLog(date: log.date, entries: newEntries);
-    await _saveLog(newLog);
-    return newLog;
+    if (uid == null) return FoodLog.empty(day);
+    try {
+      await _db.from('nutrition_logs').update({
+        'name':      updated.name,
+        'meal_type': updated.mealType,
+        'calories':  updated.calories,
+        'protein':   updated.protein,
+        'carbs':     updated.carbs,
+        'fat':       updated.fat,
+        'portions':  updated.portions,
+      }).eq('id', updated.id).eq('user_id', uid);
+    } catch (_) {}
+    return loadDay(day);
   }
 
-  // ── Eliminar un alimento ──────────────────────────────────────
   Future<FoodLog> removeEntry(String entryId, {DateTime? date}) async {
+    final uid = _uid;
     final day = date ?? DateTime.now();
-    final log = await loadDay(day);
-    final newLog = FoodLog(
-      date:    log.date,
-      entries: log.entries.where((e) => e.id != entryId).toList(),
-    );
-    await _saveLog(newLog);
-    return newLog;
+    if (uid == null) return FoodLog.empty(day);
+    try {
+      await _db.from('nutrition_logs')
+          .delete()
+          .eq('id', entryId)
+          .eq('user_id', uid);
+    } catch (_) {}
+    return loadDay(day);
   }
 
-  // ── Cargar varios días (para historial / progreso) ────────────
   Future<List<FoodLog>> loadRange(DateTime from, DateTime to) async {
-    final logs = <FoodLog>[];
-    var current = DateTime(from.year, from.month, from.day);
-    final end    = DateTime(to.year,   to.month,   to.day);
-    while (!current.isAfter(end)) {
-      logs.add(await loadDay(current));
-      current = current.add(const Duration(days: 1));
+    final uid = _uid;
+    if (uid == null) return [];
+    try {
+      final rows = await _db
+          .from('nutrition_logs')
+          .select()
+          .eq('user_id', uid)
+          .gte('date', _dateKey(from))
+          .lte('date', _dateKey(to)) as List;
+
+      final grouped = <String, List<FoodEntry>>{};
+      for (final r in rows) {
+        final key = r['date'] as String;
+        grouped.putIfAbsent(key, () => [])
+            .add(FoodEntry.fromRow(r as Map<String, dynamic>));
+      }
+
+      final logs    = <FoodLog>[];
+      var   current = DateTime(from.year, from.month, from.day);
+      final end     = DateTime(to.year, to.month, to.day);
+      while (!current.isAfter(end)) {
+        logs.add(FoodLog(date: current, entries: grouped[_dateKey(current)] ?? []));
+        current = current.add(const Duration(days: 1));
+      }
+      return logs;
+    } catch (_) {
+      return [];
     }
-    return logs;
   }
 
-  // ── Borrar el registro de un día (por si el usuario lo necesita) ─
   Future<void> clearDay(DateTime date) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_key(date));
+    final uid = _uid;
+    if (uid == null) return;
+    try {
+      await _db.from('nutrition_logs')
+          .delete()
+          .eq('user_id', uid)
+          .eq('date', _dateKey(date));
+    } catch (_) {}
   }
 
-  // ── Generar ID único ──────────────────────────────────────────
-  static String generateId() =>
-      DateTime.now().millisecondsSinceEpoch.toString();
+  static String generateId() {
+    final rng   = Random.secure();
+    final bytes = List<int>.generate(16, (_) => rng.nextInt(256));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    final h = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    return '${h.substring(0, 8)}-${h.substring(8, 12)}-'
+        '${h.substring(12, 16)}-${h.substring(16, 20)}-${h.substring(20)}';
+  }
 }
 
-// ── Helper: convierte DateTime a string de clave 'YYYY-MM-DD' ────
 String _dateKey(DateTime d) =>
     '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';

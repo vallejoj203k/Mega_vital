@@ -681,7 +681,7 @@ CREATE TABLE IF NOT EXISTS public.challenges (
   title            TEXT NOT NULL,
   description      TEXT,
   exercise         TEXT NOT NULL,
-  unit             TEXT NOT NULL DEFAULT 'kg',  -- 'kg' | 'reps' | 'seg' | 'km'
+  unit             TEXT NOT NULL DEFAULT 'kg',  -- 'kg' | 'reps' | 'seg' | 'km' | 'kg×reps'
   higher_is_better BOOLEAN NOT NULL DEFAULT true,
   deadline         DATE NOT NULL,
   created_at       TIMESTAMPTZ DEFAULT NOW()
@@ -714,14 +714,19 @@ CREATE TABLE IF NOT EXISTS public.challenge_records (
   user_id      TEXT NOT NULL,
   user_name    TEXT NOT NULL,
   value        NUMERIC NOT NULL,
+  reps         INTEGER,               -- solo para unit = 'kg×reps'
   created_at   TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(challenge_id, user_id)
 );
+
+-- Si la tabla ya existía sin la columna reps, añadirla (idempotente):
+ALTER TABLE public.challenge_records ADD COLUMN IF NOT EXISTS reps INTEGER;
 
 ALTER TABLE public.challenge_records ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Authenticated can view records" ON public.challenge_records;
 DROP POLICY IF EXISTS "Users can upsert own records"   ON public.challenge_records;
+DROP POLICY IF EXISTS "Users can update own records"   ON public.challenge_records;
 DROP POLICY IF EXISTS "Users can delete own records"   ON public.challenge_records;
 
 CREATE POLICY "Authenticated can view records"
@@ -740,3 +745,93 @@ CREATE POLICY "Users can update own records"
 CREATE POLICY "Users can delete own records"
   ON public.challenge_records FOR DELETE
   USING (auth.uid()::text = user_id);
+
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SECCIÓN 4: Nutrición en la nube y rutinas públicas
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- ─── 21. nutrition_logs ──────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.nutrition_logs (
+  id         TEXT PRIMARY KEY,
+  user_id    TEXT NOT NULL,
+  date       DATE NOT NULL,
+  meal_type  TEXT NOT NULL,
+  name       TEXT NOT NULL,
+  calories   INTEGER NOT NULL DEFAULT 0,
+  protein    DOUBLE PRECISION NOT NULL DEFAULT 0,
+  carbs      DOUBLE PRECISION NOT NULL DEFAULT 0,
+  fat        DOUBLE PRECISION NOT NULL DEFAULT 0,
+  portions   DOUBLE PRECISION NOT NULL DEFAULT 1.0,
+  logged_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.nutrition_logs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own nutrition"   ON public.nutrition_logs;
+DROP POLICY IF EXISTS "Users can insert own nutrition" ON public.nutrition_logs;
+DROP POLICY IF EXISTS "Users can update own nutrition" ON public.nutrition_logs;
+DROP POLICY IF EXISTS "Users can delete own nutrition" ON public.nutrition_logs;
+
+CREATE POLICY "Users can view own nutrition"
+  ON public.nutrition_logs FOR SELECT
+  USING (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can insert own nutrition"
+  ON public.nutrition_logs FOR INSERT
+  WITH CHECK (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can update own nutrition"
+  ON public.nutrition_logs FOR UPDATE
+  USING (auth.uid()::text = user_id)
+  WITH CHECK (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can delete own nutrition"
+  ON public.nutrition_logs FOR DELETE
+  USING (auth.uid()::text = user_id);
+
+-- Índice para consultas rápidas por usuario y fecha
+CREATE INDEX IF NOT EXISTS nutrition_logs_user_date_idx
+  ON public.nutrition_logs (user_id, date);
+
+
+-- ─── 22. user_routines ───────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.user_routines (
+  id           TEXT PRIMARY KEY,
+  user_id      TEXT NOT NULL,
+  name         TEXT NOT NULL,
+  muscle_id    TEXT NOT NULL,
+  muscle_name  TEXT NOT NULL,
+  exercise_ids JSONB NOT NULL DEFAULT '[]',
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.user_routines ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated can view routines" ON public.user_routines;
+DROP POLICY IF EXISTS "Users can insert own routines"   ON public.user_routines;
+DROP POLICY IF EXISTS "Users can update own routines"   ON public.user_routines;
+DROP POLICY IF EXISTS "Users can delete own routines"   ON public.user_routines;
+
+CREATE POLICY "Authenticated can view routines"
+  ON public.user_routines FOR SELECT
+  USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Users can insert own routines"
+  ON public.user_routines FOR INSERT
+  WITH CHECK (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can update own routines"
+  ON public.user_routines FOR UPDATE
+  USING (auth.uid()::text = user_id)
+  WITH CHECK (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can delete own routines"
+  ON public.user_routines FOR DELETE
+  USING (auth.uid()::text = user_id);
+
+-- Índice para consultas por usuario
+CREATE INDEX IF NOT EXISTS user_routines_user_idx
+  ON public.user_routines (user_id);

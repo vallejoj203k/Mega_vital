@@ -1819,7 +1819,7 @@ class _ChallengeCard extends StatelessWidget {
                           color: AppColors.primary.withOpacity(0.3), width: 0.5),
                     ),
                     child: Text(
-                      'Mi marca: ${_formatValue(challenge.myRecord!, challenge.unit)}',
+                      'Mi marca: ${_formatRecord(challenge.myRecord!, challenge.unit, challenge.myReps)}',
                       style: AppTextStyles.caption.copyWith(
                         color: AppColors.primary,
                         fontWeight: FontWeight.w700,
@@ -1967,6 +1967,7 @@ class _ChallengeDetailSheetState extends State<_ChallengeDetailSheet> {
     _future = widget.provider.fetchLeaderboard(
       widget.challenge.id,
       higherIsBetter: widget.challenge.higherIsBetter,
+      unit:           widget.challenge.unit,
     );
   }
 
@@ -2159,11 +2160,21 @@ class _RecordRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          Text(
-            _formatValue(record.value, unit),
-            style: AppTextStyles.labelLarge.copyWith(
-              color: record.rank == 1 ? AppColors.primary : AppColors.textPrimary,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                _formatRecord(record.value, unit, record.reps),
+                style: AppTextStyles.labelLarge.copyWith(
+                  color: record.rank == 1 ? AppColors.primary : AppColors.textPrimary,
+                ),
+              ),
+              if (unit == 'kg×reps')
+                Text(
+                  '${record.volume.toInt()} vol',
+                  style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                ),
+            ],
           ),
         ],
       ),
@@ -2197,29 +2208,46 @@ class _SubmitRecordSheet extends StatefulWidget {
 }
 
 class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
-  final _controller = TextEditingController();
+  final _weightCtrl = TextEditingController();
+  final _repsCtrl   = TextEditingController();
   bool _loading = false;
+
+  bool get _isWeightReps => widget.challenge.unit == 'kg×reps';
 
   @override
   void dispose() {
-    _controller.dispose();
+    _weightCtrl.dispose();
+    _repsCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
-    final text = _controller.text.trim().replaceAll(',', '.');
-    final value = double.tryParse(text);
+    final rawWeight = _weightCtrl.text.trim().replaceAll(',', '.');
+    final value = double.tryParse(rawWeight);
     if (value == null || value <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa un valor válido mayor que cero.')),
+        SnackBar(content: Text(_isWeightReps
+            ? 'Ingresa un peso válido mayor que cero.'
+            : 'Ingresa un valor válido mayor que cero.')),
       );
       return;
     }
+    int? reps;
+    if (_isWeightReps) {
+      reps = int.tryParse(_repsCtrl.text.trim());
+      if (reps == null || reps <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ingresa un número de repeticiones válido.')),
+        );
+        return;
+      }
+    }
     setState(() => _loading = true);
     final err = await widget.provider.upsertRecord(
-      challengeId:     widget.challenge.id,
-      userName:        widget.currentUserName,
-      value:           value,
+      challengeId: widget.challenge.id,
+      userName:    widget.currentUserName,
+      value:       value,
+      reps:        reps,
     );
     if (mounted) {
       if (err == null) {
@@ -2261,57 +2289,39 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
           const SizedBox(height: 4),
           Text(
             ch.myRecord != null
-                ? 'Tu marca actual: ${_formatValue(ch.myRecord!, ch.unit)}'
+                ? 'Tu marca actual: ${_formatRecord(ch.myRecord!, ch.unit, ch.myReps)}'
                 : 'Registra tu primera marca',
             style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  autofocus: true,
-                  style: AppTextStyles.headingMedium,
-                  decoration: InputDecoration(
-                    hintText: '0',
-                    hintStyle: AppTextStyles.headingMedium
-                        .copyWith(color: AppColors.textMuted),
-                    filled: true,
-                    fillColor: AppColors.background,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          const BorderSide(color: AppColors.border, width: 0.5),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          const BorderSide(color: AppColors.border, width: 0.5),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          const BorderSide(color: AppColors.primary, width: 1),
-                    ),
-                  ),
-                ),
+          if (_isWeightReps) ...[
+            Row(
+              children: [
+                Expanded(child: _numField(_weightCtrl, '0', autofocus: true, decimal: true)),
+                const SizedBox(width: 10),
+                _unitLabel('kg'),
+                const SizedBox(width: 16),
+                const Text('×', style: TextStyle(fontSize: 22, color: AppColors.textMuted)),
+                const SizedBox(width: 16),
+                Expanded(child: _numField(_repsCtrl, '0', decimal: false)),
+                const SizedBox(width: 10),
+                _unitLabel('reps'),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Center(
+              child: Text(
+                'El ranking se ordena por volumen (kg × reps)',
+                style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
               ),
-              const SizedBox(width: 12),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceVariant,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(ch.unit,
-                    style: AppTextStyles.labelLarge
-                        .copyWith(color: AppColors.textSecondary)),
-              ),
-            ],
+            ),
+          ] else
+            Row(
+              children: [
+                Expanded(child: _numField(_weightCtrl, '0', autofocus: true, decimal: ch.unit == 'kg' || ch.unit == 'km')),
+                const SizedBox(width: 12),
+                _unitLabel(ch.unit),
+              ],
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -2340,6 +2350,44 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
       ),
     );
   }
+
+  Widget _numField(TextEditingController ctrl, String hint,
+      {bool autofocus = false, bool decimal = true}) {
+    return TextField(
+      controller: ctrl,
+      keyboardType: TextInputType.numberWithOptions(decimal: decimal),
+      autofocus: autofocus,
+      style: AppTextStyles.headingMedium,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: AppTextStyles.headingMedium.copyWith(color: AppColors.textMuted),
+        filled: true,
+        fillColor: AppColors.background,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border, width: 0.5),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border, width: 0.5),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1),
+        ),
+      ),
+    );
+  }
+
+  Widget _unitLabel(String unit) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+    decoration: BoxDecoration(
+      color: AppColors.surfaceVariant,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Text(unit,
+        style: AppTextStyles.labelLarge.copyWith(color: AppColors.textSecondary)),
+  );
 }
 
 // ─── Create challenge sheet ───────────────────────────────────────────────────
@@ -2362,7 +2410,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
   DateTime _deadline     = DateTime.now().add(const Duration(days: 7));
   bool _loading          = false;
 
-  static const _units = ['kg', 'reps', 'seg', 'km'];
+  static const _units = ['kg', 'reps', 'seg', 'km', 'kg×reps'];
 
   @override
   void dispose() {
@@ -2487,32 +2535,56 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                 );
               }).toList(),
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Criterio de victoria', style: AppTextStyles.labelMedium),
-                      const SizedBox(height: 4),
-                      Text(
-                        _higherIsBetter
-                            ? 'Gana el mayor valor'
-                            : 'Gana el menor valor',
-                        style: AppTextStyles.caption
-                            .copyWith(color: AppColors.textSecondary),
+            if (_unit == 'kg×reps') ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 0.5),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, size: 14, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Ranking por volumen: kg × reps. Gana quien acumule más volumen total.',
+                        style: AppTextStyles.caption.copyWith(color: AppColors.primary),
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Criterio de victoria', style: AppTextStyles.labelMedium),
+                        const SizedBox(height: 4),
+                        Text(
+                          _higherIsBetter
+                              ? 'Gana el mayor valor'
+                              : 'Gana el menor valor',
+                          style: AppTextStyles.caption
+                              .copyWith(color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                Switch(
-                  value: _higherIsBetter,
-                  onChanged: (v) => setState(() => _higherIsBetter = v),
-                  activeColor: AppColors.primary,
-                ),
-              ],
-            ),
+                  Switch(
+                    value: _higherIsBetter,
+                    onChanged: (v) => setState(() => _higherIsBetter = v),
+                    activeColor: AppColors.primary,
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 16),
             Row(
               children: [
@@ -2684,4 +2756,10 @@ String _formatValue(double v, String unit) {
     default:
       return '${v.toInt()} $unit';
   }
+}
+
+String _formatRecord(double v, String unit, int? reps) {
+  if (unit != 'kg×reps') return _formatValue(v, unit);
+  final kgStr = v == v.truncateToDouble() ? '${v.toInt()} kg' : '${v.toStringAsFixed(1)} kg';
+  return reps != null && reps > 0 ? '$kgStr × $reps reps' : kgStr;
 }
