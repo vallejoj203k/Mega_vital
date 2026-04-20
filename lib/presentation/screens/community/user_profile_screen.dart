@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/data/muscle_data.dart';
 import '../../../core/providers/community_provider.dart';
 import '../../../core/providers/follow_provider.dart';
 import '../../../services/community_service.dart';
+import '../../../services/routine_service.dart';
 import '../../widgets/shared_widgets.dart';
 
 class UserProfileScreen extends StatefulWidget {
@@ -32,6 +34,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   String? _avatarUrl;
   int _followerCount = 0;
   List<CommunityPost> _posts = [];
+  List<SavedRoutine> _routines = [];
 
   @override
   void initState() {
@@ -40,7 +43,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Future<void> _load() async {
-    await Future.wait([_fetchProfile(), _fetchPosts(), _fetchFollowers()]);
+    await Future.wait([_fetchProfile(), _fetchPosts(), _fetchFollowers(), _fetchRoutines()]);
     if (mounted) setState(() => _loading = false);
   }
 
@@ -90,6 +93,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           .eq('following_id', widget.userId);
       _followerCount = (rows as List).length;
     } catch (_) {}
+  }
+
+  Future<void> _fetchRoutines() async {
+    _routines = await RoutineService().loadRoutinesForUser(widget.userId);
   }
 
   String _timeAgo(DateTime dt) {
@@ -254,6 +261,30 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
                   const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
+                  // ── Sección rutinas ──────────────────────────
+                  if (_routines.isNotEmpty) ...[
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Text('Rutinas', style: AppTextStyles.headingSmall),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (_, i) {
+                          final r = _routines[i];
+                          return Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                            child: _RoutineCard(routine: r),
+                          );
+                        },
+                        childCount: _routines.length,
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 8)),
+                  ],
+
                   // ── Sección publicaciones ────────────────────
                   SliverToBoxAdapter(
                     child: Padding(
@@ -319,6 +350,87 @@ class _StatChip extends StatelessWidget {
                 .copyWith(color: AppColors.primary)),
         Text(label, style: AppTextStyles.caption),
       ],
+    );
+  }
+}
+
+class _RoutineCard extends StatelessWidget {
+  final SavedRoutine routine;
+  const _RoutineCard({required this.routine});
+
+  @override
+  Widget build(BuildContext context) {
+    final muscle = kMuscleGroups.cast<MuscleGroup?>()
+        .firstWhere((m) => m?.id == routine.muscleId, orElse: () => null);
+    final color = muscle?.color ?? AppColors.primary;
+
+    return DarkCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: color.withOpacity(0.4)),
+                ),
+                child: Text(
+                  routine.muscleName,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  routine.name,
+                  style: AppTextStyles.bodyMedium
+                      .copyWith(fontWeight: FontWeight.w700),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Text(
+                '${routine.exercises.length} ejerc.',
+                style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+              ),
+            ],
+          ),
+          if (routine.exercises.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            ...routine.exercises.take(4).map((ex) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                children: [
+                  Icon(ex.icon, size: 14, color: AppColors.textMuted),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(ex.name, style: AppTextStyles.caption),
+                  ),
+                  Text('${ex.sets} · ${ex.reps}',
+                      style: AppTextStyles.caption
+                          .copyWith(color: AppColors.textMuted)),
+                ],
+              ),
+            )),
+            if (routine.exercises.length > 4)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  '+${routine.exercises.length - 4} más',
+                  style: AppTextStyles.caption
+                      .copyWith(color: AppColors.textMuted),
+                ),
+              ),
+          ],
+        ],
+      ),
     );
   }
 }
