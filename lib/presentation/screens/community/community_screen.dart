@@ -7,10 +7,12 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/challenges_provider.dart';
 import '../../../core/providers/community_provider.dart';
 import '../../../core/providers/follow_provider.dart';
 import '../../../core/providers/notification_provider.dart';
 import '../../../core/providers/stories_provider.dart';
+import '../../../services/challenges_service.dart';
 import '../../../services/community_service.dart';
 import '../../widgets/shared_widgets.dart';
 import '../notifications/notifications_screen.dart';
@@ -34,12 +36,13 @@ class _CommunityScreenState extends State<CommunityScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CommunityProvider>().init();
       context.read<StoriesProvider>().load();
       context.read<FollowProvider>().load();
       context.read<NotificationProvider>().load();
+      context.read<ChallengesProvider>().init();
     });
   }
 
@@ -150,12 +153,16 @@ class _CommunityScreenState extends State<CommunityScreen>
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
                   _FeedTab(
-                currentUserName:      userName,
-                currentUserId:        userId,
-                currentUserInitials:  userInitials,
-                currentUserAvatarUrl: userAvatarUrl,
-              ),
+                    currentUserName:      userName,
+                    currentUserId:        userId,
+                    currentUserInitials:  userInitials,
+                    currentUserAvatarUrl: userAvatarUrl,
+                  ),
                   const _LeaderboardTab(),
+                  _ChallengesTab(
+                    currentUserId:   userId,
+                    currentUserName: userName,
+                  ),
                 ],
               ),
             ),
@@ -195,7 +202,7 @@ class _CustomTabBar extends StatelessWidget {
         unselectedLabelStyle:
             const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
         dividerColor: Colors.transparent,
-        tabs: const [Tab(text: 'Feed'), Tab(text: 'Clasificación')],
+        tabs: const [Tab(text: 'Feed'), Tab(text: 'Clasificación'), Tab(text: 'Retos')],
       ),
     );
   }
@@ -1586,5 +1593,1095 @@ class _LeaderCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RETOS TAB
+// ═══════════════════════════════════════════════════════════════════════════
+
+class _ChallengesTab extends StatelessWidget {
+  final String currentUserId;
+  final String currentUserName;
+  const _ChallengesTab({required this.currentUserId, required this.currentUserName});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ChallengesProvider>(
+      builder: (ctx, cp, _) {
+        if (cp.loading && cp.challenges.isEmpty) {
+          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+        }
+        return RefreshIndicator(
+          color: AppColors.primary,
+          backgroundColor: AppColors.surface,
+          onRefresh: cp.load,
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                  child: Row(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Retos activos', style: AppTextStyles.headingSmall),
+                          Text('${cp.challenges.where((c) => c.isActive).length} en curso',
+                              style: AppTextStyles.caption),
+                        ],
+                      ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () => _openCreate(ctx),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            gradient: AppColors.primaryGradient,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.add, size: 15, color: AppColors.background),
+                              const SizedBox(width: 5),
+                              Text('Crear reto',
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: AppColors.background,
+                                    fontWeight: FontWeight.w700,
+                                  )),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (cp.challenges.isEmpty)
+                SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.emoji_events_outlined,
+                            size: 48, color: AppColors.textMuted),
+                        const SizedBox(height: 12),
+                        Text('Aún no hay retos',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.textMuted)),
+                        const SizedBox(height: 6),
+                        Text('¡Sé el primero en crear uno!',
+                            style: AppTextStyles.caption),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (_, i) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _ChallengeCard(
+                          challenge:       cp.challenges[i],
+                          currentUserId:   currentUserId,
+                          currentUserName: currentUserName,
+                          provider:        cp,
+                        ),
+                      ),
+                      childCount: cp.challenges.length,
+                    ),
+                  ),
+                ),
+              const SliverToBoxAdapter(child: SizedBox(height: 20)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _openCreate(BuildContext ctx) {
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _CreateChallengeSheet(
+        creatorName: currentUserName,
+        provider: ctx.read<ChallengesProvider>(),
+      ),
+    );
+  }
+}
+
+// ─── Challenge card ───────────────────────────────────────────────────────────
+
+class _ChallengeCard extends StatelessWidget {
+  final Challenge challenge;
+  final String currentUserId;
+  final String currentUserName;
+  final ChallengesProvider provider;
+
+  const _ChallengeCard({
+    required this.challenge,
+    required this.currentUserId,
+    required this.currentUserName,
+    required this.provider,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isOwner = challenge.creatorId == currentUserId;
+    return GestureDetector(
+      onTap: () => _openDetail(context),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: AppColors.cardGradient,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: challenge.isActive
+                ? AppColors.primary.withOpacity(0.25)
+                : AppColors.border,
+            width: 0.5,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(_exerciseIcon(challenge.exercise),
+                      size: 18, color: AppColors.primary),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(challenge.title,
+                          style: AppTextStyles.labelLarge,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                      Text(challenge.exercise,
+                          style: AppTextStyles.caption),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _StatusBadge(challenge: challenge),
+                if (isOwner) ...[
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: () => _confirmDelete(context),
+                    child: const Icon(Icons.more_horiz,
+                        size: 18, color: AppColors.textMuted),
+                  ),
+                ],
+              ],
+            ),
+            if (challenge.description != null) ...[
+              const SizedBox(height: 10),
+              Text(challenge.description!,
+                  style: AppTextStyles.bodySmall
+                      .copyWith(color: AppColors.textSecondary),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _InfoChip(
+                  icon: Icons.people_outline,
+                  label: '${challenge.participantsCount} participantes',
+                ),
+                const SizedBox(width: 10),
+                _InfoChip(
+                  icon: Icons.straighten,
+                  label: challenge.unit,
+                ),
+                const Spacer(),
+                if (challenge.myRecord != null)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: AppColors.primary.withOpacity(0.3), width: 0.5),
+                    ),
+                    child: Text(
+                      'Mi marca: ${_formatValue(challenge.myRecord!, challenge.unit)}',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _openDetail(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text('Ver ranking',
+                          style: AppTextStyles.caption.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary)),
+                    ),
+                  ),
+                ),
+                if (challenge.isActive) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => _openSubmit(context),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 9),
+                        decoration: BoxDecoration(
+                          gradient: AppColors.primaryGradient,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          challenge.myRecord != null ? 'Actualizar marca' : 'Registrar marca',
+                          style: AppTextStyles.caption.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.background),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openDetail(BuildContext ctx) {
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ChallengeDetailSheet(
+        challenge:       challenge,
+        currentUserId:   currentUserId,
+        currentUserName: currentUserName,
+        provider:        provider,
+      ),
+    );
+  }
+
+  void _openSubmit(BuildContext ctx) {
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _SubmitRecordSheet(
+        challenge:       challenge,
+        currentUserName: currentUserName,
+        provider:        provider,
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete(BuildContext ctx) async {
+    final ok = await showDialog<bool>(
+      context: ctx,
+      builder: (d) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Eliminar reto', style: TextStyle(color: AppColors.textPrimary)),
+        content: const Text('Se borrarán todos los registros. ¿Continuar?',
+            style: TextStyle(color: AppColors.textSecondary)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false),
+              child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary))),
+          TextButton(onPressed: () => Navigator.pop(d, true),
+              child: const Text('Eliminar', style: TextStyle(color: AppColors.error))),
+        ],
+      ),
+    );
+    if (ok == true) await provider.deleteChallenge(challenge.id);
+  }
+
+  IconData _exerciseIcon(String ex) {
+    final lower = ex.toLowerCase();
+    if (lower.contains('km') || lower.contains('corre') || lower.contains('carrera')) {
+      return Icons.directions_run;
+    }
+    if (lower.contains('nata') || lower.contains('swim')) return Icons.pool;
+    if (lower.contains('bici') || lower.contains('cicl')) return Icons.directions_bike;
+    if (lower.contains('flexion') || lower.contains('push')) return Icons.fitness_center;
+    return Icons.emoji_events_outlined;
+  }
+}
+
+// ─── Challenge detail sheet ───────────────────────────────────────────────────
+
+class _ChallengeDetailSheet extends StatefulWidget {
+  final Challenge challenge;
+  final String currentUserId;
+  final String currentUserName;
+  final ChallengesProvider provider;
+  const _ChallengeDetailSheet({
+    required this.challenge,
+    required this.currentUserId,
+    required this.currentUserName,
+    required this.provider,
+  });
+
+  @override
+  State<_ChallengeDetailSheet> createState() => _ChallengeDetailSheetState();
+}
+
+class _ChallengeDetailSheetState extends State<_ChallengeDetailSheet> {
+  late Future<List<ChallengeRecord>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _reload();
+  }
+
+  void _reload() {
+    _future = widget.provider.fetchLeaderboard(
+      widget.challenge.id,
+      higherIsBetter: widget.challenge.higherIsBetter,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ch = widget.challenge;
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      maxChildSize: 0.93,
+      minChildSize: 0.4,
+      builder: (_, ctrl) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(ch.title, style: AppTextStyles.headingSmall),
+                      ),
+                      _StatusBadge(challenge: ch),
+                    ],
+                  ),
+                  if (ch.description != null) ...[
+                    const SizedBox(height: 6),
+                    Text(ch.description!,
+                        style: AppTextStyles.bodySmall
+                            .copyWith(color: AppColors.textSecondary)),
+                  ],
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      _InfoChip(icon: Icons.straighten, label: ch.unit),
+                      _InfoChip(
+                          icon: Icons.people_outline,
+                          label: '${ch.participantsCount} participantes'),
+                      _InfoChip(
+                          icon: ch.higherIsBetter
+                              ? Icons.arrow_upward
+                              : Icons.timer_outlined,
+                          label: ch.higherIsBetter ? 'Mayor es mejor' : 'Menor es mejor'),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Divider(color: AppColors.divider, height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+              child: Row(
+                children: [
+                  Text('Ranking', style: AppTextStyles.labelLarge),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => setState(_reload),
+                    child: const Icon(Icons.refresh,
+                        size: 18, color: AppColors.textMuted),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: FutureBuilder<List<ChallengeRecord>>(
+                future: _future,
+                builder: (_, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                        child: CircularProgressIndicator(
+                            color: AppColors.primary, strokeWidth: 2));
+                  }
+                  final records = snap.data ?? [];
+                  if (records.isEmpty) {
+                    return Center(
+                      child: Text('Aún no hay marcas registradas.',
+                          style: AppTextStyles.caption),
+                    );
+                  }
+                  return ListView.separated(
+                    controller: ctrl,
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                    itemCount: records.length,
+                    separatorBuilder: (_, __) =>
+                        const Divider(color: AppColors.divider, height: 1),
+                    itemBuilder: (_, i) => _RecordRow(
+                      record: records[i],
+                      unit: ch.unit,
+                      isMe: records[i].userId == widget.currentUserId,
+                    ),
+                  );
+                },
+              ),
+            ),
+            if (ch.isActive)
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                    16, 8, 16, 16 + MediaQuery.of(context).viewInsets.bottom),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => _SubmitRecordSheet(
+                        challenge:       ch,
+                        currentUserName: widget.currentUserName,
+                        provider:        widget.provider,
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      gradient: AppColors.primaryGradient,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      ch.myRecord != null ? 'Actualizar mi marca' : 'Registrar mi marca',
+                      style: AppTextStyles.labelLarge.copyWith(
+                          color: AppColors.background),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Record row (leaderboard item) ───────────────────────────────────────────
+
+class _RecordRow extends StatelessWidget {
+  final ChallengeRecord record;
+  final String unit;
+  final bool isMe;
+  const _RecordRow({required this.record, required this.unit, required this.isMe});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+      color: isMe ? AppColors.primary.withOpacity(0.05) : Colors.transparent,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 32,
+            child: record.rank <= 3
+                ? Text(_medal(record.rank),
+                    style: const TextStyle(fontSize: 20),
+                    textAlign: TextAlign.center)
+                : Text('#${record.rank}',
+                    style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textMuted)),
+          ),
+          const SizedBox(width: 10),
+          InitialsAvatar(
+            initials: record.initials,
+            size: 36,
+            photoUrl: record.avatarUrl,
+            bgColor: AppColors.surfaceVariant,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              record.userName + (isMe ? ' (tú)' : ''),
+              style: AppTextStyles.labelMedium.copyWith(
+                  color: isMe ? AppColors.primary : AppColors.textPrimary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Text(
+            _formatValue(record.value, unit),
+            style: AppTextStyles.labelLarge.copyWith(
+              color: record.rank == 1 ? AppColors.primary : AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _medal(int rank) {
+    switch (rank) {
+      case 1: return '🥇';
+      case 2: return '🥈';
+      case 3: return '🥉';
+      default: return '';
+    }
+  }
+}
+
+// ─── Submit record sheet ──────────────────────────────────────────────────────
+
+class _SubmitRecordSheet extends StatefulWidget {
+  final Challenge challenge;
+  final String currentUserName;
+  final ChallengesProvider provider;
+  const _SubmitRecordSheet({
+    required this.challenge,
+    required this.currentUserName,
+    required this.provider,
+  });
+
+  @override
+  State<_SubmitRecordSheet> createState() => _SubmitRecordSheetState();
+}
+
+class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
+  final _controller = TextEditingController();
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final text = _controller.text.trim().replaceAll(',', '.');
+    final value = double.tryParse(text);
+    if (value == null || value <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresa un valor válido mayor que cero.')),
+      );
+      return;
+    }
+    setState(() => _loading = true);
+    final err = await widget.provider.upsertRecord(
+      challengeId:     widget.challenge.id,
+      userName:        widget.currentUserName,
+      value:           value,
+    );
+    if (mounted) {
+      if (err == null) {
+        Navigator.pop(context);
+      } else {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $err'),
+              backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final ch = widget.challenge;
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(ch.title, style: AppTextStyles.headingSmall),
+          const SizedBox(height: 4),
+          Text(
+            ch.myRecord != null
+                ? 'Tu marca actual: ${_formatValue(ch.myRecord!, ch.unit)}'
+                : 'Registra tu primera marca',
+            style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  autofocus: true,
+                  style: AppTextStyles.headingMedium,
+                  decoration: InputDecoration(
+                    hintText: '0',
+                    hintStyle: AppTextStyles.headingMedium
+                        .copyWith(color: AppColors.textMuted),
+                    filled: true,
+                    fillColor: AppColors.background,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          const BorderSide(color: AppColors.border, width: 0.5),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          const BorderSide(color: AppColors.border, width: 0.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          const BorderSide(color: AppColors.primary, width: 1),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(ch.unit,
+                    style: AppTextStyles.labelLarge
+                        .copyWith(color: AppColors.textSecondary)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: GestureDetector(
+              onTap: _loading ? null : _submit,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                alignment: Alignment.center,
+                child: _loading
+                    ? const SizedBox(
+                        width: 20, height: 20,
+                        child: CircularProgressIndicator(
+                            color: AppColors.background, strokeWidth: 2))
+                    : Text('Guardar marca',
+                        style: AppTextStyles.labelLarge
+                            .copyWith(color: AppColors.background)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Create challenge sheet ───────────────────────────────────────────────────
+
+class _CreateChallengeSheet extends StatefulWidget {
+  final String creatorName;
+  final ChallengesProvider provider;
+  const _CreateChallengeSheet({required this.creatorName, required this.provider});
+
+  @override
+  State<_CreateChallengeSheet> createState() => _CreateChallengeSheetState();
+}
+
+class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
+  final _titleCtrl       = TextEditingController();
+  final _descCtrl        = TextEditingController();
+  final _exerciseCtrl    = TextEditingController();
+  String _unit           = 'kg';
+  bool   _higherIsBetter = true;
+  DateTime _deadline     = DateTime.now().add(const Duration(days: 7));
+  bool _loading          = false;
+
+  static const _units = ['kg', 'reps', 'seg', 'km'];
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _descCtrl.dispose();
+    _exerciseCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _deadline,
+      firstDate: DateTime.now().add(const Duration(days: 1)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (_, child) => Theme(
+        data: ThemeData.dark().copyWith(
+          colorScheme: const ColorScheme.dark(
+            primary: AppColors.primary,
+            onPrimary: AppColors.background,
+            surface: AppColors.surface,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _deadline = picked);
+  }
+
+  Future<void> _submit() async {
+    if (_titleCtrl.text.trim().isEmpty || _exerciseCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Título y ejercicio son obligatorios.')),
+      );
+      return;
+    }
+    setState(() => _loading = true);
+    final err = await widget.provider.createChallenge(
+      creatorName:    widget.creatorName,
+      title:          _titleCtrl.text,
+      description:    _descCtrl.text.isEmpty ? null : _descCtrl.text,
+      exercise:       _exerciseCtrl.text,
+      unit:           _unit,
+      higherIsBetter: _higherIsBetter,
+      deadline:       _deadline,
+    );
+    if (mounted) {
+      if (err == null) {
+        Navigator.pop(context);
+      } else {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $err'),
+              backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text('Nuevo reto', style: AppTextStyles.headingSmall),
+            const SizedBox(height: 16),
+            _buildField(_titleCtrl, 'Título del reto *', maxLines: 1),
+            const SizedBox(height: 12),
+            _buildField(_exerciseCtrl, 'Ejercicio *  (ej. Peso muerto, 5 km carrera…)', maxLines: 1),
+            const SizedBox(height: 12),
+            _buildField(_descCtrl, 'Descripción (opcional)', maxLines: 3),
+            const SizedBox(height: 16),
+            Text('Unidad de medida', style: AppTextStyles.labelMedium),
+            const SizedBox(height: 8),
+            Row(
+              children: _units.map((u) {
+                final sel = u == _unit;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _unit = u),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: sel ? AppColors.primaryGradient : null,
+                        color: sel ? null : AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(20),
+                        border: sel
+                            ? null
+                            : Border.all(
+                                color: AppColors.border, width: 0.5),
+                      ),
+                      child: Text(u,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: sel
+                                ? AppColors.background
+                                : AppColors.textSecondary,
+                          )),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Criterio de victoria', style: AppTextStyles.labelMedium),
+                      const SizedBox(height: 4),
+                      Text(
+                        _higherIsBetter
+                            ? 'Gana el mayor valor'
+                            : 'Gana el menor valor',
+                        style: AppTextStyles.caption
+                            .copyWith(color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: _higherIsBetter,
+                  onChanged: (v) => setState(() => _higherIsBetter = v),
+                  activeColor: AppColors.primary,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Fecha límite', style: AppTextStyles.labelMedium),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${_deadline.day}/${_deadline.month}/${_deadline.year}',
+                        style: AppTextStyles.bodyMedium
+                            .copyWith(color: AppColors.primary),
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: _pickDate,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceVariant,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_today,
+                            size: 14, color: AppColors.textSecondary),
+                        const SizedBox(width: 6),
+                        Text('Cambiar',
+                            style: AppTextStyles.caption
+                                .copyWith(color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: GestureDetector(
+                onTap: _loading ? null : _submit,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.primaryGradient,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  alignment: Alignment.center,
+                  child: _loading
+                      ? const SizedBox(
+                          width: 20, height: 20,
+                          child: CircularProgressIndicator(
+                              color: AppColors.background, strokeWidth: 2))
+                      : Text('Publicar reto',
+                          style: AppTextStyles.labelLarge
+                              .copyWith(color: AppColors.background)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildField(TextEditingController ctrl, String hint,
+      {int maxLines = 1}) {
+    return TextField(
+      controller: ctrl,
+      maxLines: maxLines,
+      style: AppTextStyles.bodyMedium,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle:
+            AppTextStyles.bodyMedium.copyWith(color: AppColors.textMuted),
+        filled: true,
+        fillColor: AppColors.background,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              const BorderSide(color: AppColors.border, width: 0.5),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              const BorderSide(color: AppColors.border, width: 0.5),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              const BorderSide(color: AppColors.primary, width: 1),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+class _StatusBadge extends StatelessWidget {
+  final Challenge challenge;
+  const _StatusBadge({required this.challenge});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!challenge.isActive) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceVariant,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text('Finalizado',
+            style: AppTextStyles.caption
+                .copyWith(color: AppColors.textMuted)),
+      );
+    }
+    final days = challenge.daysLeft;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: days <= 2
+            ? AppColors.accentOrange.withOpacity(0.15)
+            : AppColors.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        days == 0 ? 'Hoy' : '${days}d',
+        style: AppTextStyles.caption.copyWith(
+          color: days <= 2 ? AppColors.accentOrange : AppColors.primary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _InfoChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: AppColors.textMuted),
+          const SizedBox(width: 4),
+          Text(label,
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textMuted)),
+        ],
+      );
+}
+
+String _formatValue(double v, String unit) {
+  switch (unit) {
+    case 'seg':
+      final m = (v ~/ 60).toString().padLeft(2, '0');
+      final s = (v % 60).toInt().toString().padLeft(2, '0');
+      return '$m:$s';
+    case 'kg':
+    case 'km':
+      return v == v.truncateToDouble() ? '${v.toInt()} $unit' : '${v.toStringAsFixed(1)} $unit';
+    default:
+      return '${v.toInt()} $unit';
   }
 }
