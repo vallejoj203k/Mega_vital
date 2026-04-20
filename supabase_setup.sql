@@ -726,6 +726,7 @@ ALTER TABLE public.challenge_records ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Authenticated can view records" ON public.challenge_records;
 DROP POLICY IF EXISTS "Users can upsert own records"   ON public.challenge_records;
+DROP POLICY IF EXISTS "Users can update own records"   ON public.challenge_records;
 DROP POLICY IF EXISTS "Users can delete own records"   ON public.challenge_records;
 
 CREATE POLICY "Authenticated can view records"
