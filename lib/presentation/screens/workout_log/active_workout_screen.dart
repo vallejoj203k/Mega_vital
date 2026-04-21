@@ -27,6 +27,7 @@ class ActiveWorkoutScreen extends StatefulWidget {
 class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   late Timer _timer;
   int _elapsedSeconds = 0;
+  final Set<int> _collapsedExercises = {};
 
   @override
   void initState() {
@@ -186,8 +187,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               itemCount: session.exercises.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (_, exIdx) => _ExerciseLogCard(
-                exercise: session.exercises[exIdx],
-                exIdx   : exIdx,
+                exercise    : session.exercises[exIdx],
+                exIdx       : exIdx,
+                isCollapsed : _collapsedExercises.contains(exIdx),
+                onCollapse  : () => setState(
+                    () => _collapsedExercises.add(exIdx)),
               ),
             ),
           ),
@@ -319,20 +323,78 @@ class _WorkoutHeader extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// TARJETA DE EJERCICIO CON SERIES EDITABLES
+// TARJETA DE EJERCICIO — muestra solo la serie activa
 // ─────────────────────────────────────────────────────────────────
 class _ExerciseLogCard extends StatelessWidget {
   final LoggedExercise exercise;
   final int            exIdx;
+  final bool           isCollapsed;
+  final VoidCallback   onCollapse;
 
-  const _ExerciseLogCard({required this.exercise, required this.exIdx});
+  const _ExerciseLogCard({
+    required this.exercise,
+    required this.exIdx,
+    required this.isCollapsed,
+    required this.onCollapse,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final doneSets   = exercise.doneSets;
-    final totalSets  = exercise.sets.length;
-    final allDone    = doneSets == totalSets && totalSets > 0;
-    final color      = allDone ? AppColors.primary : AppColors.accentBlue;
+    final doneSets  = exercise.doneSets;
+    final totalSets = exercise.sets.length;
+    final allDone   = doneSets == totalSets && totalSets > 0;
+
+    // ── Ejercicio colapsado (ya terminado por el usuario) ───────
+    if (isCollapsed) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+              color: AppColors.primary.withOpacity(0.4), width: 1.5),
+          boxShadow: [BoxShadow(
+              color: AppColors.primary.withOpacity(0.07), blurRadius: 10)],
+        ),
+        child: Row(children: [
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: AppColors.primary.withOpacity(0.3), width: 0.5)),
+            child: const Icon(Icons.check_circle_rounded,
+                color: AppColors.primary, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Text(exercise.exerciseName,
+              style: AppTextStyles.labelLarge,
+              overflow: TextOverflow.ellipsis)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                    color: AppColors.primary.withOpacity(0.3), width: 0.5)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.check_rounded, size: 11,
+                  color: AppColors.primary),
+              const SizedBox(width: 4),
+              Text('$doneSets series',
+                  style: const TextStyle(fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary)),
+            ]),
+          ),
+        ]),
+      );
+    }
+
+    // ── Ejercicio activo ────────────────────────────────────────
+    final color = allDone ? AppColors.primary : AppColors.accentBlue;
+    final currentSetIdx = exercise.sets.indexWhere((s) => !s.isDone);
 
     return Container(
       decoration: BoxDecoration(
@@ -345,102 +407,177 @@ class _ExerciseLogCard extends StatelessWidget {
             width: allDone ? 1.5 : 0.5),
         boxShadow: allDone
             ? [BoxShadow(
-                color: AppColors.primary.withOpacity(0.08),
-                blurRadius: 12)]
+                color: AppColors.primary.withOpacity(0.08), blurRadius: 12)]
             : null,
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // ── Encabezado del ejercicio ────────────────────────────
+        // ── Encabezado ─────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
           child: Row(children: [
             Container(
-              width: 38, height: 38,
+              width: 36, height: 36,
               decoration: BoxDecoration(
                   color: color.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: color.withOpacity(0.3), width: 0.5)),
+                  border: Border.all(
+                      color: color.withOpacity(0.3), width: 0.5)),
               child: Icon(allDone
                   ? Icons.check_circle_rounded
                   : Icons.fitness_center_rounded,
                   color: color, size: 18),
             ),
             const SizedBox(width: 10),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+            Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
               Text(exercise.exerciseName,
                   style: AppTextStyles.labelLarge,
                   overflow: TextOverflow.ellipsis),
               const SizedBox(height: 2),
               Text('$doneSets / $totalSets series',
-                  style: AppTextStyles.caption.copyWith(
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500,
                       color: allDone
                           ? AppColors.primary
                           : AppColors.textMuted)),
             ])),
-            // Progreso circular mini
             _MiniProgress(done: doneSets, total: totalSets, color: color),
           ]),
         ),
 
-        // ── Cabecera de la tabla de series ─────────────────────
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Row(children: [
-            SizedBox(width: 28,
-                child: Text('Serie', style: AppTextStyles.caption,
-                    textAlign: TextAlign.center)),
-            const SizedBox(width: 8),
-            Expanded(child: Text('Peso (kg)',
-                style: AppTextStyles.caption,
-                textAlign: TextAlign.center)),
-            const SizedBox(width: 8),
-            Expanded(child: Text('Reps',
-                style: AppTextStyles.caption,
-                textAlign: TextAlign.center)),
-            const SizedBox(width: 8),
-            const SizedBox(width: 36),
-          ]),
+        // ── Serie activa ────────────────────────────────────────
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          switchInCurve:  Curves.easeOutCubic,
+          switchOutCurve: Curves.easeIn,
+          transitionBuilder: (child, anim) => FadeTransition(
+            opacity: anim,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                      begin: const Offset(0, 0.15), end: Offset.zero)
+                  .animate(anim),
+              child: child,
+            ),
+          ),
+          child: !allDone && currentSetIdx >= 0
+              ? _ActiveSetSection(
+                  key:         ValueKey(currentSetIdx),
+                  set:         exercise.sets[currentSetIdx],
+                  exIdx:       exIdx,
+                  setIdx:      currentSetIdx,
+                  accentColor: color,
+                )
+              : Padding(
+                  key: const ValueKey('done_msg'),
+                  padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+                  child: Row(children: [
+                    Icon(Icons.check_circle_rounded,
+                        size: 13, color: AppColors.primary),
+                    const SizedBox(width: 6),
+                    Text('Todas las series completadas',
+                        style: TextStyle(fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary)),
+                  ]),
+                ),
+        ),
+
+        // ── Botón terminar (siempre visible) ────────────────────
+        _TerminarButton(
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            onCollapse();
+          },
         ),
         const SizedBox(height: 4),
-
-        // ── Filas de series ─────────────────────────────────────
-        ...List.generate(exercise.sets.length, (setIdx) =>
-            _SetRow(
-              set  : exercise.sets[setIdx],
-              exIdx: exIdx,
-              setIdx: setIdx,
-            )),
-
-        // ── Botones + / - serie ─────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 6, 14, 12),
-          child: Row(children: [
-            _SmallButton(
-              icon : Icons.add_rounded,
-              label: 'Serie',
-              color: AppColors.primary,
-              onTap: () {
-                HapticFeedback.selectionClick();
-                context.read<WorkoutLogProvider>().addSet(exIdx);
-              },
-            ),
-            const SizedBox(width: 8),
-            if (exercise.sets.length > 1)
-              _SmallButton(
-                icon : Icons.remove_rounded,
-                label: 'Quitar',
-                color: AppColors.error,
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  context.read<WorkoutLogProvider>().removeLastSet(exIdx);
-                },
-              ),
-          ]),
-        ),
       ]),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SECCIÓN DE SERIE ACTIVA (cabecera + fila editable)
+// ─────────────────────────────────────────────────────────────────
+class _ActiveSetSection extends StatelessWidget {
+  final ExerciseSetLog set;
+  final int            exIdx;
+  final int            setIdx;
+  final Color          accentColor;
+
+  const _ActiveSetSection({
+    super.key,
+    required this.set,
+    required this.exIdx,
+    required this.setIdx,
+    required this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // Cabecera de columnas
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Row(children: [
+          const SizedBox(width: 36),          // número serie
+          const SizedBox(width: 8),
+          Expanded(child: Text('Peso (kg)',
+              style: TextStyle(fontSize: 10,
+                  color: AppColors.textMuted),
+              textAlign: TextAlign.center)),
+          const SizedBox(width: 8),
+          Expanded(child: Text('Reps',
+              style: TextStyle(fontSize: 10,
+                  color: AppColors.textMuted),
+              textAlign: TextAlign.center)),
+          const SizedBox(width: 44),          // botón check
+        ]),
+      ),
+      const SizedBox(height: 4),
+      _SetRow(set: set, exIdx: exIdx, setIdx: setIdx),
+      const SizedBox(height: 4),
+    ],
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// BOTÓN TERMINAR EJERCICIO
+// ─────────────────────────────────────────────────────────────────
+class _TerminarButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _TerminarButton({super.key, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+    child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          gradient: AppColors.primaryGradient,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [BoxShadow(
+              color: AppColors.primary.withOpacity(0.30),
+              blurRadius: 10, offset: const Offset(0, 3))],
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.check_circle_outline_rounded,
+                color: Colors.black, size: 16),
+            SizedBox(width: 8),
+            Text('TERMINAR EJERCICIO',
+                style: TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w800,
+                    color: Colors.black, letterSpacing: 0.5)),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────
