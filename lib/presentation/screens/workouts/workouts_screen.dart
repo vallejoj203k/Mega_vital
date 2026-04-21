@@ -120,56 +120,126 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
 
   void _showSaveDialog() {
     if (_selectedExIds.isEmpty) return;
-    final muscle = getMuscleById(_selectedMuscleId ?? '');
-    final ctrl   = TextEditingController(text: 'Rutina ${muscle?.name ?? ""}');
-    showDialog(context: context, builder: (_) => AlertDialog(
-      backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('Guardar rutina', style: AppTextStyles.headingSmall),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text('${_selectedExIds.length} ejercicio(s)', style: AppTextStyles.bodyMedium),
-        const SizedBox(height: 16),
-        TextField(controller: ctrl, autofocus: true,
-            style: AppTextStyles.bodyLarge, cursorColor: AppColors.primary,
-            decoration: InputDecoration(
-                labelText: 'Nombre de la rutina',
-                labelStyle: AppTextStyles.bodyMedium,
-                filled: true, fillColor: AppColors.surfaceVariant,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12))),
-      ]),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: TextStyle(color: AppColors.textSecondary))),
-        TextButton(
-          onPressed: () async {
-            final name = ctrl.text.trim();
-            if (name.isEmpty) return;
-            final exList = _selectedExIds
-                .map((id) => kAllExercises.cast<ExerciseItem?>()
-                .firstWhere((e) => e?.id == id, orElse: () => null))
-                .whereType<ExerciseItem>().toList();
-            await _routineService.saveRoutine(SavedRoutine(
-              id: DateTime.now().millisecondsSinceEpoch.toString(),
-              name: name, muscleId: muscle?.id ?? '',
-              muscleName: muscle?.name ?? '', exercises: exList,
-              createdAt: DateTime.now(),
-            ));
-            if (mounted) {
-              Navigator.pop(context); _loadRoutines();
-              setState(() => _selectedExIds.clear());
-            }
-          },
-          child: Text('Guardar', style: TextStyle(
-              color: AppColors.primary, fontWeight: FontWeight.w700)),
+    final muscle  = getMuscleById(_selectedMuscleId ?? '');
+    final nameCtrl = TextEditingController(text: 'Rutina ${muscle?.name ?? ""}');
+    final exList   = _selectedExIds
+        .map((id) => kAllExercises.cast<ExerciseItem?>()
+            .firstWhere((e) => e?.id == id, orElse: () => null))
+        .whereType<ExerciseItem>().toList();
+    final weightCtrls = {for (final ex in exList) ex.id: TextEditingController()};
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Guardar rutina', style: AppTextStyles.headingSmall),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              TextField(
+                controller: nameCtrl,
+                autofocus: true,
+                style: AppTextStyles.bodyLarge,
+                cursorColor: AppColors.primary,
+                decoration: InputDecoration(
+                  labelText: 'Nombre de la rutina',
+                  labelStyle: AppTextStyles.bodyMedium,
+                  filled: true, fillColor: AppColors.surfaceVariant,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Peso por ejercicio (opcional)',
+                    style: AppTextStyles.caption
+                        .copyWith(color: AppColors.textMuted)),
+              ),
+              const SizedBox(height: 8),
+              ...exList.map((ex) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(children: [
+                  Icon(ex.icon, size: 14, color: AppColors.textMuted),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(ex.name,
+                        style: AppTextStyles.caption,
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 64,
+                    child: TextField(
+                      controller: weightCtrls[ex.id],
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      style: AppTextStyles.caption.copyWith(color: AppColors.textPrimary),
+                      cursorColor: AppColors.primary,
+                      textAlign: TextAlign.center,
+                      decoration: InputDecoration(
+                        hintText: '0',
+                        hintStyle: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                        suffixText: 'kg',
+                        suffixStyle: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                        filled: true,
+                        fillColor: AppColors.surfaceVariant,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: AppColors.primary, width: 1)),
+                      ),
+                    ),
+                  ),
+                ]),
+              )),
+            ]),
+          ),
         ),
-      ],
-    ));
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () async {
+              final name = nameCtrl.text.trim();
+              if (name.isEmpty) return;
+              final weights = <String, double>{};
+              for (final ex in exList) {
+                final val = double.tryParse(weightCtrls[ex.id]?.text ?? '');
+                if (val != null && val > 0) weights[ex.id] = val;
+              }
+              await _routineService.saveRoutine(SavedRoutine(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                name: name,
+                muscleId: muscle?.id ?? '',
+                muscleName: muscle?.name ?? '',
+                exercises: exList,
+                exerciseWeights: weights,
+                createdAt: DateTime.now(),
+              ));
+              if (mounted) {
+                Navigator.pop(context);
+                _loadRoutines();
+                setState(() => _selectedExIds.clear());
+              }
+            },
+            child: Text('Guardar',
+                style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
