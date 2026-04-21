@@ -697,212 +697,219 @@ class _MuscleOverlayPainter extends CustomPainter {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// PANEL DE EJERCICIOS
+// PANEL DE EJERCICIOS — grid 2 columnas
 // ─────────────────────────────────────────────────────────────────
 class _ExercisePanel extends StatelessWidget {
-  final MuscleGroup      muscle;
+  final MuscleGroup        muscle;
   final List<ExerciseItem> exercises;
-  final Set<String>      selectedExIds;
+  final Set<String>        selectedExIds;
   final ValueChanged<String> onToggle;
-  final VoidCallback     onBack;
+  final VoidCallback       onBack;
 
   const _ExercisePanel({required this.muscle, required this.exercises,
     required this.selectedExIds, required this.onToggle, required this.onBack});
 
   @override
-  Widget build(BuildContext context) => Column(children: [
-    // Header
-    Padding(padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Row(children: [
+  Widget build(BuildContext context) {
+    final sel   = selectedExIds.length;
+    final total = exercises.length;
+    final pct   = total > 0 ? (sel / total * 100).round() : 0;
+
+    return Column(children: [
+      // ── Header ────────────────────────────────────────────────
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           GestureDetector(onTap: onBack,
-              child: Container(width: 38, height: 38,
-                  decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: muscle.color.withOpacity(0.3), width: 0.5)),
-                  child: Icon(Icons.arrow_back_ios_new_rounded,
-                      color: muscle.color, size: 14))),
+            child: Container(width: 36, height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: muscle.color.withOpacity(0.3), width: 0.5)),
+              child: Icon(Icons.arrow_back_ios_new_rounded,
+                  color: muscle.color, size: 13))),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(muscle.name, style: AppTextStyles.headingSmall
-                    .copyWith(color: muscle.color)),
-                Text('${exercises.length} ejercicios · toca para seleccionar',
-                    style: AppTextStyles.caption),
-              ])),
+            children: [
+              Text(muscle.name, style: AppTextStyles.headingSmall
+                  .copyWith(color: muscle.color)),
+              Text('$total ejercicios · toca para previsualizar',
+                  style: AppTextStyles.caption),
+            ])),
+          if (sel > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: muscle.color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: muscle.color.withOpacity(0.4), width: 1)),
+              child: Text('$sel/$total · $pct%',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
+                    color: muscle.color)),
+            ),
         ])),
-    const SizedBox(height: 10),
-    // Lista
-    Expanded(child: ListView.separated(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 80),
-      physics: const BouncingScrollPhysics(),
-      itemCount: exercises.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (_, i) => _ExerciseCard(
-        exercise:    exercises[i],
-        muscleColor: muscle.color,
-        selected:    selectedExIds.contains(exercises[i].id),
-        onToggle:    () => onToggle(exercises[i].id),
-      ),
-    )),
-  ]);
+      const SizedBox(height: 12),
+
+      // ── Grid de ejercicios ────────────────────────────────────
+      Expanded(child: GridView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+        physics: const BouncingScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount:   2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing:  12,
+          childAspectRatio: 0.72,
+        ),
+        itemCount: exercises.length,
+        itemBuilder: (_, i) => _ExerciseCard(
+          exercise:    exercises[i],
+          muscleColor: muscle.color,
+          selected:    selectedExIds.contains(exercises[i].id),
+          onToggle:    () => onToggle(exercises[i].id),
+        ),
+      )),
+    ]);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────
-// TARJETA DE EJERCICIO CON ANIMACIÓN
+// HELPERS DE DIFICULTAD
 // ─────────────────────────────────────────────────────────────────
-class _ExerciseCard extends StatefulWidget {
+Color _diffColor(ExerciseDifficulty d) {
+  switch (d) {
+    case ExerciseDifficulty.facil: return const Color(0xFF00FF87);
+    case ExerciseDifficulty.medio: return const Color(0xFFFF6B35);
+    case ExerciseDifficulty.duro:  return const Color(0xFFFF3B3B);
+  }
+}
+
+String _diffLabel(ExerciseDifficulty d) {
+  switch (d) {
+    case ExerciseDifficulty.facil: return 'FÁCIL';
+    case ExerciseDifficulty.medio: return 'MEDIO';
+    case ExerciseDifficulty.duro:  return 'DURO';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// TARJETA DE EJERCICIO — estilo grid con animación siempre visible
+// ─────────────────────────────────────────────────────────────────
+class _ExerciseCard extends StatelessWidget {
   final ExerciseItem exercise;
-  final Color muscleColor;
-  final bool  selected;
+  final Color        muscleColor;
+  final bool         selected;
   final VoidCallback onToggle;
+
   const _ExerciseCard({required this.exercise, required this.muscleColor,
     required this.selected, required this.onToggle});
-  @override
-  State<_ExerciseCard> createState() => _ExerciseCardState();
-}
-
-class _ExerciseCardState extends State<_ExerciseCard> {
-  bool _showAnim = false;
 
   @override
   Widget build(BuildContext context) {
-    final ex  = widget.exercise;
-    final col = widget.muscleColor;
-    final sel = widget.selected;
+    final ex  = exercise;
+    final col = muscleColor;
+    final dc  = _diffColor(ex.difficulty);
 
     return GestureDetector(
-      onTap: widget.onToggle,
+      onTap: onToggle,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 180),
         decoration: BoxDecoration(
-          color: sel ? col.withOpacity(0.08) : AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+          color: selected
+              ? col.withOpacity(0.10)
+              : AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
-              color: sel ? col.withOpacity(0.45) : AppColors.border,
-              width: sel ? 1.5 : 0.5),
-          boxShadow: sel ? [BoxShadow(
-              color: col.withOpacity(0.12), blurRadius: 10)] : null,
+            color: selected ? col.withOpacity(0.5) : AppColors.border,
+            width: selected ? 1.5 : 0.5,
+          ),
+          boxShadow: selected
+              ? [BoxShadow(color: col.withOpacity(0.15), blurRadius: 12)]
+              : null,
         ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // ── Fila principal ──────────────────────────────────────
-          Padding(padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                // Botón de animación
-                GestureDetector(
-                  onTap: () => setState(() => _showAnim = !_showAnim),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 52, height: 52,
-                    decoration: BoxDecoration(
-                        color: _showAnim ? col.withOpacity(0.15) : col.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: _showAnim ? col.withOpacity(0.6) : col.withOpacity(0.25),
-                            width: _showAnim ? 1.5 : 0.5)),
-                    child: _showAnim
-                        ? ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: ExerciseAnimationWidget(
-                          exerciseId: ex.id,
-                          color: col,
-                          size: 52,
-                        ))
-                        : Stack(alignment: Alignment.center, children: [
-                      Icon(ex.icon, color: col, size: 24),
-                      Positioned(bottom: 3, right: 3,
-                          child: Container(width: 14, height: 14,
-                              decoration: BoxDecoration(
-                                  color: col, shape: BoxShape.circle),
-                              child: const Icon(Icons.play_arrow_rounded,
-                                  size: 10, color: Colors.black))),
-                    ]),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(children: [
-                        Expanded(child: Text(ex.name, style: AppTextStyles.labelLarge,
-                            overflow: TextOverflow.ellipsis)),
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: 22, height: 22,
-                          decoration: BoxDecoration(
-                              color: sel ? col : Colors.transparent,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                  color: sel ? col : AppColors.border, width: 1.5)),
-                          child: sel ? const Icon(Icons.check_rounded,
-                              color: Colors.black, size: 13) : null,
-                        ),
-                      ]),
-                      const SizedBox(height: 5),
-                      Wrap(spacing: 10, children: [
-                        _Chip(ex.sets, Icons.repeat_rounded, col),
-                        _Chip(ex.reps, Icons.timer_rounded, col),
-                        if (sel) _Chip('${ex.restSeconds}s descanso',
-                            Icons.hourglass_empty_rounded, col),
-                      ]),
-                    ])),
+        child: Stack(children: [
+          // ── Contenido principal ──────────────────────────────
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // Dificultad
+            Padding(padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+              child: Row(children: [
+                Container(width: 7, height: 7,
+                  decoration: BoxDecoration(color: dc, shape: BoxShape.circle)),
+                const SizedBox(width: 5),
+                Text(_diffLabel(ex.difficulty),
+                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800,
+                      color: dc, letterSpacing: 0.6)),
               ])),
 
-          // ── Animación expandida ─────────────────────────────────
-          if (_showAnim) ...[
-            Padding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-                child: Container(
-                  width: double.infinity,
-                  height: 130,
-                  decoration: BoxDecoration(
-                      color: col.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: col.withOpacity(0.15), width: 0.5)),
-                  child: Stack(children: [
-                    Center(child: ExerciseAnimationWidget(
-                        exerciseId: ex.id, color: col, size: 110)),
-                    Positioned(top: 8, right: 8,
-                        child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                                color: col.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(8)),
-                            child: Text('Ver movimiento',
-                                style: TextStyle(fontSize: 9,
-                                    color: col, fontWeight: FontWeight.w600)))),
-                  ]),
-                )),
-          ],
+            // Animación + botón play
+            Expanded(child: LayoutBuilder(
+              builder: (ctx, box) {
+                final sz = box.maxWidth * 0.68;
+                return Stack(alignment: Alignment.center, children: [
+                  ExerciseAnimationWidget(
+                    exerciseId: ex.id,
+                    color: col,
+                    size: sz,
+                  ),
+                  // Play button
+                  Positioned(bottom: 6,
+                    child: Container(
+                      width: 30, height: 30,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(
+                          color: AppColors.primary.withOpacity(0.45),
+                          blurRadius: 10, spreadRadius: 1)],
+                      ),
+                      child: const Icon(Icons.play_arrow_rounded,
+                          color: Colors.black, size: 17),
+                    )),
+                ]);
+              },
+            )),
 
-          // ── Tip ────────────────────────────────────────────────
-          if (ex.tip != null)
-            Padding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-                child: Container(padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                        color: col.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(8)),
-                    child: Row(crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(Icons.lightbulb_outline_rounded, size: 11, color: col),
-                          const SizedBox(width: 5),
-                          Expanded(child: Text(ex.tip!, style: AppTextStyles.bodySmall
-                              .copyWith(color: AppColors.textSecondary))),
-                        ]))),
+            // Nombre
+            Padding(padding: const EdgeInsets.fromLTRB(10, 4, 10, 2),
+              child: Text(ex.name,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                    color: Colors.white),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis)),
+
+            // Series · Reps
+            Padding(padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+              child: Row(children: [
+                Icon(Icons.repeat_rounded, size: 10,
+                    color: col.withOpacity(0.75)),
+                const SizedBox(width: 3),
+                Text(ex.sets, style: TextStyle(
+                    fontSize: 10, fontWeight: FontWeight.w600,
+                    color: col.withOpacity(0.85))),
+                const SizedBox(width: 10),
+                Icon(Icons.bolt_rounded, size: 10,
+                    color: col.withOpacity(0.75)),
+                const SizedBox(width: 2),
+                Expanded(child: Text(ex.reps, style: TextStyle(
+                    fontSize: 10, fontWeight: FontWeight.w600,
+                    color: col.withOpacity(0.85)),
+                    overflow: TextOverflow.ellipsis)),
+              ])),
+          ]),
+
+          // ── Checkmark (top-right) ────────────────────────────
+          if (selected)
+            Positioned(top: 8, right: 8,
+              child: Container(width: 22, height: 22,
+                decoration: BoxDecoration(
+                  color: col, shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(
+                    color: col.withOpacity(0.4), blurRadius: 6)],
+                ),
+                child: const Icon(Icons.check_rounded,
+                    color: Colors.black, size: 13))),
         ]),
       ),
     );
   }
-}
-
-class _Chip extends StatelessWidget {
-  final String text; final IconData icon; final Color color;
-  const _Chip(this.text, this.icon, this.color);
-  @override
-  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
-    Icon(icon, size: 10, color: color.withOpacity(0.7)),
-    const SizedBox(width: 3),
-    Text(text, style: AppTextStyles.caption),
-  ]);
 }
 
 // ─────────────────────────────────────────────────────────────────
