@@ -1,15 +1,21 @@
 // lib/services/workout_log_service.dart
 // ─────────────────────────────────────────────────────────────────
 // Servicio de registro de entrenamientos.
-// Guarda sesiones completas, pesos usados y progreso histórico.
-// Usa SharedPreferences (sin servidor backend).
+// - Guarda sesiones completas en SharedPreferences (offline-first)
+// - Sincroniza sesiones completadas con Supabase (best-effort)
+// - Persiste la sesión activa en SharedPreferences para sobrevivir
+//   cierres/muertes de la app y restaurar el estado al relanzar
 // ─────────────────────────────────────────────────────────────────
 
+import 'dart:async';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-const _kSessionsKey    = 'mv_workout_sessions';
-const _kLastWeightsKey = 'mv_last_weights';
+const _kSessionsKey      = 'mv_workout_sessions';
+const _kLastWeightsKey   = 'mv_last_weights';
+const _kActiveSessionKey = 'mv_active_session';
+const _kSessionStartKey  = 'mv_session_start';
 
 // ── Modelos ───────────────────────────────────────────────────────
 
@@ -151,9 +157,16 @@ class WorkoutLogService {
   WorkoutLogService._();
   static final WorkoutLogService instance = WorkoutLogService._();
 
-  // ─── Sesiones ────────────────────────────────────────────────────
+  final _db = Supabase.instance.client;
+  String? get _uid => _db.auth.currentUser?.id;
+
+  // ─── Sesiones completadas ─────────────────────────────────────
 
   Future<List<WorkoutSession>> loadSessions() async {
+    return _loadLocalSessions();
+  }
+
+  Future<List<WorkoutSession>> _loadLocalSessions() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw   = prefs.getString(_kSessionsKey);
@@ -168,8 +181,9 @@ class WorkoutLogService {
   }
 
   Future<void> saveSession(WorkoutSession session) async {
+    // Siempre guarda localmente primero
     final prefs    = await SharedPreferences.getInstance();
-    final sessions = await loadSessions();
+    final sessions = await _loadLocalSessions();
     final idx      = sessions.indexWhere((s) => s.id == session.id);
     if (idx >= 0) {
       sessions[idx] = session;
@@ -178,14 +192,81 @@ class WorkoutLogService {
     }
     await prefs.setString(
         _kSessionsKey, jsonEncode(sessions.map((s) => s.toMap()).toList()));
+
+    // Sincroniza con Supabase en segundo plano (no bloqueante)
+    final uid = _uid;
+    if (uid != null) {
+      unawaited(_syncToSupabase(session, uid));
+    }
+  }
+
+  Future<void> _syncToSupabase(WorkoutSession session, String uid) async {
+    try {
+      await _db.from('workout_sessions').upsert({
+        ...session.toMap(),
+        'user_id'     : uid,
+        'total_volume': session.totalVolume,
+        'total_sets'  : session.totalDoneSets,
+      });
+    } catch (_) {}
   }
 
   Future<void> deleteSession(String id) async {
     final prefs    = await SharedPreferences.getInstance();
-    final sessions = await loadSessions();
+    final sessions = await _loadLocalSessions();
     sessions.removeWhere((s) => s.id == id);
     await prefs.setString(
         _kSessionsKey, jsonEncode(sessions.map((s) => s.toMap()).toList()));
+
+    final uid = _uid;
+    if (uid != null) {
+      unawaited(_deleteFromSupabase(id, uid));
+    }
+  }
+
+  Future<void> _deleteFromSupabase(String id, String uid) async {
+    try {
+      await _db.from('workout_sessions').delete()
+          .eq('id', id).eq('user_id', uid);
+    } catch (_) {}
+  }
+
+  // ─── Sesión activa (sobrevive cierres/muertes de la app) ────────
+
+  Future<void> saveActiveSession(WorkoutSession session, DateTime startTime) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await Future.wait([
+        prefs.setString(_kActiveSessionKey, jsonEncode(session.toMap())),
+        prefs.setString(_kSessionStartKey,  startTime.toIso8601String()),
+      ]);
+    } catch (_) {}
+  }
+
+  /// Devuelve la sesión activa persistida junto con su hora de inicio, o null.
+  Future<({WorkoutSession session, DateTime startTime})?> loadActiveSession() async {
+    try {
+      final prefs      = await SharedPreferences.getInstance();
+      final sessionRaw = prefs.getString(_kActiveSessionKey);
+      final startRaw   = prefs.getString(_kSessionStartKey);
+      if (sessionRaw == null || startRaw == null) return null;
+      final session   = WorkoutSession.fromMap(
+          Map<String, dynamic>.from(jsonDecode(sessionRaw) as Map));
+      final startTime = DateTime.parse(startRaw);
+      return (session: session, startTime: startTime);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> clearActiveSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await Future.wait([
+        prefs.remove(_kActiveSessionKey),
+        prefs.remove(_kSessionStartKey),
+      ]);
+    } catch (_) {}
   }
 
   // ─── Pesos guardados ─────────────────────────────────────────────

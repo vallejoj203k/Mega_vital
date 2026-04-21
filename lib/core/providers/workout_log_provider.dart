@@ -1,9 +1,10 @@
 // lib/core/providers/workout_log_provider.dart
 // ─────────────────────────────────────────────────────────────────
 // Provider que gestiona el estado del registro de entrenamientos.
-// - Sesión activa (en curso)
+// - Sesión activa (en curso), persisted across app restarts
 // - Historial de sesiones completadas
 // - Memoria de pesos usados por ejercicio
+// - WidgetsBindingObserver para auto-guardar al ir a background
 // ─────────────────────────────────────────────────────────────────
 
 import 'dart:async';
@@ -21,7 +22,7 @@ int _parseDefaultReps(String repsStr) {
   return int.tryParse(first.replaceAll(RegExp(r'[^0-9]'), '')) ?? 10;
 }
 
-class WorkoutLogProvider extends ChangeNotifier {
+class WorkoutLogProvider extends ChangeNotifier with WidgetsBindingObserver {
   final WorkoutLogService _service = WorkoutLogService.instance;
 
   WorkoutSession?       _activeSession;
@@ -65,9 +66,29 @@ class WorkoutLogProvider extends ChangeNotifier {
   Future<void> init() async {
     _isLoading = true;
     notifyListeners();
-    await Future.wait([_loadHistory(), _loadWeights()]);
+    WidgetsBinding.instance.addObserver(this);
+    await Future.wait([
+      _loadHistory(),
+      _loadWeights(),
+      _restoreActiveSession(),
+    ]);
     _isLoading = false;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Auto-guarda la sesión activa cuando la app pasa a segundo plano o se cierra.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _persistActiveSession();
+    }
   }
 
   Future<void> _loadHistory() async {
@@ -78,9 +99,25 @@ class WorkoutLogProvider extends ChangeNotifier {
     _lastWeights = await _service.loadLastWeights();
   }
 
+  Future<void> _restoreActiveSession() async {
+    final saved = await _service.loadActiveSession();
+    if (saved != null) {
+      _activeSession = saved.session;
+      _sessionStart  = saved.startTime;
+    }
+  }
+
   Future<void> reloadHistory() async {
     await _loadHistory();
     notifyListeners();
+  }
+
+  // ── Persistencia de sesión activa ─────────────────────────────
+
+  void _persistActiveSession() {
+    if (_activeSession != null && _sessionStart != null) {
+      unawaited(_service.saveActiveSession(_activeSession!, _sessionStart!));
+    }
   }
 
   // ── Consulta de último peso ───────────────────────────────────
@@ -96,8 +133,8 @@ class WorkoutLogProvider extends ChangeNotifier {
 
     final loggedExercises = <LoggedExercise>[];
     for (final ex in exercises) {
-      final lastWeight = _lastWeights[ex.id] ?? 0.0;
-      final setsCount  = _parseSetsCount(ex.sets);
+      final lastWeight  = _lastWeights[ex.id] ?? 0.0;
+      final setsCount   = _parseSetsCount(ex.sets);
       final defaultReps = _parseDefaultReps(ex.reps);
 
       loggedExercises.add(LoggedExercise(
@@ -108,7 +145,7 @@ class WorkoutLogProvider extends ChangeNotifier {
           setsCount,
           (i) => ExerciseSetLog(
             setNumber: i + 1,
-            weight   : lastWeight,   // pre-llenado con último peso usado
+            weight   : lastWeight,
             reps     : defaultReps,
           ),
         ),
@@ -121,6 +158,9 @@ class WorkoutLogProvider extends ChangeNotifier {
       date     : DateTime.now(),
       exercises: loggedExercises,
     );
+
+    // Persiste inmediatamente para sobrevivir cierres inesperados
+    await _service.saveActiveSession(_activeSession!, _sessionStart!);
     notifyListeners();
   }
 
@@ -129,12 +169,14 @@ class WorkoutLogProvider extends ChangeNotifier {
   void updateSetWeight(int exIdx, int setIdx, double weight) {
     if (_activeSession == null) return;
     _activeSession!.exercises[exIdx].sets[setIdx].weight = weight;
+    _persistActiveSession();
     notifyListeners();
   }
 
   void updateSetReps(int exIdx, int setIdx, int reps) {
     if (_activeSession == null) return;
     _activeSession!.exercises[exIdx].sets[setIdx].reps = reps;
+    _persistActiveSession();
     notifyListeners();
   }
 
@@ -142,6 +184,7 @@ class WorkoutLogProvider extends ChangeNotifier {
     if (_activeSession == null) return;
     final set = _activeSession!.exercises[exIdx].sets[setIdx];
     set.isDone = !set.isDone;
+    _persistActiveSession();
     notifyListeners();
   }
 
@@ -154,6 +197,7 @@ class WorkoutLogProvider extends ChangeNotifier {
       weight   : lastSet?.weight ?? 0,
       reps     : lastSet?.reps   ?? 10,
     ));
+    _persistActiveSession();
     notifyListeners();
   }
 
@@ -162,6 +206,7 @@ class WorkoutLogProvider extends ChangeNotifier {
     final sets = _activeSession!.exercises[exIdx].sets;
     if (sets.length > 1) {
       sets.removeLast();
+      _persistActiveSession();
       notifyListeners();
     }
   }
@@ -174,7 +219,7 @@ class WorkoutLogProvider extends ChangeNotifier {
     _activeSession!.isCompleted     = true;
     await _service.saveSessionWeights(_activeSession!);
     await _service.saveSession(_activeSession!);
-    // Otorgar +100 puntos de comunidad (no bloqueante)
+    await _service.clearActiveSession();
     unawaited(PointsService.instance.awardWorkout(userName));
     _activeSession = null;
     _sessionStart  = null;
@@ -183,7 +228,8 @@ class WorkoutLogProvider extends ChangeNotifier {
   }
 
   /// Descarta la sesión activa sin guardar.
-  void cancelSession() {
+  Future<void> cancelSession() async {
+    await _service.clearActiveSession();
     _activeSession = null;
     _sessionStart  = null;
     notifyListeners();

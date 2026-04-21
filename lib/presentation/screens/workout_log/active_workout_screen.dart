@@ -26,14 +26,14 @@ class ActiveWorkoutScreen extends StatefulWidget {
 
 class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   late Timer _timer;
-  int _elapsedSeconds = 0;
   final Set<int> _collapsedExercises = {};
 
   @override
   void initState() {
     super.initState();
+    // El timer solo dispara rebuilds; el tiempo real viene de provider.currentDurationSeconds
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _elapsedSeconds++);
+      if (mounted) setState(() {});
     });
   }
 
@@ -59,7 +59,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     final session  = provider.activeSession;
     if (session == null) return;
 
-    final totalSeries = session.totalDoneSets;
+    final totalSeries    = session.totalDoneSets;
+    final elapsedSeconds = provider.currentDurationSeconds;
 
     final confirmed = await showDialog<bool>(
       context: ctx,
@@ -79,7 +80,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   icon: Icons.timer_rounded,
                   color: AppColors.accentBlue,
                   label: 'Duración',
-                  value: _formatTime(_elapsedSeconds)),
+                  value: _formatTime(elapsedSeconds)),
               const SizedBox(height: 8),
               _SummaryRow(
                   icon: Icons.fitness_center_rounded,
@@ -149,8 +150,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       ),
     );
     if (confirmed == true && ctx.mounted) {
-      ctx.read<WorkoutLogProvider>().cancelSession();
-      Navigator.of(ctx).pop();
+      await ctx.read<WorkoutLogProvider>().cancelSession();
+      if (ctx.mounted) Navigator.of(ctx).pop();
     }
   }
 
@@ -173,7 +174,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           // ── Header ────────────────────────────────────────────
           _WorkoutHeader(
             sessionName   : session.name,
-            elapsedSeconds: _elapsedSeconds,
+            elapsedSeconds: provider.currentDurationSeconds,
             formatTime    : _formatTime,
             onFinish      : () => _confirmFinish(context),
             onCancel      : () => _confirmCancel(context),

@@ -835,3 +835,50 @@ CREATE POLICY "Users can delete own routines"
 -- Índice para consultas por usuario
 CREATE INDEX IF NOT EXISTS user_routines_user_idx
   ON public.user_routines (user_id);
+
+
+-- ─── 23. workout_sessions ────────────────────────────────────────────────────
+-- Historial de entrenamientos completados. Los datos también se almacenan en
+-- SharedPreferences para uso offline; Supabase actúa como respaldo en la nube.
+-- La columna 'exercises' contiene el JSONB serializado con el mismo formato que
+-- WorkoutSession.toMap() / WorkoutSession.fromMap() en Dart.
+
+CREATE TABLE IF NOT EXISTS public.workout_sessions (
+  id              TEXT             PRIMARY KEY,
+  user_id         TEXT             NOT NULL,
+  name            TEXT             NOT NULL DEFAULT 'Entrenamiento',
+  date            TEXT             NOT NULL,   -- ISO 8601 (DateTime.toIso8601String)
+  duration        INTEGER          NOT NULL DEFAULT 0,
+  exercises       JSONB            NOT NULL DEFAULT '[]',
+  completed       BOOLEAN          NOT NULL DEFAULT false,
+  total_volume    DOUBLE PRECISION NOT NULL DEFAULT 0,
+  total_sets      INTEGER          NOT NULL DEFAULT 0,
+  created_at      TIMESTAMPTZ      DEFAULT NOW()
+);
+
+ALTER TABLE public.workout_sessions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own workout sessions"   ON public.workout_sessions;
+DROP POLICY IF EXISTS "Users can insert own workout sessions" ON public.workout_sessions;
+DROP POLICY IF EXISTS "Users can update own workout sessions" ON public.workout_sessions;
+DROP POLICY IF EXISTS "Users can delete own workout sessions" ON public.workout_sessions;
+
+CREATE POLICY "Users can view own workout sessions"
+  ON public.workout_sessions FOR SELECT
+  USING (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can insert own workout sessions"
+  ON public.workout_sessions FOR INSERT
+  WITH CHECK (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can update own workout sessions"
+  ON public.workout_sessions FOR UPDATE
+  USING (auth.uid()::text = user_id)
+  WITH CHECK (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can delete own workout sessions"
+  ON public.workout_sessions FOR DELETE
+  USING (auth.uid()::text = user_id);
+
+CREATE INDEX IF NOT EXISTS workout_sessions_user_date_idx
+  ON public.workout_sessions (user_id, date DESC);
