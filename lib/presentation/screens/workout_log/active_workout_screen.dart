@@ -445,7 +445,7 @@ class _ExerciseLogCard extends StatelessWidget {
           ]),
         ),
 
-        // ── Serie activa / botón terminar ───────────────────────
+        // ── Serie activa ────────────────────────────────────────
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
           switchInCurve:  Curves.easeOutCubic,
@@ -461,50 +461,35 @@ class _ExerciseLogCard extends StatelessWidget {
           ),
           child: !allDone && currentSetIdx >= 0
               ? _ActiveSetSection(
-                  key:        ValueKey(currentSetIdx),
-                  set:        exercise.sets[currentSetIdx],
-                  exIdx:      exIdx,
-                  setIdx:     currentSetIdx,
+                  key:         ValueKey(currentSetIdx),
+                  set:         exercise.sets[currentSetIdx],
+                  exIdx:       exIdx,
+                  setIdx:      currentSetIdx,
                   accentColor: color,
                 )
-              : _TerminarButton(
-                  key:   const ValueKey('terminar'),
-                  onTap: () {
-                    HapticFeedback.mediumImpact();
-                    onCollapse();
-                  },
+              : Padding(
+                  key: const ValueKey('done_msg'),
+                  padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+                  child: Row(children: [
+                    Icon(Icons.check_circle_rounded,
+                        size: 13, color: AppColors.primary),
+                    const SizedBox(width: 6),
+                    Text('Todas las series completadas',
+                        style: TextStyle(fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary)),
+                  ]),
                 ),
         ),
 
-        // ── Botones agregar / quitar serie ──────────────────────
-        if (!allDone)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 2, 14, 12),
-            child: Row(children: [
-              _SmallButton(
-                icon:  Icons.add_rounded,
-                label: 'Agregar serie',
-                color: AppColors.primary,
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  context.read<WorkoutLogProvider>().addSet(exIdx);
-                },
-              ),
-              const SizedBox(width: 8),
-              if (totalSets > 1)
-                _SmallButton(
-                  icon:  Icons.remove_rounded,
-                  label: 'Quitar',
-                  color: AppColors.error,
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    context.read<WorkoutLogProvider>().removeLastSet(exIdx);
-                  },
-                ),
-            ]),
-          )
-        else
-          const SizedBox(height: 12),
+        // ── Botón terminar (siempre visible) ────────────────────
+        _TerminarButton(
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            onCollapse();
+          },
+        ),
+        const SizedBox(height: 4),
       ]),
     );
   }
