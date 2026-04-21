@@ -207,6 +207,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                 _StatChip(
                                     value: '${_posts.length}',
                                     label: 'Publicaciones'),
+                                const SizedBox(width: 12),
+                                _StatChip(
+                                    value: '${_routines.length}',
+                                    label: 'Rutinas'),
                                 const Spacer(),
                                 // Follow button
                                 Consumer<FollowProvider>(
@@ -262,28 +266,38 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
                   // ── Sección rutinas ──────────────────────────
-                  if (_routines.isNotEmpty) ...[
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Text('Rutinas', style: AppTextStyles.headingSmall),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                  if (_routines.isEmpty)
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Text('Rutinas', style: AppTextStyles.headingSmall),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 16),
+                        child: Center(
+                          child: Text(
+                            'Sin rutinas aún',
+                            style: AppTextStyles.bodyMedium
+                                .copyWith(color: AppColors.textMuted),
+                          ),
+                        ),
                       ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                    )
+                  else
                     SliverList(
                       delegate: SliverChildBuilderDelegate(
-                        (_, i) {
-                          final r = _routines[i];
-                          return Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                            child: _RoutineCard(routine: r),
-                          );
-                        },
+                        (_, i) => Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                          child: _RoutineCard(routine: _routines[i]),
+                        ),
                         childCount: _routines.length,
                       ),
                     ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 8)),
-                  ],
+                  const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
                   // ── Sección publicaciones ────────────────────
                   SliverToBoxAdapter(
@@ -404,21 +418,42 @@ class _RoutineCard extends StatelessWidget {
           ),
           if (routine.exercises.isNotEmpty) ...[
             const SizedBox(height: 10),
-            ...routine.exercises.take(4).map((ex) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                children: [
-                  Icon(ex.icon, size: 14, color: AppColors.textMuted),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(ex.name, style: AppTextStyles.caption),
-                  ),
-                  Text('${ex.sets} · ${ex.reps}',
-                      style: AppTextStyles.caption
-                          .copyWith(color: AppColors.textMuted)),
-                ],
-              ),
-            )),
+            ...routine.exercises.take(4).map((ex) {
+              final weight = routine.exerciseWeights[ex.id];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    Icon(ex.icon, size: 14, color: AppColors.textMuted),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(ex.name, style: AppTextStyles.caption),
+                    ),
+                    const SizedBox(width: 6),
+                    // Series chip
+                    _ExerciseChip(
+                      label: '${ex.sets} series',
+                      icon: Icons.repeat_rounded,
+                    ),
+                    const SizedBox(width: 4),
+                    // Reps chip
+                    _ExerciseChip(
+                      label: '${ex.reps} reps',
+                      icon: Icons.format_list_numbered_rounded,
+                    ),
+                    if (weight != null && weight > 0) ...[
+                      const SizedBox(width: 4),
+                      // Weight chip
+                      _ExerciseChip(
+                        label: '${weight % 1 == 0 ? weight.toInt() : weight}kg',
+                        icon: Icons.fitness_center_rounded,
+                        highlight: true,
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
             if (routine.exercises.length > 4)
               Padding(
                 padding: const EdgeInsets.only(top: 2),
@@ -431,6 +466,31 @@ class _RoutineCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _ExerciseChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool highlight;
+  const _ExerciseChip({required this.label, required this.icon, this.highlight = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = highlight ? AppColors.primary : AppColors.textMuted;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.25), width: 0.5),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 9, color: color),
+        const SizedBox(width: 3),
+        Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: color)),
+      ]),
     );
   }
 }

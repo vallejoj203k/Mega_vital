@@ -59,6 +59,7 @@ class SavedRoutine {
   final String              muscleId;
   final String              muscleName;
   final List<ExerciseItem>  exercises;
+  final Map<String, double> exerciseWeights; // exerciseId → kg
   final DateTime            createdAt;
 
   const SavedRoutine({
@@ -67,6 +68,7 @@ class SavedRoutine {
     required this.muscleId,
     required this.muscleName,
     required this.exercises,
+    this.exerciseWeights = const {},
     required this.createdAt,
   });
 
@@ -76,6 +78,7 @@ class SavedRoutine {
     'muscleId': muscleId,
     'muscleName': muscleName,
     'exerciseIds': exercises.map((e) => e.id).toList(),
+    'exerciseWeights': exerciseWeights,
     'createdAt': createdAt.toIso8601String(),
   };
 }
