@@ -39,6 +39,11 @@ const List<NavItem> navItems = [
     label: 'Workouts',
   ),
   NavItem(
+    icon: Icons.directions_bike_outlined,
+    activeIcon: Icons.directions_bike_rounded,
+    label: 'Spinning',
+  ),
+  NavItem(
     icon: Icons.restaurant_outlined,
     activeIcon: Icons.restaurant,
     label: 'Nutrition',

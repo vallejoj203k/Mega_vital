@@ -13,6 +13,7 @@ import 'screens/workouts/workouts_screen.dart';
 import 'screens/nutrition/nutrition_screen.dart';
 import 'screens/community/community_screen.dart';
 import 'screens/profile/profile_screen.dart';
+import 'screens/spinning/spinning_screen.dart';
 import 'widgets/custom_bottom_nav.dart';
 
 class MainScreen extends StatefulWidget {
@@ -26,6 +27,7 @@ class _MainScreenState extends State<MainScreen> {
   static const List<Widget> _screens = [
     HomeScreen(),
     WorkoutsScreen(),
+    SpinningScreen(),
     NutritionScreen(),
     CommunityScreen(),
     ProfileScreen(),
