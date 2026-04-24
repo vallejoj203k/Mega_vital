@@ -28,7 +28,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   // ── Pasos del formulario ──
   int _step = 0;
-  final _totalSteps = 3;
+  final _totalSteps = 4;
+
+  // ── Controladores paso 0 (admin gate) ──
+  final _adminPassCtrl = TextEditingController();
+  bool _obscureAdmin = true;
+  String? _adminPassError;
 
   // ── Controladores paso 1 ──
   final _nameCtrl = TextEditingController();
@@ -61,6 +66,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   // ── Títulos de cada paso ──
   final _stepTitles = [
+    ('Acceso admin', 'Solo el administrador puede crear cuentas'),
     ('Tu cuenta', 'Crea tus credenciales de acceso'),
     ('Tu cuerpo', 'Ayúdanos a personalizar tu plan'),
     ('Tu meta', 'Define tu objetivo principal'),
@@ -68,6 +74,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
+    _adminPassCtrl.dispose();
     _nameCtrl.dispose();
     _emailCtrl.dispose();
     _passCtrl.dispose();
@@ -184,6 +191,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildStep() {
     switch (_step) {
       case 0:
+        return _Step0(
+          adminPassCtrl: _adminPassCtrl,
+          obscureAdmin: _obscureAdmin,
+          error: _adminPassError,
+          onToggle: () => setState(() => _obscureAdmin = !_obscureAdmin),
+          onNext: _nextStep,
+        );
+      case 1:
         return _Step1(
           nameCtrl: _nameCtrl,
           emailCtrl: _emailCtrl,
@@ -200,7 +215,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           onGenderChanged: (g) => setState(() => _selectedGender = g),
           onNext: _nextStep,
         );
-      case 1:
+      case 2:
         return _Step2(
           weight: _weight,
           height: _height,
@@ -212,7 +227,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           onAgeChanged: (v) => setState(() => _age = int.tryParse(v) ?? _age),
           onNext: _nextStep,
         );
-      case 2:
+      case 3:
         return _Step3(
           goals: _goals,
           selectedGoal: _selectedGoal,
@@ -226,8 +241,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   // ── Avanzar paso ──
   void _nextStep() {
-    if (_step == 0 && !(_formKey1.currentState?.validate() ?? false)) return;
-    if (_step == 1 && !(_formKey2.currentState?.validate() ?? false)) return;
+    if (_step == 0) {
+      if (_adminPassCtrl.text.trim() != 'cocodemegavital') {
+        setState(() => _adminPassError = 'Contraseña incorrecta');
+        return;
+      }
+      setState(() => _adminPassError = null);
+    }
+    if (_step == 1 && !(_formKey1.currentState?.validate() ?? false)) return;
+    if (_step == 2 && !(_formKey2.currentState?.validate() ?? false)) return;
     if (_step < _totalSteps - 1) {
       setState(() => _step++);
     }
@@ -316,6 +338,96 @@ class _StepProgressBar extends StatelessWidget {
           ),
         );
       }),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PASO 0 — Contraseña de administrador
+// Solo el admin del gimnasio conoce esta contraseña.
+// ─────────────────────────────────────────────────────────────────
+class _Step0 extends StatelessWidget {
+  final TextEditingController adminPassCtrl;
+  final bool obscureAdmin;
+  final String? error;
+  final VoidCallback onToggle;
+  final VoidCallback onNext;
+
+  const _Step0({
+    required this.adminPassCtrl,
+    required this.obscureAdmin,
+    required this.error,
+    required this.onToggle,
+    required this.onNext,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Aviso visual
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.accentOrange.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.accentOrange.withOpacity(0.3), width: 0.5),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.admin_panel_settings_outlined, color: AppColors.accentOrange, size: 22),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Esta app es exclusiva para miembros del gimnasio. Solo el administrador puede crear cuentas nuevas.',
+                    style: AppTextStyles.bodySmall.copyWith(color: AppColors.accentOrange),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Campo de contraseña admin
+          AuthField(
+            controller: adminPassCtrl,
+            label: 'Contraseña de administrador',
+            hint: '••••••••••••••',
+            icon: Icons.shield_outlined,
+            obscureText: obscureAdmin,
+            suffixIcon: IconButton(
+              icon: Icon(
+                obscureAdmin ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                size: 20,
+                color: AppColors.textMuted,
+              ),
+              onPressed: onToggle,
+            ),
+          ),
+
+          // Error inline
+          if (error != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 15),
+                const SizedBox(width: 6),
+                Text(error!, style: TextStyle(color: AppColors.error, fontSize: 12)),
+              ],
+            ),
+          ],
+
+          const SizedBox(height: 28),
+          _StepButton(label: 'Verificar →', onTap: onNext),
+          const SizedBox(height: 20),
+          _LoginPrompt(),
+          const SizedBox(height: 40),
+        ],
+      ),
     );
   }
 }
