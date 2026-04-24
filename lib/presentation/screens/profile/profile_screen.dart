@@ -172,6 +172,12 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
             SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20),
               child: _LogoutButton())),
 
+            const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+            // Eliminar cuenta
+            SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _DeleteAccountButton())),
+
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
@@ -321,5 +327,75 @@ class _LogoutButton extends StatelessWidget {
         ]),
       ),
     );
+  }
+}
+
+class _DeleteAccountButton extends StatefulWidget {
+  @override
+  State<_DeleteAccountButton> createState() => _DeleteAccountButtonState();
+}
+
+class _DeleteAccountButtonState extends State<_DeleteAccountButton> {
+  bool _deleting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _deleting ? null : () => _confirmDelete(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.textMuted.withOpacity(0.3), width: 0.5),
+        ),
+        child: _deleting
+            ? const Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textMuted)))
+            : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(Icons.delete_outline_rounded, color: AppColors.textMuted, size: 18),
+                const SizedBox(width: 8),
+                Text('Eliminar cuenta', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textMuted)),
+              ]),
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Eliminar cuenta', style: AppTextStyles.headingSmall.copyWith(color: AppColors.error)),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Esta acción es permanente e irreversible.', style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Text('Se eliminarán:\n• Tu perfil y datos personales\n• Todas tus publicaciones y comentarios\n• Tu historial de entrenamientos y nutrición\n• Tus rutinas y retos', style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+        ]),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Eliminar', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+
+    if (!(ok ?? false) || !mounted) return;
+
+    setState(() => _deleting = true);
+    final success = await context.read<AuthProvider>().deleteAccount();
+    if (mounted) setState(() => _deleting = false);
+
+    if (!success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('No se pudo eliminar la cuenta. Intenta de nuevo.'),
+        backgroundColor: Colors.red,
+      ));
+    }
   }
 }
