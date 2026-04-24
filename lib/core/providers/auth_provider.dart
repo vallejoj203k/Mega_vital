@@ -175,6 +175,18 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Elimina la cuenta permanentemente y cierra sesión.
+  Future<bool> deleteAccount() async {
+    final ok = await _service.deleteAccount();
+    if (ok) {
+      _user    = null;
+      _profile = null;
+      _status  = AuthStatus.unauthenticated;
+      notifyListeners();
+    }
+    return ok;
+  }
+
   Future<bool> updateProfile(Map<String, dynamic> data) async {
     final uid = _user?.uid;
     if (uid == null) return false;

@@ -329,6 +329,17 @@ class AuthService {
     );
   }
 
+  /// Elimina la cuenta del usuario y todos sus datos permanentemente.
+  /// Llama a la función SQL delete_user_account() con SECURITY DEFINER.
+  Future<bool> deleteAccount() async {
+    try {
+      await _supabase.rpc('delete_user_account');
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<bool> updateUserProfile(String uid, Map<String, dynamic> data) async {
     try {
       await _supabase.from('user_profiles').update(data).eq('uid', uid);

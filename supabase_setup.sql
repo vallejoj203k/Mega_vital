@@ -835,3 +835,57 @@ CREATE POLICY "Users can delete own routines"
 -- Índice para consultas por usuario
 CREATE INDEX IF NOT EXISTS user_routines_user_idx
   ON public.user_routines (user_id);
+
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SECCIÓN 5: Eliminación de cuenta (requerido por App Store Review Guideline 5.1.1)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- ─── 23. delete_user_account ─────────────────────────────────────────────────
+-- Elimina todos los datos del usuario autenticado y su cuenta de auth.
+-- Se llama desde Flutter con: supabase.rpc('delete_user_account')
+-- SECURITY DEFINER permite borrar de auth.users sin service_role key en el cliente.
+
+CREATE OR REPLACE FUNCTION public.delete_user_account()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_uid_text text := auth.uid()::text;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'No hay sesión activa';
+  END IF;
+
+  -- Datos de nutrición y rutinas
+  DELETE FROM public.nutrition_logs    WHERE user_id = v_uid_text;
+  DELETE FROM public.user_routines     WHERE user_id = v_uid_text;
+
+  -- Retos y records
+  DELETE FROM public.challenge_records WHERE user_id = v_uid_text;
+  DELETE FROM public.challenges        WHERE creator_id = v_uid_text;
+
+  -- Historias
+  DELETE FROM public.story_views       WHERE viewer_id = v_uid_text;
+  DELETE FROM public.user_stories      WHERE user_id = v_uid_text;
+
+  -- Comunidad
+  DELETE FROM public.point_events      WHERE user_id = v_uid_text;
+  DELETE FROM public.post_likes        WHERE user_id = v_uid_text;
+  DELETE FROM public.post_comments     WHERE user_id = v_uid_text;
+  DELETE FROM public.community_posts   WHERE user_id = v_uid_text;
+
+  -- Notificaciones y seguidos
+  DELETE FROM public.notifications     WHERE user_id = v_uid_text OR actor_id = v_uid_text;
+  DELETE FROM public.user_follows      WHERE follower_id = v_uid_text OR following_id = v_uid_text;
+
+  -- Perfil
+  DELETE FROM public.user_profiles     WHERE uid = v_uid_text;
+
+  -- Cuenta de autenticación (debe ser lo último)
+  DELETE FROM auth.users WHERE id = v_uid;
+END;
+$$;
