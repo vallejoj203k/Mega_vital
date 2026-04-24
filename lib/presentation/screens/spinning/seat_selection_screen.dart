@@ -19,9 +19,9 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
   late AnimationController _confirmAnim;
   late Animation<double> _scaleAnim;
 
-  // Layout: 4 columnas x 5 filas = 20 bicicletas
-  static const int cols = 4;
-  static const int rows = 5;
+  // Layout: 5 columnas x 3 filas = 15 bicicletas
+  static const int cols = 5;
+  static const int rows = 3;
 
   @override
   void initState() {
