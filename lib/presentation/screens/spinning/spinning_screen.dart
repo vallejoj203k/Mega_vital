@@ -29,6 +29,8 @@ class SpinInstructor {
 class SpinClass {
   final String id;
   final String name;
+  final String description;
+  final List<String> features;
   final SpinInstructor instructor;
   final SpinLevel level;
   final String time;
@@ -43,6 +45,8 @@ class SpinClass {
   SpinClass({
     required this.id,
     required this.name,
+    required this.description,
+    required this.features,
     required this.instructor,
     required this.level,
     required this.time,
@@ -91,6 +95,8 @@ List<SpinClass> _buildClasses() => [
   SpinClass(
     id: 'c1',
     name: 'Morning Burn',
+    description: 'Arranca el día con tabatas y sprints guiados por instructor certificado. Protocolo de resistencia aeróbica diseñado para maximizar tu rendimiento desde la primera pedalada.',
+    features: ['Bicicleta Keiser M3', 'Monitor cardíaco', 'Música en vivo'],
     instructor: _instructors[0],
     level: SpinLevel.basico,
     time: '06:00 AM',
@@ -104,6 +110,8 @@ List<SpinClass> _buildClasses() => [
   SpinClass(
     id: 'c2',
     name: 'Power Cycle',
+    description: 'Entrenamiento de potencia pura con métricas en tiempo real. Protocolo de alto rendimiento diseñado para atletas que buscan superar sus propios límites.',
+    features: ['Bicicleta Keiser M3+', 'Potenciómetro watt', 'Telemetría HR'],
     instructor: _instructors[2],
     level: SpinLevel.avanzado,
     time: '07:30 AM',
@@ -117,6 +125,8 @@ List<SpinClass> _buildClasses() => [
   SpinClass(
     id: 'c3',
     name: 'Rhythm Ride',
+    description: 'Cardio de precisión sincronizado con la música. Cada intervalo está calculado para mantener tu zona de quema óptima de inicio a fin.',
+    features: ['Bicicleta Profesional', 'Monitor cardíaco', 'Audio 4D'],
     instructor: _instructors[1],
     level: SpinLevel.intermedio,
     time: '12:00 PM',
@@ -130,6 +140,8 @@ List<SpinClass> _buildClasses() => [
   SpinClass(
     id: 'c4',
     name: 'Evening Flow',
+    description: 'Recuperación activa de alta calidad con técnica depurada. Ritmo constante y retroalimentación en tiempo real para un rendimiento sostenible.',
+    features: ['Bicicleta Keiser M3', 'Monitor cardíaco', 'Música ambient'],
     instructor: _instructors[1],
     level: SpinLevel.basico,
     time: '06:00 PM',
@@ -143,6 +155,8 @@ List<SpinClass> _buildClasses() => [
   SpinClass(
     id: 'c5',
     name: 'Night HIIT',
+    description: 'Intervalos de alta intensidad con protocolo Tabata certificado. La sesión más exigente del día — solo para quienes se atreven a dar el 100%.',
+    features: ['Bicicleta Keiser M3+', 'Métricas watt', 'Monitor cardíaco'],
     instructor: _instructors[0],
     level: SpinLevel.intermedio,
     time: '07:30 PM',
@@ -200,11 +214,11 @@ class _SpinningScreenState extends State<SpinningScreen>
   String _levelLabel(SpinLevel l) {
     switch (l) {
       case SpinLevel.basico:
-        return 'Básico';
+        return 'Iniciación Pro';
       case SpinLevel.intermedio:
-        return 'Intermedio';
+        return 'Intermedio Pro';
       case SpinLevel.avanzado:
-        return 'Avanzado';
+        return 'Alto Rendimiento';
     }
   }
 
@@ -288,8 +302,7 @@ class _SpinningScreenState extends State<SpinningScreen>
   }
 
   Widget _buildHeader() {
-    final todayClasses =
-        _classes.where((c) => c.availableSpots > 0).length;
+    final availableClasses = _classes.where((c) => c.availableSpots > 0).length;
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       decoration: BoxDecoration(
@@ -297,7 +310,7 @@ class _SpinningScreenState extends State<SpinningScreen>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppColors.accentOrange.withOpacity(0.15),
+            AppColors.accentOrange.withOpacity(0.18),
             AppColors.background,
           ],
         ),
@@ -306,43 +319,88 @@ class _SpinningScreenState extends State<SpinningScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   gradient: AppColors.burnGradient,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.accentOrange.withOpacity(0.4),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      color: AppColors.accentOrange.withOpacity(0.5),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
                     ),
                   ],
                 ),
                 child: const Icon(Icons.directions_bike_rounded,
-                    color: Colors.white, size: 24),
+                    color: Colors.white, size: 28),
               ),
               const SizedBox(width: 14),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Spinning', style: AppTextStyles.displayMedium),
-                  Text(
-                    'Ciclismo indoor de alta intensidad',
-                    style: AppTextStyles.bodyMedium
-                        .copyWith(color: AppColors.textSecondary),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text('Spinning', style: AppTextStyles.displayMedium),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            gradient: AppColors.burnGradient,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text(
+                            'PRO',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Sesiones certificadas con instructores profesionales',
+                      style: AppTextStyles.bodySmall
+                          .copyWith(color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
+          // Fila de credenciales profesionales
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.accentOrange.withOpacity(0.07),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                  color: AppColors.accentOrange.withOpacity(0.2), width: 0.5),
+            ),
+            child: Row(
+              children: [
+                _CredBadge(icon: Icons.verified_rounded, label: 'Instructores Certificados', color: AppColors.accentOrange),
+                const SizedBox(width: 10),
+                _CredBadge(icon: Icons.monitor_heart_rounded, label: 'Monitor Cardíaco', color: AppColors.error),
+                const SizedBox(width: 10),
+                _CredBadge(icon: Icons.bike_scooter_rounded, label: 'Keiser M3', color: AppColors.accentBlue),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
               _StatChip(
                 icon: Icons.calendar_today_rounded,
-                label: '$todayClasses clases hoy',
+                label: '$availableClasses clases disponibles',
                 color: AppColors.accentOrange,
               ),
               const SizedBox(width: 10),
@@ -397,6 +455,34 @@ class _SpinningScreenState extends State<SpinningScreen>
           Tab(text: 'Horarios'),
           Tab(text: 'Entrenadores'),
           Tab(text: 'Mis Reservas'),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Cred Badge (profesional) ───────────────────────────
+
+class _CredBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  const _CredBadge({required this.icon, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Row(
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
@@ -574,37 +660,38 @@ class _ClassCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Booked badge
-                if (isBooked)
-                  Positioned(
-                    top: 12,
-                    right: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                            color: color.withOpacity(0.6), width: 1),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.check_circle_rounded,
-                              size: 12, color: color),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Reservado',
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: color),
+                // Certified badge
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: isBooked
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: color.withOpacity(0.6), width: 1),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.check_circle_rounded, size: 12, color: color),
+                            const SizedBox(width: 4),
+                            Text('Reservado', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+                          ]),
+                        )
+                      : Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.45),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.accentOrange.withOpacity(0.5), width: 0.5),
+                          ),
+                          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.verified_rounded, size: 11, color: AppColors.accentOrange),
+                            SizedBox(width: 4),
+                            Text('CERTIFICADA', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.accentOrange, letterSpacing: 0.8)),
+                          ]),
+                        ),
+                ),
                 // Class name over image
                 Positioned(
                   bottom: 12,
@@ -623,7 +710,40 @@ class _ClassCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Descripción profesional
+                Text(
+                  cls.description,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Features del equipamiento
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: cls.features.map((f) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentOrange.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.accentOrange.withOpacity(0.25), width: 0.5),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.check_circle_outline_rounded, size: 10, color: AppColors.accentOrange),
+                      const SizedBox(width: 4),
+                      Text(f, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.accentOrange)),
+                    ]),
+                  )).toList(),
+                ),
+                const SizedBox(height: 10),
+                // Divisor
+                Container(height: 0.5, color: AppColors.border),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     _InfoPill(
@@ -634,8 +754,7 @@ class _ClassCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     _InfoPill(
                       icon: Icons.local_fire_department_rounded,
-                      label:
-                          '${cls.caloriesMin}–${cls.caloriesMax} kcal',
+                      label: '${cls.caloriesMin}–${cls.caloriesMax} kcal',
                       color: AppColors.accentOrange,
                     ),
                     const SizedBox(width: 8),
@@ -1006,7 +1125,24 @@ class _InstructorCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(inst.name, style: AppTextStyles.headingSmall),
+                Row(
+                  children: [
+                    Expanded(child: Text(inst.name, style: AppTextStyles.headingSmall)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 0.5),
+                      ),
+                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.verified_rounded, size: 10, color: AppColors.primary),
+                        SizedBox(width: 3),
+                        Text('Certificado', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                      ]),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 3),
                 Text(
                   inst.specialty,
