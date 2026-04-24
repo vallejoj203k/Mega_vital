@@ -131,3 +131,23 @@ CREATE POLICY "sessions_insert" ON spinning_sessions FOR INSERT WITH CHECK (auth
 -- Todos pueden ver asientos ocupados (sin datos personales)
 CREATE POLICY "bookings_seats_public" ON spinning_bookings
   FOR SELECT USING (true);
+
+-- ═══════════════════════════════════════════════════════
+-- RENOVACIÓN AUTOMÁTICA DE CUPOS
+-- Las sesiones son por fecha: cada día tiene su propia
+-- sesión con sus propias reservas. Los cupos se vacían
+-- automáticamente al crear una nueva sesión cada día.
+--
+-- OPCIONAL: limpieza de sesiones antiguas con pg_cron
+-- Actívalo en Supabase → Database → Extensions → pg_cron
+-- ═══════════════════════════════════════════════════════
+
+-- Limpiar sesiones con más de 7 días de antigüedad (ejecuta cada día a las 3am)
+-- SELECT cron.schedule(
+--   'clean-old-spinning-sessions',
+--   '0 3 * * *',
+--   $$
+--     DELETE FROM spinning_sessions
+--     WHERE session_date < CURRENT_DATE - INTERVAL '7 days';
+--   $$
+-- );

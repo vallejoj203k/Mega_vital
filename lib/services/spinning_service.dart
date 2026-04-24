@@ -119,6 +119,42 @@ class SpinClass {
     };
     return days.contains(map[DateTime.now().weekday]);
   }
+
+  /// Fecha de la próxima sesión disponible para reservar.
+  /// Si la clase aún no ha terminado hoy → hoy.
+  /// Si ya terminó → siguiente día hábil (Lun–Vie).
+  DateTime get nextSessionDate {
+    final now = DateTime.now();
+    final parts = endTime.split(':');
+    final endH = int.parse(parts[0]);
+    final endM = int.parse(parts[1]);
+    final classEndToday =
+        DateTime(now.year, now.month, now.day, endH, endM);
+
+    DateTime candidate = now.isBefore(classEndToday)
+        ? DateTime(now.year, now.month, now.day)
+        : DateTime(now.year, now.month, now.day + 1);
+
+    // Avanzar si cae en fin de semana o si la clase no ocurre ese día
+    const dayMap = {1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat', 7: 'sun'};
+    int safety = 0;
+    while (!days.contains(dayMap[candidate.weekday]) && safety < 7) {
+      candidate = candidate.add(const Duration(days: 1));
+      safety++;
+    }
+    return candidate;
+  }
+
+  String get nextSessionLabel {
+    final d = nextSessionDate;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    if (d == today) return 'Hoy';
+    if (d == tomorrow) return 'Mañana';
+    const names = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+    return '${names[d.weekday]} ${d.day}/${d.month}';
+  }
 }
 
 class SpinSession {

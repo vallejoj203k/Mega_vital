@@ -165,6 +165,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
       );
 
   Widget _buildAppBar() {
+    final nextLabel = widget.spinClass.nextSessionLabel;
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
       child: Row(
@@ -180,9 +181,27 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
               children: [
                 Text('Elige tu bicicleta',
                     style: AppTextStyles.headingMedium),
-                Text(widget.spinClass.name,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary)),
+                Row(
+                  children: [
+                    Text(widget.spinClass.name,
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary)),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _accent.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(nextLabel,
+                          style: TextStyle(
+                              fontSize: 10,
+                              color: _accent,
+                              fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -201,7 +220,8 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
               children: [
                 Icon(Icons.access_time_rounded, size: 12, color: _accent),
                 const SizedBox(width: 4),
-                Text(widget.spinClass.startTime,
+                Text(
+                    '${widget.spinClass.startTime}–${widget.spinClass.endTime}',
                     style: TextStyle(
                         fontSize: 12,
                         color: _accent,

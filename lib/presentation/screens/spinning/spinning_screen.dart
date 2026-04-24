@@ -87,8 +87,9 @@ class _SpinningScreenState extends State<SpinningScreen>
   }
 
   void _openSeatSelection(SpinClass cls) async {
-    final today = DateTime.now();
-    final sessionId = await _service.getOrCreateSession(cls.id, today);
+    final sessionDate = cls.nextSessionDate;
+    final sessionId =
+        await _service.getOrCreateSession(cls.id, sessionDate);
     if (!mounted) return;
 
     final result = await Navigator.push<int>(
@@ -488,36 +489,65 @@ class _ClassCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                // PRO badge
+                // Next session + PRO badge
                 Positioned(
                   top: 12,
                   right: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      gradient: AppColors.burnGradient,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                            color: AppColors.accentOrange.withOpacity(0.4),
-                            blurRadius: 8)
-                      ],
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.verified_rounded,
-                            size: 12, color: Colors.white),
-                        SizedBox(width: 4),
-                        Text('CLASE PRO',
-                            style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
-                                letterSpacing: 0.5)),
-                      ],
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          gradient: AppColors.burnGradient,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                                color: AppColors.accentOrange.withOpacity(0.4),
+                                blurRadius: 8)
+                          ],
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.verified_rounded,
+                                size: 12, color: Colors.white),
+                            SizedBox(width: 4),
+                            Text('CLASE PRO',
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                    letterSpacing: 0.5)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.6),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.event_rounded,
+                                size: 10, color: AppColors.textSecondary),
+                            const SizedBox(width: 4),
+                            Text(
+                              cls.nextSessionLabel,
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 // Level badge
