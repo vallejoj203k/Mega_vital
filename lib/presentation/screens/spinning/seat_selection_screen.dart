@@ -150,13 +150,6 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
       child: Row(
         children: [
           _InfoItem(
-            icon: Icons.person_rounded,
-            label: 'Instructor',
-            value: widget.spinClass.instructor.name.split(' ').first,
-            color: widget.spinClass.instructor.color,
-          ),
-          _Divider(),
-          _InfoItem(
             icon: Icons.chair_rounded,
             label: 'Disponibles',
             value: '${widget.spinClass.availableSpots}',
@@ -178,6 +171,15 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
             label: 'Duración',
             value: '${widget.spinClass.durationMinutes}m',
             color: AppColors.accentBlue,
+          ),
+          _Divider(),
+          _InfoItem(
+            icon: Icons.calendar_today_rounded,
+            label: 'Días',
+            value: widget.spinClass.days.split('·').length.toString() == '1'
+                ? widget.spinClass.days.trim()
+                : '${widget.spinClass.days.split('·').length} días',
+            color: AppColors.accentPurple,
           ),
         ],
       ),

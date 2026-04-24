@@ -99,8 +99,7 @@ List<SpinClass> _buildClasses() => [
     caloriesMin: 400,
     caloriesMax: 550,
     totalSpots: 20,
-    bookedSpots: 12,
-    reservedSeats: {0, 1, 3, 5, 6, 8, 9, 11, 14, 15, 17, 19},
+    bookedSpots: 0,
   ),
   SpinClass(
     id: 'c2',
@@ -113,8 +112,7 @@ List<SpinClass> _buildClasses() => [
     caloriesMin: 600,
     caloriesMax: 800,
     totalSpots: 20,
-    bookedSpots: 7,
-    reservedSeats: {2, 4, 7, 10, 12, 16, 18},
+    bookedSpots: 0,
   ),
   SpinClass(
     id: 'c3',
@@ -127,8 +125,7 @@ List<SpinClass> _buildClasses() => [
     caloriesMin: 500,
     caloriesMax: 650,
     totalSpots: 20,
-    bookedSpots: 15,
-    reservedSeats: {0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 13, 14, 16, 17, 19},
+    bookedSpots: 0,
   ),
   SpinClass(
     id: 'c4',
@@ -141,8 +138,7 @@ List<SpinClass> _buildClasses() => [
     caloriesMin: 380,
     caloriesMax: 500,
     totalSpots: 20,
-    bookedSpots: 4,
-    reservedSeats: {1, 5, 12, 18},
+    bookedSpots: 0,
   ),
   SpinClass(
     id: 'c5',
@@ -155,8 +151,7 @@ List<SpinClass> _buildClasses() => [
     caloriesMin: 550,
     caloriesMax: 700,
     totalSpots: 20,
-    bookedSpots: 10,
-    reservedSeats: {0, 3, 4, 6, 9, 11, 14, 15, 17, 19},
+    bookedSpots: 0,
   ),
 ];
 
@@ -654,37 +649,15 @@ class _ClassCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: cls.instructor.color.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: cls.instructor.color.withOpacity(0.5)),
-                      ),
-                      child: Icon(Icons.person_rounded,
-                          size: 16, color: cls.instructor.color),
-                    ),
+                    const Icon(Icons.calendar_today_rounded,
+                        size: 15, color: AppColors.textSecondary),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            cls.instructor.name,
-                            style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary),
-                          ),
-                          Text(
-                            cls.days,
-                            style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textSecondary),
-                          ),
-                        ],
+                      child: Text(
+                        cls.days,
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary),
                       ),
                     ),
                     // Spots indicator
@@ -1172,7 +1145,7 @@ class _MyBookingsTab extends StatelessWidget {
                     Text(cls.name, style: AppTextStyles.headingSmall),
                     const SizedBox(height: 2),
                     Text(
-                      '${cls.time}  ·  ${cls.instructor.name}',
+                      cls.time,
                       style: const TextStyle(
                           fontSize: 12, color: AppColors.textSecondary),
                     ),
