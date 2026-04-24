@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../services/spinning_service.dart';
+
 
 // 3 filas × 6 columnas = 18 bicicletas
 const int _rows = 3;
@@ -51,6 +53,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
     with SingleTickerProviderStateMixin {
   int? _selectedSeat;
   Set<int> _occupiedSeats = {};
+  List<SessionParticipant> _participants = [];
   bool _loading = true;
   bool _booking = false;
 
@@ -74,12 +77,17 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
   }
 
   Future<void> _loadSeats() async {
-    final seats =
-        await widget.service.getBookedSeats(widget.sessionId);
-    if (mounted) setState(() {
-      _occupiedSeats = seats;
-      _loading = false;
-    });
+    final results = await Future.wait([
+      widget.service.getBookedSeats(widget.sessionId),
+      widget.service.getParticipants(widget.sessionId),
+    ]);
+    if (mounted) {
+      setState(() {
+        _occupiedSeats = results[0] as Set<int>;
+        _participants = results[1] as List<SessionParticipant>;
+        _loading = false;
+      });
+    }
   }
 
   Color get _accent => _levelColor(widget.spinClass.level);
@@ -136,6 +144,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
             _buildInstructorPlatform(),
             const SizedBox(height: 16),
             Expanded(child: _loading ? _buildLoader() : _buildGrid()),
+            if (!_loading) _buildParticipants(),
             _buildBottomBar(),
           ],
         ),
@@ -428,6 +437,129 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
             ),
           );
         }),
+      ),
+    );
+  }
+
+  Widget _buildParticipants() {
+    if (_participants.isEmpty) return const SizedBox.shrink();
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border, width: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.group_rounded, size: 14, color: _accent),
+              const SizedBox(width: 6),
+              Text(
+                'Participantes (${_participants.length}/${_totalSeats})',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: _accent),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 56,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _participants.length,
+              itemBuilder: (context, i) {
+                final p = _participants[i];
+                final isMe = p.userId == uid;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Stack(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isMe
+                                  ? _accent.withOpacity(0.2)
+                                  : AppColors.surfaceVariant,
+                              border: Border.all(
+                                color: isMe
+                                    ? _accent
+                                    : AppColors.border,
+                                width: isMe ? 2 : 1,
+                              ),
+                            ),
+                            child: p.avatarUrl != null
+                                ? ClipOval(
+                                    child: Image.network(
+                                      p.avatarUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Center(
+                                        child: Text(p.initials,
+                                            style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w700,
+                                                color: isMe
+                                                    ? _accent
+                                                    : AppColors
+                                                        .textSecondary)),
+                                      ),
+                                    ),
+                                  )
+                                : Center(
+                                    child: Text(p.initials,
+                                        style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: isMe
+                                                ? _accent
+                                                : AppColors.textSecondary)),
+                                  ),
+                          ),
+                          if (isMe)
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: _accent,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                      color: AppColors.surface, width: 1.5),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        isMe ? 'Tú' : p.displayName.split(' ').first,
+                        style: TextStyle(
+                            fontSize: 9,
+                            color: isMe ? _accent : AppColors.textMuted,
+                            fontWeight: isMe
+                                ? FontWeight.w700
+                                : FontWeight.w400),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

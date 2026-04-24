@@ -317,4 +317,70 @@ class SpinningService {
         .from('spinning_bookings')
         .update({'is_cancelled': true}).eq('id', bookingId);
   }
+
+  Future<List<SessionParticipant>> getParticipants(String sessionId) async {
+    try {
+      final rows = await _db
+          .from('spinning_bookings')
+          .select('seat_number, user_id')
+          .eq('session_id', sessionId)
+          .eq('is_cancelled', false) as List;
+
+      final participants = <SessionParticipant>[];
+      for (final r in rows) {
+        final row = r as Map<String, dynamic>;
+        final userId = row['user_id'] as String;
+        String displayName = 'Usuario';
+        String? avatarUrl;
+        try {
+          final profile = await _db
+              .from('user_profiles')
+              .select('display_name, avatar_url')
+              .eq('uid', userId)
+              .maybeSingle();
+          if (profile != null) {
+            displayName = profile['display_name'] as String? ?? 'Usuario';
+            avatarUrl = profile['avatar_url'] as String?;
+          }
+        } catch (_) {}
+        participants.add(SessionParticipant(
+          userId: userId,
+          seatNumber: row['seat_number'] as int,
+          displayName: displayName,
+          avatarUrl: avatarUrl,
+        ));
+      }
+      return participants;
+    } catch (_) {
+      return [];
+    }
+  }
+}
+
+class SessionParticipant {
+  final String userId;
+  final int seatNumber;
+  final String displayName;
+  final String? avatarUrl;
+
+  const SessionParticipant({
+    required this.userId,
+    required this.seatNumber,
+    required this.displayName,
+    this.avatarUrl,
+  });
+
+  String get seatLabel {
+    final row = String.fromCharCode('A'.codeUnitAt(0) + seatNumber ~/ 6);
+    final col = seatNumber % 6 + 1;
+    return '$row$col';
+  }
+
+  String get initials {
+    final parts = displayName.trim().split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
+  }
 }
