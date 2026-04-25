@@ -12,6 +12,8 @@ class SpinInstructor {
   final String id;
   final String name;
   final String specialty;
+  final String bio;
+  final String photoAsset;
   final double rating;
   final int totalClasses;
   final Color color;
@@ -20,6 +22,8 @@ class SpinInstructor {
     required this.id,
     required this.name,
     required this.specialty,
+    required this.bio,
+    required this.photoAsset,
     required this.rating,
     required this.totalClasses,
     required this.color,
@@ -69,6 +73,8 @@ final _instructors = [
     id: 'i1',
     name: 'Verónica',
     specialty: 'HIIT & Alto Rendimiento',
+    bio: 'Instructora certificada internacionalmente con más de 5 años de experiencia en ciclismo indoor de alto rendimiento. Especialista en protocolos HIIT y entrenamiento funcional cardiovascular. Ha acompañado a cientos de atletas a descubrir su máximo potencial, combinando técnica depurada con motivación real dentro del salón.',
+    photoAsset: 'assets/images/instructors/vero.png',
     rating: 4.9,
     totalClasses: 280,
     color: Color(0xFFFF6B35),
@@ -77,6 +83,8 @@ final _instructors = [
     id: 'i2',
     name: 'Julio',
     specialty: 'Potencia & Ciclismo Indoor',
+    bio: 'Instructor profesional certificado con amplia trayectoria en ciclismo de potencia y entrenamiento cardiovascular de alta intensidad. Su metodología combina técnica depurada con intensidad progresiva, adaptada a cada nivel. Apasionado por el rendimiento, lleva a cada miembro a superar sus propias marcas sesión a sesión.',
+    photoAsset: 'assets/images/instructors/julio.png',
     rating: 4.8,
     totalClasses: 195,
     color: Color(0xFF4FC3F7),
@@ -1028,105 +1036,233 @@ class _FullButton extends StatelessWidget {
 
 class _InstructorsTab extends StatelessWidget {
   final List<SpinInstructor> instructors;
-
   const _InstructorsTab({required this.instructors});
 
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
       itemCount: instructors.length,
-      itemBuilder: (context, i) => _InstructorCard(inst: instructors[i]),
+      itemBuilder: (_, i) => _InstructorCard(inst: instructors[i]),
     );
   }
 }
 
 class _InstructorCard extends StatelessWidget {
   final SpinInstructor inst;
-
   const _InstructorCard({required this.inst});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border, width: 0.5),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: inst.color.withOpacity(0.35), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
+            color: inst.color.withOpacity(0.12),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.35),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  inst.color.withOpacity(0.3),
-                  inst.color.withOpacity(0.1)
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-              border: Border.all(color: inst.color.withOpacity(0.5), width: 2),
+          // ── Foto de perfil ──────────────────────────────────
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+            child: Stack(
+              children: [
+                // Foto real o placeholder
+                SizedBox(
+                  height: 240,
+                  width: double.infinity,
+                  child: Image.asset(
+                    inst.photoAsset,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            inst.color.withOpacity(0.35),
+                            AppColors.surface,
+                          ],
+                        ),
+                      ),
+                      child: Center(
+                        child: Icon(Icons.person_rounded,
+                            size: 96, color: inst.color.withOpacity(0.4)),
+                      ),
+                    ),
+                  ),
+                ),
+                // Degradado inferior para legibilidad del nombre
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.75),
+                        ],
+                        stops: const [0.45, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+                // Nombre + certificado sobre la foto
+                Positioned(
+                  bottom: 14,
+                  left: 16,
+                  right: 16,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              inst.name,
+                              style: const TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              inst.specialty,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: inst.color,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: inst.color.withOpacity(0.6), width: 1),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.verified_rounded, size: 13, color: inst.color),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Certificado/a',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: inst.color,
+                            ),
+                          ),
+                        ]),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            child: Icon(Icons.person_rounded, size: 36, color: inst.color),
           ),
-          const SizedBox(width: 14),
-          Expanded(
+
+          // ── Estadísticas ────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: inst.color.withOpacity(0.07),
+              border: Border(
+                top: BorderSide(color: inst.color.withOpacity(0.2), width: 0.5),
+                bottom: BorderSide(color: inst.color.withOpacity(0.2), width: 0.5),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _StatColumn(
+                  icon: Icons.star_rounded,
+                  value: inst.rating.toStringAsFixed(1),
+                  label: 'Calificación',
+                  color: AppColors.warning,
+                ),
+                Container(width: 0.5, height: 36, color: inst.color.withOpacity(0.3)),
+                _StatColumn(
+                  icon: Icons.directions_bike_rounded,
+                  value: '${inst.totalClasses}',
+                  label: 'Clases impartidas',
+                  color: inst.color,
+                ),
+                Container(width: 0.5, height: 36, color: inst.color.withOpacity(0.3)),
+                _StatColumn(
+                  icon: Icons.workspace_premium_rounded,
+                  value: '5+',
+                  label: 'Años de exp.',
+                  color: AppColors.primary,
+                ),
+              ],
+            ),
+          ),
+
+          // ── Presentación profesional ─────────────────────────
+          Padding(
+            padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(child: Text(inst.name, style: AppTextStyles.headingSmall)),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 0.5),
-                      ),
-                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.verified_rounded, size: 10, color: AppColors.primary),
-                        SizedBox(width: 3),
-                        Text('Certificado', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.primary)),
-                      ]),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  inst.specialty,
-                  style: TextStyle(
-                      fontSize: 12,
+                Row(children: [
+                  Container(
+                    width: 3,
+                    height: 18,
+                    decoration: BoxDecoration(
                       color: inst.color,
-                      fontWeight: FontWeight.w500),
-                ),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Perfil profesional',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ]),
                 const SizedBox(height: 10),
-                Row(
+                Text(
+                  inst.bio,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    height: 1.6,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                // Chips de especialidad
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    _MiniStat(
-                      icon: Icons.star_rounded,
-                      value: inst.rating.toString(),
-                      color: AppColors.warning,
-                    ),
-                    const SizedBox(width: 12),
-                    _MiniStat(
-                      icon: Icons.directions_bike_rounded,
-                      value: '${inst.totalClasses} clases',
-                      color: inst.color,
-                    ),
+                    _SpecChip(label: 'Ciclismo Indoor', color: inst.color),
+                    _SpecChip(label: 'HIIT Profesional', color: inst.color),
+                    _SpecChip(label: 'Cardio de Precisión', color: inst.color),
                   ],
                 ),
               ],
@@ -1138,13 +1274,61 @@ class _InstructorCard extends StatelessWidget {
   }
 }
 
+class _StatColumn extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+  const _StatColumn({required this.icon, required this.value, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+        ),
+      ],
+    );
+  }
+}
+
+class _SpecChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _SpecChip({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3), width: 0.5),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+      ),
+    );
+  }
+}
+
 class _MiniStat extends StatelessWidget {
   final IconData icon;
   final String value;
   final Color color;
-
-  const _MiniStat(
-      {required this.icon, required this.value, required this.color});
+  const _MiniStat({required this.icon, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -1153,13 +1337,7 @@ class _MiniStat extends StatelessWidget {
       children: [
         Icon(icon, size: 13, color: color),
         const SizedBox(width: 4),
-        Text(
-          value,
-          style: TextStyle(
-              fontSize: 12,
-              color: color,
-              fontWeight: FontWeight.w600),
-        ),
+        Text(value, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
       ],
     );
   }
