@@ -260,14 +260,91 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (_step > 0) setState(() => _step--);
   }
 
-  // ── Enviar registro a Firebase ──
+  String _generatePlaceholderEmail(String name) {
+    final slug = name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    final suffix = (DateTime.now().millisecondsSinceEpoch % 10000)
+        .toString()
+        .padLeft(4, '0');
+    return 'noemail_${slug.isNotEmpty ? slug : 'miembro'}$suffix@megavital.app';
+  }
+
+  // ── Enviar registro ──
   Future<void> _handleRegister() async {
     FocusScope.of(context).unfocus();
     final auth = context.read<AuthProvider>();
 
+    final rawEmail = _emailCtrl.text.trim();
+    String emailForAuth = rawEmail;
+    String realEmail = rawEmail;
+
+    if (rawEmail.isEmpty) {
+      emailForAuth = _generatePlaceholderEmail(_nameCtrl.text.trim());
+      realEmail = '';
+
+      if (!mounted) return;
+      final proceed = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Sin correo electrónico', style: AppTextStyles.headingMedium),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Se asignará el siguiente usuario de acceso. Anótalo para dárselo al miembro:',
+                style: AppTextStyles.bodyMedium,
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      color: AppColors.primary.withOpacity(0.4), width: 1),
+                ),
+                child: SelectableText(
+                  emailForAuth,
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'El miembro usará este usuario junto con su contraseña para iniciar sesión.',
+                style: AppTextStyles.bodySmall,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar',
+                  style: TextStyle(color: AppColors.textSecondary)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Lo anoté, continuar',
+                  style: TextStyle(
+                      color: AppColors.primary, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      );
+      if (!(proceed ?? false) || !mounted) return;
+    }
+
     final ok = await auth.register(
       name: _nameCtrl.text.trim(),
-      email: _emailCtrl.text.trim(),
+      email: emailForAuth,
+      realEmail: realEmail,
       password: _passCtrl.text,
       goal: _selectedGoal,
       weight: _weight,
@@ -494,12 +571,12 @@ class _Step1 extends StatelessWidget {
 
             AuthField(
               controller: emailCtrl,
-              label: 'Correo electrónico',
+              label: 'Correo electrónico (opcional)',
               hint: 'tu@correo.com',
               icon: Icons.email_outlined,
               keyboardType: TextInputType.emailAddress,
               validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Ingresa tu correo';
+                if (v == null || v.trim().isEmpty) return null;
                 if (!RegExp(r'^[\w.]+@[\w]+\.\w+$').hasMatch(v.trim())) {
                   return 'Formato inválido';
                 }

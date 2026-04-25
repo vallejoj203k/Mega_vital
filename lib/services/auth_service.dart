@@ -133,6 +133,7 @@ class AuthService {
     required int age,
     String gender = 'mujer',
     String? referredBy,
+    String realEmail = '',
   }) async {
     try {
       // Guardamos todos los datos del perfil en metadata para poder recuperarlos
@@ -147,6 +148,7 @@ class AuthService {
           'height': height,
           'age': age,
           'gender': gender,
+          'real_email': realEmail,
           if (referredBy != null && referredBy.isNotEmpty)
             'referred_by': referredBy,
         },
@@ -223,6 +225,7 @@ class AuthService {
   }
 
   // Crea o sobreescribe el perfil con los datos reales del registro.
+  // realEmail: correo real del usuario, o '' si no tiene correo.
   Future<UserProfile?> createProfileWithData({
     required AppUser user,
     required String name,
@@ -232,12 +235,14 @@ class AuthService {
     required int age,
     String gender = 'mujer',
     String? referredBy,
+    String realEmail = '',
   }) async {
+    final emailToStore = realEmail;
     // Construye el perfil local como fallback si la lectura post-upsert falla.
     UserProfile buildLocal(UserProfile? saved) => UserProfile(
       uid:        saved?.uid ?? user.uid,
       name:       saved?.name ?? name.trim(),
-      email:      saved?.email ?? user.email,
+      email:      saved?.email ?? emailToStore,
       goal:       saved?.goal ?? goal,
       weight:     saved?.weight ?? weight,
       height:     saved?.height ?? height,
@@ -251,7 +256,7 @@ class AuthService {
       await _supabase.from('user_profiles').upsert({
         'uid':            user.uid,
         'name':           name.trim(),
-        'email':          user.email,
+        'email':          emailToStore,
         'goal':           goal,
         'weight':         weight,
         'height':         height,
@@ -271,7 +276,7 @@ class AuthService {
         await _supabase.from('user_profiles').upsert({
           'uid':            user.uid,
           'name':           name.trim(),
-          'email':          user.email,
+          'email':          emailToStore,
           'goal':           goal,
           'weight':         weight,
           'height':         height,
@@ -308,6 +313,7 @@ class AuthService {
     final metaAge       = (meta['age'] as num?)?.toInt();
     final metaGender    = meta['gender'] as String?;
     final metaReferred  = meta['referred_by'] as String?;
+    final metaRealEmail = meta['real_email'] as String? ?? '';
 
     // Solo crear si hay datos reales del formulario de registro.
     if (metaGoal == null || metaWeight == null || metaHeight == null || metaAge == null) {
@@ -326,6 +332,7 @@ class AuthService {
       age:        metaAge,
       gender:     metaGender ?? 'mujer',
       referredBy: metaReferred,
+      realEmail:  metaRealEmail,
     );
   }
 

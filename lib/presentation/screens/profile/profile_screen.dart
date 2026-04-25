@@ -108,7 +108,13 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(name, style: AppTextStyles.headingMedium),
                     const SizedBox(height: 2),
-                    Text(auth.firebaseUser?.email ?? '', style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted)),
+                    Text(
+                      () {
+                        final e = auth.profile?.email ?? auth.firebaseUser?.email ?? '';
+                        return e.isEmpty || e.startsWith('noemail_') ? 'Sin correo registrado' : e;
+                      }(),
+                      style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted),
+                    ),
                     const SizedBox(height: 6),
                     Row(children: [const Icon(Icons.flag_outlined, size: 13, color: AppColors.textMuted), const SizedBox(width: 4), Text(goal, style: AppTextStyles.bodyMedium)]),
                     const SizedBox(height: 10),
