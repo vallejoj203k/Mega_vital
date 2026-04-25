@@ -103,3 +103,65 @@ workflows:
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
         submit_to_testflight: true
+
+
+  # ─── iOS → Subir App Preview (video) a App Store Connect ────────────────────
+  # Sube un archivo de video (.mp4 / .mov) como App Preview en el listing
+  # de la App Store. NO compila la app.
+  #
+  # Coloca el video en:  assets/app_preview/preview.mp4  (o cambia VIDEO_PATH)
+  #
+  # Variables en Codemagic Dashboard → Environment variables:
+  #   APP_STORE_CONNECT_KEY_IDENTIFIER  → Key ID de tu App Store Connect API key
+  #   APP_STORE_CONNECT_ISSUER_ID       → Issuer ID de App Store Connect
+  #   APP_STORE_CONNECT_PRIVATE_KEY     → Contenido del archivo .p8
+  #   BUNDLE_ID                          → Bundle ID real (ej. com.vallejoj.megavital)
+  #
+  # Opcionales (con defaults):
+  #   VIDEO_PATH          → Ruta al video (default: assets/app_preview/preview.mp4)
+  #   APP_LOCALE          → Locale del listing (default: es-MX)
+  #   PREVIEW_SCREEN_SIZE → Tipo de pantalla (default: APP_IPHONE_67)
+  # ────────────────────────────────────────────────────────────────────────────
+
+  ios-upload-app-preview:
+    name: iOS → Subir App Preview a App Store Connect
+    max_build_duration: 15
+    instance_type: mac_mini_m2
+
+    environment:
+      flutter: stable
+      vars:
+        APP_STORE_CONNECT_KEY_IDENTIFIER: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
+        APP_STORE_CONNECT_PRIVATE_KEY: $APP_STORE_CONNECT_PRIVATE_KEY
+        BUNDLE_ID: $BUNDLE_ID
+        VIDEO_PATH: ${VIDEO_PATH:-assets/app_preview/preview.mp4}
+        APP_LOCALE: ${APP_LOCALE:-es-MX}
+        PREVIEW_SCREEN_SIZE: ${PREVIEW_SCREEN_SIZE:-APP_IPHONE_67}
+
+    scripts:
+      - name: Instalar dependencias Python
+        script: |
+          pip3 install --quiet PyJWT cryptography requests
+
+      - name: Verificar archivo de video
+        script: |
+          if [ ! -f "$VIDEO_PATH" ]; then
+            echo "ERROR: Video no encontrado en '$VIDEO_PATH'"
+            echo "Coloca tu video en esa ruta y vuelve a ejecutar el workflow."
+            exit 1
+          fi
+          echo "Video encontrado: $VIDEO_PATH ($(du -h "$VIDEO_PATH" | cut -f1))"
+          # Validar duración: App Store acepta de 15 a 30 segundos
+          if command -v ffprobe &>/dev/null; then
+            DURATION=$(ffprobe -v error -show_entries format=duration \
+              -of default=noprint_wrappers=1:nokey=1 "$VIDEO_PATH" 2>/dev/null | cut -d. -f1)
+            echo "Duración del video: ${DURATION}s"
+            if [ "$DURATION" -lt 15 ] || [ "$DURATION" -gt 30 ]; then
+              echo "ADVERTENCIA: App Store requiere videos de 15-30 segundos (detectado: ${DURATION}s)"
+            fi
+          fi
+
+      - name: Subir App Preview a App Store Connect
+        script: |
+          python3 scripts/upload_app_preview.py
