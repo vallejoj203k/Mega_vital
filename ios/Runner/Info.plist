@@ -6,9 +6,7 @@
 	<string>Mega Vital usa la cámara para fotografiar tus comidas y que la IA calcule sus calorías y macronutrientes automáticamente.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Mega Vital accede a tu galería para subir fotos de comidas, publicaciones en la comunidad, historias y tu foto de perfil.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Mega Vital puede guardar fotos de tu progreso en la galería.</string>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
+<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
