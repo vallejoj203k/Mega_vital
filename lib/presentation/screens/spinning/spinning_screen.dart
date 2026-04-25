@@ -12,6 +12,8 @@ class SpinInstructor {
   final String id;
   final String name;
   final String specialty;
+  final String bio;
+  final String photoAsset;
   final double rating;
   final int totalClasses;
   final Color color;
@@ -20,6 +22,8 @@ class SpinInstructor {
     required this.id,
     required this.name,
     required this.specialty,
+    required this.bio,
+    required this.photoAsset,
     required this.rating,
     required this.totalClasses,
     required this.color,
@@ -29,6 +33,8 @@ class SpinInstructor {
 class SpinClass {
   final String id;
   final String name;
+  final String description;
+  final List<String> features;
   final SpinInstructor instructor;
   final SpinLevel level;
   final String time;
@@ -43,6 +49,8 @@ class SpinClass {
   SpinClass({
     required this.id,
     required this.name,
+    required this.description,
+    required this.features,
     required this.instructor,
     required this.level,
     required this.time,
@@ -63,100 +71,71 @@ class SpinClass {
 final _instructors = [
   const SpinInstructor(
     id: 'i1',
-    name: 'Carlos Mendoza',
-    specialty: 'HIIT & Resistencia',
+    name: 'Verónica',
+    specialty: 'HIIT & Alto Rendimiento',
+    bio: 'Instructora certificada internacionalmente con más de 5 años de experiencia en ciclismo indoor de alto rendimiento. Especialista en protocolos HIIT y entrenamiento funcional cardiovascular. Ha acompañado a cientos de atletas a descubrir su máximo potencial, combinando técnica depurada con motivación real dentro del salón.',
+    photoAsset: 'assets/images/instructors/vero.png',
     rating: 4.9,
-    totalClasses: 312,
+    totalClasses: 280,
     color: Color(0xFFFF6B35),
   ),
   const SpinInstructor(
     id: 'i2',
-    name: 'Laura Gómez',
-    specialty: 'Ritmo & Cardio',
+    name: 'Julio',
+    specialty: 'Potencia & Ciclismo Indoor',
+    bio: 'Instructor profesional certificado con amplia trayectoria en ciclismo de potencia y entrenamiento cardiovascular de alta intensidad. Su metodología combina técnica depurada con intensidad progresiva, adaptada a cada nivel. Apasionado por el rendimiento, lleva a cada miembro a superar sus propias marcas sesión a sesión.',
+    photoAsset: 'assets/images/instructors/julio.png',
     rating: 4.8,
-    totalClasses: 248,
+    totalClasses: 195,
     color: Color(0xFF4FC3F7),
-  ),
-  const SpinInstructor(
-    id: 'i3',
-    name: 'Diego Vargas',
-    specialty: 'Potencia & Fuerza',
-    rating: 4.7,
-    totalClasses: 189,
-    color: Color(0xFFBB86FC),
   ),
 ];
 
 List<SpinClass> _buildClasses() => [
   SpinClass(
     id: 'c1',
-    name: 'Morning Burn',
-    instructor: _instructors[0],
-    level: SpinLevel.basico,
-    time: '06:00 AM',
-    days: 'Lun · Mié · Vie',
+    name: 'Morning Power',
+    description: 'La sesión más exigente del día. Activa el metabolismo desde temprano con tabatas y sprints guiados por instructora certificada. Para los que hacen la diferencia antes que el resto despierte.',
+    features: ['Bicicleta Keiser M3+', 'Monitor cardíaco', 'Protocolo HIIT'],
+    instructor: _instructors[0], // Verónica
+    level: SpinLevel.avanzado,
+    time: '05:00 AM',
+    days: 'Lun · Mar · Mié · Jue · Vie',
     durationMinutes: 60,
-    caloriesMin: 400,
-    caloriesMax: 550,
-    totalSpots: 20,
-    bookedSpots: 12,
-    reservedSeats: {0, 1, 3, 5, 6, 8, 9, 11, 14, 15, 17, 19},
+    caloriesMin: 550,
+    caloriesMax: 750,
+    totalSpots: 15,
+    bookedSpots: 0,
   ),
   SpinClass(
     id: 'c2',
-    name: 'Power Cycle',
-    instructor: _instructors[2],
-    level: SpinLevel.avanzado,
-    time: '07:30 AM',
-    days: 'Mar · Jue · Sáb',
+    name: 'Evening Burn',
+    description: 'La sesión perfecta para desconectarte del trabajo. Cardio de precisión con música en vivo y retroalimentación en tiempo real. Quema calórica sostenida de inicio a fin.',
+    features: ['Bicicleta Keiser M3', 'Monitor cardíaco', 'Música en vivo'],
+    instructor: _instructors[1], // Julio
+    level: SpinLevel.intermedio,
+    time: '06:00 PM',
+    days: 'Lun · Mar · Mié · Jue · Vie',
     durationMinutes: 60,
-    caloriesMin: 600,
-    caloriesMax: 800,
-    totalSpots: 20,
-    bookedSpots: 7,
-    reservedSeats: {2, 4, 7, 10, 12, 16, 18},
+    caloriesMin: 450,
+    caloriesMax: 600,
+    totalSpots: 15,
+    bookedSpots: 0,
   ),
   SpinClass(
     id: 'c3',
-    name: 'Rhythm Ride',
-    instructor: _instructors[1],
-    level: SpinLevel.intermedio,
-    time: '12:00 PM',
+    name: 'Night Storm',
+    description: 'Cierra el día con todo. Intervalos de alta intensidad guiados por instructora certificada para maximizar la quema calórica y desafiar tus límites cada sesión.',
+    features: ['Bicicleta Keiser M3+', 'Potenciómetro watt', 'Métricas en tiempo real'],
+    instructor: _instructors[0], // Verónica
+    level: SpinLevel.avanzado,
+    time: '07:00 PM',
     days: 'Lun · Mar · Mié · Jue · Vie',
-    durationMinutes: 60,
-    caloriesMin: 500,
-    caloriesMax: 650,
-    totalSpots: 20,
-    bookedSpots: 15,
-    reservedSeats: {0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 13, 14, 16, 17, 19},
-  ),
-  SpinClass(
-    id: 'c4',
-    name: 'Evening Flow',
-    instructor: _instructors[1],
-    level: SpinLevel.basico,
-    time: '06:00 PM',
-    days: 'Lun · Mié · Vie',
-    durationMinutes: 60,
-    caloriesMin: 380,
-    caloriesMax: 500,
-    totalSpots: 20,
-    bookedSpots: 4,
-    reservedSeats: {1, 5, 12, 18},
-  ),
-  SpinClass(
-    id: 'c5',
-    name: 'Night HIIT',
-    instructor: _instructors[0],
-    level: SpinLevel.intermedio,
-    time: '07:30 PM',
-    days: 'Mar · Jue',
     durationMinutes: 60,
     caloriesMin: 550,
     caloriesMax: 700,
-    totalSpots: 20,
-    bookedSpots: 10,
-    reservedSeats: {0, 3, 4, 6, 9, 11, 14, 15, 17, 19},
+    totalSpots: 15,
+    bookedSpots: 0,
   ),
 ];
 
@@ -205,11 +184,11 @@ class _SpinningScreenState extends State<SpinningScreen>
   String _levelLabel(SpinLevel l) {
     switch (l) {
       case SpinLevel.basico:
-        return 'Básico';
+        return 'Iniciación Pro';
       case SpinLevel.intermedio:
-        return 'Intermedio';
+        return 'Intermedio Pro';
       case SpinLevel.avanzado:
-        return 'Avanzado';
+        return 'Alto Rendimiento';
     }
   }
 
@@ -293,8 +272,7 @@ class _SpinningScreenState extends State<SpinningScreen>
   }
 
   Widget _buildHeader() {
-    final todayClasses =
-        _classes.where((c) => c.availableSpots > 0).length;
+    final availableClasses = _classes.where((c) => c.availableSpots > 0).length;
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       decoration: BoxDecoration(
@@ -302,7 +280,7 @@ class _SpinningScreenState extends State<SpinningScreen>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppColors.accentOrange.withOpacity(0.15),
+            AppColors.accentOrange.withOpacity(0.18),
             AppColors.background,
           ],
         ),
@@ -311,43 +289,88 @@ class _SpinningScreenState extends State<SpinningScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   gradient: AppColors.burnGradient,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.accentOrange.withOpacity(0.4),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      color: AppColors.accentOrange.withOpacity(0.5),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
                     ),
                   ],
                 ),
                 child: const Icon(Icons.directions_bike_rounded,
-                    color: Colors.white, size: 24),
+                    color: Colors.white, size: 28),
               ),
               const SizedBox(width: 14),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Spinning', style: AppTextStyles.displayMedium),
-                  Text(
-                    'Ciclismo indoor de alta intensidad',
-                    style: AppTextStyles.bodyMedium
-                        .copyWith(color: AppColors.textSecondary),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text('Spinning', style: AppTextStyles.displayMedium),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            gradient: AppColors.burnGradient,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text(
+                            'PRO',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Sesiones certificadas con instructores profesionales',
+                      style: AppTextStyles.bodySmall
+                          .copyWith(color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
+          // Fila de credenciales profesionales
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.accentOrange.withOpacity(0.07),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                  color: AppColors.accentOrange.withOpacity(0.2), width: 0.5),
+            ),
+            child: Row(
+              children: [
+                _CredBadge(icon: Icons.verified_rounded, label: 'Instructores Certificados', color: AppColors.accentOrange),
+                const SizedBox(width: 10),
+                _CredBadge(icon: Icons.monitor_heart_rounded, label: 'Monitor Cardíaco', color: AppColors.error),
+                const SizedBox(width: 10),
+                _CredBadge(icon: Icons.bike_scooter_rounded, label: 'Keiser M3', color: AppColors.accentBlue),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
               _StatChip(
                 icon: Icons.calendar_today_rounded,
-                label: '$todayClasses clases hoy',
+                label: '$availableClasses clases disponibles',
                 color: AppColors.accentOrange,
               ),
               const SizedBox(width: 10),
@@ -402,6 +425,34 @@ class _SpinningScreenState extends State<SpinningScreen>
           Tab(text: 'Horarios'),
           Tab(text: 'Entrenadores'),
           Tab(text: 'Mis Reservas'),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Cred Badge (profesional) ───────────────────────────
+
+class _CredBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  const _CredBadge({required this.icon, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Row(
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
@@ -579,37 +630,38 @@ class _ClassCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Booked badge
-                if (isBooked)
-                  Positioned(
-                    top: 12,
-                    right: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                            color: color.withOpacity(0.6), width: 1),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.check_circle_rounded,
-                              size: 12, color: color),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Reservado',
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: color),
+                // Certified badge
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: isBooked
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: color.withOpacity(0.6), width: 1),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.check_circle_rounded, size: 12, color: color),
+                            const SizedBox(width: 4),
+                            Text('Reservado', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+                          ]),
+                        )
+                      : Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.45),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.accentOrange.withOpacity(0.5), width: 0.5),
+                          ),
+                          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.verified_rounded, size: 11, color: AppColors.accentOrange),
+                            SizedBox(width: 4),
+                            Text('CERTIFICADA', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.accentOrange, letterSpacing: 0.8)),
+                          ]),
+                        ),
+                ),
                 // Class name over image
                 Positioned(
                   bottom: 12,
@@ -628,7 +680,40 @@ class _ClassCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Descripción profesional
+                Text(
+                  cls.description,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Features del equipamiento
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: cls.features.map((f) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentOrange.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.accentOrange.withOpacity(0.25), width: 0.5),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.check_circle_outline_rounded, size: 10, color: AppColors.accentOrange),
+                      const SizedBox(width: 4),
+                      Text(f, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.accentOrange)),
+                    ]),
+                  )).toList(),
+                ),
+                const SizedBox(height: 10),
+                // Divisor
+                Container(height: 0.5, color: AppColors.border),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     _InfoPill(
@@ -639,8 +724,7 @@ class _ClassCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     _InfoPill(
                       icon: Icons.local_fire_department_rounded,
-                      label:
-                          '${cls.caloriesMin}–${cls.caloriesMax} kcal',
+                      label: '${cls.caloriesMin}–${cls.caloriesMax} kcal',
                       color: AppColors.accentOrange,
                     ),
                     const SizedBox(width: 8),
@@ -654,37 +738,15 @@ class _ClassCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: cls.instructor.color.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: cls.instructor.color.withOpacity(0.5)),
-                      ),
-                      child: Icon(Icons.person_rounded,
-                          size: 16, color: cls.instructor.color),
-                    ),
+                    const Icon(Icons.calendar_today_rounded,
+                        size: 15, color: AppColors.textSecondary),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            cls.instructor.name,
-                            style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary),
-                          ),
-                          Text(
-                            cls.days,
-                            style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textSecondary),
-                          ),
-                        ],
+                      child: Text(
+                        cls.days,
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary),
                       ),
                     ),
                     // Spots indicator
@@ -974,88 +1036,233 @@ class _FullButton extends StatelessWidget {
 
 class _InstructorsTab extends StatelessWidget {
   final List<SpinInstructor> instructors;
-
   const _InstructorsTab({required this.instructors});
 
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
       itemCount: instructors.length,
-      itemBuilder: (context, i) => _InstructorCard(inst: instructors[i]),
+      itemBuilder: (_, i) => _InstructorCard(inst: instructors[i]),
     );
   }
 }
 
 class _InstructorCard extends StatelessWidget {
   final SpinInstructor inst;
-
   const _InstructorCard({required this.inst});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border, width: 0.5),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: inst.color.withOpacity(0.35), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
+            color: inst.color.withOpacity(0.12),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.35),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  inst.color.withOpacity(0.3),
-                  inst.color.withOpacity(0.1)
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-              border: Border.all(color: inst.color.withOpacity(0.5), width: 2),
+          // ── Foto de perfil ──────────────────────────────────
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+            child: Stack(
+              children: [
+                // Foto real o placeholder
+                SizedBox(
+                  height: 240,
+                  width: double.infinity,
+                  child: Image.asset(
+                    inst.photoAsset,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            inst.color.withOpacity(0.35),
+                            AppColors.surface,
+                          ],
+                        ),
+                      ),
+                      child: Center(
+                        child: Icon(Icons.person_rounded,
+                            size: 96, color: inst.color.withOpacity(0.4)),
+                      ),
+                    ),
+                  ),
+                ),
+                // Degradado inferior para legibilidad del nombre
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.75),
+                        ],
+                        stops: const [0.45, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+                // Nombre + certificado sobre la foto
+                Positioned(
+                  bottom: 14,
+                  left: 16,
+                  right: 16,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              inst.name,
+                              style: const TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              inst.specialty,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: inst.color,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: inst.color.withOpacity(0.6), width: 1),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.verified_rounded, size: 13, color: inst.color),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Certificado/a',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: inst.color,
+                            ),
+                          ),
+                        ]),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            child: Icon(Icons.person_rounded, size: 36, color: inst.color),
           ),
-          const SizedBox(width: 14),
-          Expanded(
+
+          // ── Estadísticas ────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: inst.color.withOpacity(0.07),
+              border: Border(
+                top: BorderSide(color: inst.color.withOpacity(0.2), width: 0.5),
+                bottom: BorderSide(color: inst.color.withOpacity(0.2), width: 0.5),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _StatColumn(
+                  icon: Icons.star_rounded,
+                  value: inst.rating.toStringAsFixed(1),
+                  label: 'Calificación',
+                  color: AppColors.warning,
+                ),
+                Container(width: 0.5, height: 36, color: inst.color.withOpacity(0.3)),
+                _StatColumn(
+                  icon: Icons.directions_bike_rounded,
+                  value: '${inst.totalClasses}',
+                  label: 'Clases impartidas',
+                  color: inst.color,
+                ),
+                Container(width: 0.5, height: 36, color: inst.color.withOpacity(0.3)),
+                _StatColumn(
+                  icon: Icons.workspace_premium_rounded,
+                  value: '5+',
+                  label: 'Años de exp.',
+                  color: AppColors.primary,
+                ),
+              ],
+            ),
+          ),
+
+          // ── Presentación profesional ─────────────────────────
+          Padding(
+            padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(inst.name, style: AppTextStyles.headingSmall),
-                const SizedBox(height: 3),
-                Text(
-                  inst.specialty,
-                  style: TextStyle(
-                      fontSize: 12,
+                Row(children: [
+                  Container(
+                    width: 3,
+                    height: 18,
+                    decoration: BoxDecoration(
                       color: inst.color,
-                      fontWeight: FontWeight.w500),
-                ),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Perfil profesional',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ]),
                 const SizedBox(height: 10),
-                Row(
+                Text(
+                  inst.bio,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    height: 1.6,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                // Chips de especialidad
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    _MiniStat(
-                      icon: Icons.star_rounded,
-                      value: inst.rating.toString(),
-                      color: AppColors.warning,
-                    ),
-                    const SizedBox(width: 12),
-                    _MiniStat(
-                      icon: Icons.directions_bike_rounded,
-                      value: '${inst.totalClasses} clases',
-                      color: inst.color,
-                    ),
+                    _SpecChip(label: 'Ciclismo Indoor', color: inst.color),
+                    _SpecChip(label: 'HIIT Profesional', color: inst.color),
+                    _SpecChip(label: 'Cardio de Precisión', color: inst.color),
                   ],
                 ),
               ],
@@ -1067,13 +1274,61 @@ class _InstructorCard extends StatelessWidget {
   }
 }
 
+class _StatColumn extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+  const _StatColumn({required this.icon, required this.value, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+        ),
+      ],
+    );
+  }
+}
+
+class _SpecChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _SpecChip({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3), width: 0.5),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+      ),
+    );
+  }
+}
+
 class _MiniStat extends StatelessWidget {
   final IconData icon;
   final String value;
   final Color color;
-
-  const _MiniStat(
-      {required this.icon, required this.value, required this.color});
+  const _MiniStat({required this.icon, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -1082,13 +1337,7 @@ class _MiniStat extends StatelessWidget {
       children: [
         Icon(icon, size: 13, color: color),
         const SizedBox(width: 4),
-        Text(
-          value,
-          style: TextStyle(
-              fontSize: 12,
-              color: color,
-              fontWeight: FontWeight.w600),
-        ),
+        Text(value, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
       ],
     );
   }
@@ -1172,7 +1421,7 @@ class _MyBookingsTab extends StatelessWidget {
                     Text(cls.name, style: AppTextStyles.headingSmall),
                     const SizedBox(height: 2),
                     Text(
-                      '${cls.time}  ·  ${cls.instructor.name}',
+                      cls.time,
                       style: const TextStyle(
                           fontSize: 12, color: AppColors.textSecondary),
                     ),

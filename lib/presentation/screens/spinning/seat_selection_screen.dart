@@ -19,9 +19,9 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
   late AnimationController _confirmAnim;
   late Animation<double> _scaleAnim;
 
-  // Layout: 4 columnas x 5 filas = 20 bicicletas
-  static const int cols = 4;
-  static const int rows = 5;
+  // Layout: 5 columnas x 3 filas = 15 bicicletas
+  static const int cols = 5;
+  static const int rows = 3;
 
   @override
   void initState() {
@@ -150,13 +150,6 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
       child: Row(
         children: [
           _InfoItem(
-            icon: Icons.person_rounded,
-            label: 'Instructor',
-            value: widget.spinClass.instructor.name.split(' ').first,
-            color: widget.spinClass.instructor.color,
-          ),
-          _Divider(),
-          _InfoItem(
             icon: Icons.chair_rounded,
             label: 'Disponibles',
             value: '${widget.spinClass.availableSpots}',
@@ -178,6 +171,15 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
             label: 'Duración',
             value: '${widget.spinClass.durationMinutes}m',
             color: AppColors.accentBlue,
+          ),
+          _Divider(),
+          _InfoItem(
+            icon: Icons.calendar_today_rounded,
+            label: 'Días',
+            value: widget.spinClass.days.split('·').length.toString() == '1'
+                ? widget.spinClass.days.trim()
+                : '${widget.spinClass.days.split('·').length} días',
+            color: AppColors.accentPurple,
           ),
         ],
       ),

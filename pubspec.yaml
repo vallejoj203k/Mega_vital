@@ -31,6 +31,7 @@ flutter:
     - assets/images/body_back.png
     - assets/images/frontal_masculino.png
     - assets/images/trasero_masculino.png
+    - assets/images/instructors/
 
 flutter_icons:
   android: true
