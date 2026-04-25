@@ -138,9 +138,9 @@ class _LoginScreenState extends State<LoginScreen>
                         // Stats row
                         Row(
                           children: const [
-                            _StatItem(value: '120+', label: 'CLASES\nSEMANALES'),
+                            _StatItem(value: '15+', label: 'CLASES\nSEMANALES'),
                             _StatDivider(),
-                            _StatItem(value: '45', label: 'ENTRE-\nNADORES'),
+                            _StatItem(value: '5', label: 'ENTRE-\nNADORES'),
                             _StatDivider(),
                             _StatItem(value: '24/7', label: 'ACCESO\nAPP'),
                           ],
