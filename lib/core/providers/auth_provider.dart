@@ -111,6 +111,7 @@ class AuthProvider extends ChangeNotifier {
     required int    age,
     String gender = 'mujer',
     String? referredBy,
+    String realEmail = '',
   }) async {
     _isRegistering = true;
     _setLoading(true);
@@ -118,7 +119,7 @@ class AuthProvider extends ChangeNotifier {
     final result = await _service.register(
       name: name, email: email, password: password,
       goal: goal, weight: weight, height: height, age: age,
-      gender: gender, referredBy: referredBy,
+      gender: gender, referredBy: referredBy, realEmail: realEmail,
     );
 
     // Supabase requiere confirmar el correo antes de dar sesión activa.
@@ -150,6 +151,7 @@ class AuthProvider extends ChangeNotifier {
       age:        age,
       gender:     gender,
       referredBy: referredBy,
+      realEmail:  realEmail,
     );
 
     _profileLoading = false;
