@@ -136,21 +136,47 @@ class _VideoLoopWidgetState extends State<_VideoLoopWidget> {
     super.dispose();
   }
 
+  // Misma URL que el video pero con .jpg — thumbnail del ejercicio
+  String get _thumbnailUrl =>
+      widget.uri.toString().replaceFirst('.mp4', '.jpg');
+
   @override
   Widget build(BuildContext context) {
-    // Muestra stickman hasta que el video esté listo y reproduciéndose
-    if (!_ready || _failed || !widget.playing) return widget.fallback;
-    return SizedBox(
-      width:  widget.size,
-      height: widget.size * 1.15,
-      child: ClipRect(
-        child: AspectRatio(
-          aspectRatio: _ctrl!.value.aspectRatio,
-          child: VideoPlayer(_ctrl!),
+    // Video reproduciéndose
+    if (_ready && widget.playing) {
+      return SizedBox(
+        width:  widget.size,
+        height: widget.size * 1.15,
+        child: ClipRect(
+          child: AspectRatio(
+            aspectRatio: _ctrl!.value.aspectRatio,
+            child: VideoPlayer(_ctrl!),
+          ),
         ),
-      ),
-    );
+      );
+    }
+
+    // Paused / no iniciado: muestra imagen, stickman si la imagen falla
+    if (!_failed) {
+      return SizedBox(
+        width:  widget.size,
+        height: widget.size * 1.15,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            _thumbnailUrl,
+            width:  widget.size,
+            height: widget.size * 1.15,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => widget.fallback,
+          ),
+        ),
+      );
+    }
+
+    return widget.fallback;
   }
+
 }
 
 // ── Stickman animado (fallback) ───────────────────────────────────
