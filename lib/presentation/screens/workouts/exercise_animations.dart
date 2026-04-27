@@ -60,16 +60,14 @@ class _VideoLoopWidgetState extends State<_VideoLoopWidget> {
   @override
   void initState() {
     super.initState();
-    _ctrl = VideoPlayerController.asset(widget.assetPath)
-      ..initialize().then((_) {
-        if (mounted) {
-          setState(() => _ready = true);
-          _ctrl
-            ..setLooping(true)
-            ..setVolume(0)
-            ..play();
-        }
-      });
+    _ctrl = VideoPlayerController.asset(widget.assetPath);
+    _ctrl.initialize().then((_) {
+      if (!mounted) return;
+      _ctrl.setLooping(true);
+      _ctrl.setVolume(0);
+      _ctrl.play();
+      setState(() => _ready = true);
+    });
   }
 
   @override
