@@ -33,7 +33,7 @@ flutter:
     - assets/images/trasero_masculino.png
     - assets/images/instructors/
     # Animaciones de ejercicios — agregar la carpeta aquí cuando tengas el primer MP4:
-    # - assets/animations/exercises/pectoral/
+    - assets/animations/exercises/pectoral/
     # - assets/animations/exercises/hombros/
     # - assets/animations/exercises/biceps/
     # - assets/animations/exercises/triceps/
