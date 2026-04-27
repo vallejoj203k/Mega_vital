@@ -9,18 +9,39 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
-// ── Mapa de videos disponibles ────────────────────────────────────
-// Clave: ID del ejercicio (exercise_database.dart) → ruta del asset MP4.
-// Agregar una línea por cada video que subas.
-const _videoAssets = <String, String>{
-  'pec1': 'assets/animations/exercises/pectoral/pec1.mp4',
-  // 'pec2': 'assets/animations/exercises/pectoral/pec2.mp4',
-  // 'pec3': 'assets/animations/exercises/pectoral/pec3.mp4',
+// ── URL de Supabase Storage ───────────────────────────────────────
+// Bucket público: exercise-animations
+// Estructura: <grupo>/<id>.mp4  (ej: pectoral/pec1.mp4)
+// Para agregar un video: solo súbelo al bucket con el nombre correcto.
+// No se requiere ningún cambio de código.
+const _kStorageBase =
+    'https://ntxbjwmkxnewzzducfzz.supabase.co/storage/v1/object/public/exercise-animations';
+
+const _kPrefixToFolder = <String, String>{
+  'pec': 'pectoral',
+  'hom': 'hombros',
+  'bic': 'biceps',
+  'tri': 'triceps',
+  'esp': 'espalda',
+  'dor': 'dorsales',
+  'lum': 'lumbar',
+  'abs': 'abdominales',
+  'cua': 'cuadriceps',
+  'gem': 'gemelos',
+  'glu': 'gluteos',
+  'isq': 'isquiotibiales',
 };
 
+Uri? _videoUri(String exerciseId) {
+  final prefix = exerciseId.replaceAll(RegExp(r'[0-9]'), '');
+  final folder = _kPrefixToFolder[prefix];
+  if (folder == null) return null;
+  return Uri.parse('$_kStorageBase/$folder/$exerciseId.mp4');
+}
+
 // ── Widget principal (router) ─────────────────────────────────────
-// Si existe video para el ejercicio lo reproduce en bucle;
-// si no, muestra el stickman animado como fallback.
+// Intenta cargar el video desde Supabase Storage.
+// Mientras carga o si no existe → muestra el stickman.
 class ExerciseAnimationWidget extends StatelessWidget {
   final String exerciseId;
   final Color  color;
@@ -35,19 +56,27 @@ class ExerciseAnimationWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final videoPath = _videoAssets[exerciseId];
-    if (videoPath != null) {
-      return _VideoLoopWidget(assetPath: videoPath, size: size);
-    }
-    return _StickmanWidget(exerciseId: exerciseId, color: color, size: size);
+    final uri = _videoUri(exerciseId);
+    final stickman = _StickmanWidget(
+      exerciseId: exerciseId,
+      color: color,
+      size: size,
+    );
+    if (uri == null) return stickman;
+    return _VideoLoopWidget(uri: uri, size: size, fallback: stickman);
   }
 }
 
 // ── Reproductor de video en bucle ─────────────────────────────────
 class _VideoLoopWidget extends StatefulWidget {
-  final String assetPath;
+  final Uri    uri;
   final double size;
-  const _VideoLoopWidget({required this.assetPath, required this.size});
+  final Widget fallback;
+  const _VideoLoopWidget({
+    required this.uri,
+    required this.size,
+    required this.fallback,
+  });
 
   @override
   State<_VideoLoopWidget> createState() => _VideoLoopWidgetState();
@@ -55,18 +84,21 @@ class _VideoLoopWidget extends StatefulWidget {
 
 class _VideoLoopWidgetState extends State<_VideoLoopWidget> {
   late VideoPlayerController _ctrl;
-  bool _ready = false;
+  bool _ready  = false;
+  bool _failed = false;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = VideoPlayerController.asset(widget.assetPath);
+    _ctrl = VideoPlayerController.networkUrl(widget.uri);
     _ctrl.initialize().then((_) {
       if (!mounted) return;
       _ctrl.setLooping(true);
       _ctrl.setVolume(0);
       _ctrl.play();
       setState(() => _ready = true);
+    }).catchError((_) {
+      if (mounted) setState(() => _failed = true);
     });
   }
 
@@ -78,9 +110,7 @@ class _VideoLoopWidgetState extends State<_VideoLoopWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_ready) {
-      return SizedBox(width: widget.size, height: widget.size * 1.15);
-    }
+    if (!_ready || _failed) return widget.fallback;
     return SizedBox(
       width:  widget.size,
       height: widget.size * 1.15,

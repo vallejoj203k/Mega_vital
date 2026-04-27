@@ -33,8 +33,7 @@ flutter:
     - assets/images/frontal_masculino.png
     - assets/images/trasero_masculino.png
     - assets/images/instructors/
-    # Animaciones de ejercicios — agregar la carpeta aquí cuando tengas el primer MP4:
-    - assets/animations/exercises/pectoral/
+    # Videos en Supabase Storage (bucket: exercise-animations) — no se bundlean en la app
     # - assets/animations/exercises/hombros/
     # - assets/animations/exercises/biceps/
     # - assets/animations/exercises/triceps/
