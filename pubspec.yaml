@@ -32,18 +32,19 @@ flutter:
     - assets/images/frontal_masculino.png
     - assets/images/trasero_masculino.png
     - assets/images/instructors/
-    - assets/animations/exercises/pectoral/
-    - assets/animations/exercises/hombros/
-    - assets/animations/exercises/biceps/
-    - assets/animations/exercises/triceps/
-    - assets/animations/exercises/espalda/
-    - assets/animations/exercises/dorsales/
-    - assets/animations/exercises/lumbar/
-    - assets/animations/exercises/abdominales/
-    - assets/animations/exercises/cuadriceps/
-    - assets/animations/exercises/gemelos/
-    - assets/animations/exercises/gluteos/
-    - assets/animations/exercises/isquiotibiales/
+    # Animaciones de ejercicios — agregar la carpeta aquí cuando tengas el primer MP4:
+    # - assets/animations/exercises/pectoral/
+    # - assets/animations/exercises/hombros/
+    # - assets/animations/exercises/biceps/
+    # - assets/animations/exercises/triceps/
+    # - assets/animations/exercises/espalda/
+    # - assets/animations/exercises/dorsales/
+    # - assets/animations/exercises/lumbar/
+    # - assets/animations/exercises/abdominales/
+    # - assets/animations/exercises/cuadriceps/
+    # - assets/animations/exercises/gemelos/
+    # - assets/animations/exercises/gluteos/
+    # - assets/animations/exercises/isquiotibiales/
 
 flutter_icons:
   android: true
