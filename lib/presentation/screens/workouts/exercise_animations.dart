@@ -13,9 +13,9 @@ import 'package:video_player/video_player.dart';
 // Clave: ID del ejercicio (exercise_database.dart) → ruta del asset MP4.
 // Agregar una línea por cada video que subas.
 const _videoAssets = <String, String>{
-  'p1': 'assets/animations/exercises/pectoral/pec1.mp4',
-  // 'p2': 'assets/animations/exercises/pectoral/pec2.mp4',
-  // 'p3': 'assets/animations/exercises/pectoral/pec3.mp4',
+  'pec1': 'assets/animations/exercises/pectoral/pec1.mp4',
+  // 'pec2': 'assets/animations/exercises/pectoral/pec2.mp4',
+  // 'pec3': 'assets/animations/exercises/pectoral/pec3.mp4',
 };
 
 // ── Widget principal (router) ─────────────────────────────────────
