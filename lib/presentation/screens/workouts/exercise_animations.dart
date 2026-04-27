@@ -7,9 +7,21 @@
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
 
-// ── Widget principal ──────────────────────────────────────────────
-class ExerciseAnimationWidget extends StatefulWidget {
+// ── Mapa de videos disponibles ────────────────────────────────────
+// Clave: ID del ejercicio (exercise_database.dart) → ruta del asset MP4.
+// Agregar una línea por cada video que subas.
+const _videoAssets = <String, String>{
+  'p1': 'assets/animations/exercises/pectoral/pec1.mp4',
+  // 'p2': 'assets/animations/exercises/pectoral/pec2.mp4',
+  // 'p3': 'assets/animations/exercises/pectoral/pec3.mp4',
+};
+
+// ── Widget principal (router) ─────────────────────────────────────
+// Si existe video para el ejercicio lo reproduce en bucle;
+// si no, muestra el stickman animado como fallback.
+class ExerciseAnimationWidget extends StatelessWidget {
   final String exerciseId;
   final Color  color;
   final double size;
@@ -22,11 +34,84 @@ class ExerciseAnimationWidget extends StatefulWidget {
   });
 
   @override
-  State<ExerciseAnimationWidget> createState() =>
-      _ExerciseAnimationWidgetState();
+  Widget build(BuildContext context) {
+    final videoPath = _videoAssets[exerciseId];
+    if (videoPath != null) {
+      return _VideoLoopWidget(assetPath: videoPath, size: size);
+    }
+    return _StickmanWidget(exerciseId: exerciseId, color: color, size: size);
+  }
 }
 
-class _ExerciseAnimationWidgetState extends State<ExerciseAnimationWidget>
+// ── Reproductor de video en bucle ─────────────────────────────────
+class _VideoLoopWidget extends StatefulWidget {
+  final String assetPath;
+  final double size;
+  const _VideoLoopWidget({required this.assetPath, required this.size});
+
+  @override
+  State<_VideoLoopWidget> createState() => _VideoLoopWidgetState();
+}
+
+class _VideoLoopWidgetState extends State<_VideoLoopWidget> {
+  late VideoPlayerController _ctrl;
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = VideoPlayerController.asset(widget.assetPath)
+      ..initialize().then((_) {
+        if (mounted) {
+          setState(() => _ready = true);
+          _ctrl
+            ..setLooping(true)
+            ..setVolume(0)
+            ..play();
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) {
+      return SizedBox(width: widget.size, height: widget.size * 1.15);
+    }
+    return SizedBox(
+      width:  widget.size,
+      height: widget.size * 1.15,
+      child: ClipRect(
+        child: AspectRatio(
+          aspectRatio: _ctrl.value.aspectRatio,
+          child: VideoPlayer(_ctrl),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Stickman animado (fallback) ───────────────────────────────────
+class _StickmanWidget extends StatefulWidget {
+  final String exerciseId;
+  final Color  color;
+  final double size;
+  const _StickmanWidget({
+    required this.exerciseId,
+    required this.color,
+    this.size = 120,
+  });
+
+  @override
+  State<_StickmanWidget> createState() => _StickmanWidgetState();
+}
+
+class _StickmanWidgetState extends State<_StickmanWidget>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double>   _anim;
