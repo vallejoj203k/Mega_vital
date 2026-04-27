@@ -863,7 +863,7 @@ String _diffLabel(ExerciseDifficulty d) {
 // ─────────────────────────────────────────────────────────────────
 // TARJETA DE EJERCICIO — estilo grid con animación siempre visible
 // ─────────────────────────────────────────────────────────────────
-class _ExerciseCard extends StatelessWidget {
+class _ExerciseCard extends StatefulWidget {
   final ExerciseItem exercise;
   final Color        muscleColor;
   final bool         selected;
@@ -873,25 +873,32 @@ class _ExerciseCard extends StatelessWidget {
     required this.selected, required this.onToggle});
 
   @override
+  State<_ExerciseCard> createState() => _ExerciseCardState();
+}
+
+class _ExerciseCardState extends State<_ExerciseCard> {
+  bool _playing = false;
+
+  @override
   Widget build(BuildContext context) {
-    final ex  = exercise;
-    final col = muscleColor;
+    final ex  = widget.exercise;
+    final col = widget.muscleColor;
     final dc  = _diffColor(ex.difficulty);
 
     return GestureDetector(
-      onTap: onToggle,
+      onTap: widget.onToggle,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         decoration: BoxDecoration(
-          color: selected
+          color: widget.selected
               ? col.withOpacity(0.10)
               : AppColors.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: selected ? col.withOpacity(0.5) : AppColors.border,
-            width: selected ? 1.5 : 0.5,
+            color: widget.selected ? col.withOpacity(0.5) : AppColors.border,
+            width: widget.selected ? 1.5 : 0.5,
           ),
-          boxShadow: selected
+          boxShadow: widget.selected
               ? [BoxShadow(color: col.withOpacity(0.15), blurRadius: 12)]
               : null,
         ),
@@ -918,20 +925,28 @@ class _ExerciseCard extends StatelessWidget {
                     exerciseId: ex.id,
                     color: col,
                     size: sz,
+                    playing: _playing,
                   ),
-                  // Play button
-                  Positioned(bottom: 6,
-                    child: Container(
-                      width: 30, height: 30,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(
-                          color: AppColors.primary.withOpacity(0.45),
-                          blurRadius: 10, spreadRadius: 1)],
-                      ),
-                      child: const Icon(Icons.play_arrow_rounded,
+                  Positioned(
+                    bottom: 6,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => setState(() => _playing = !_playing),
+                      child: Container(
+                        width: 30, height: 30,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          boxShadow: [BoxShadow(
+                            color: AppColors.primary.withOpacity(0.45),
+                            blurRadius: 10, spreadRadius: 1)],
+                        ),
+                        child: Icon(
+                          _playing
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
                           color: Colors.black, size: 17),
+                      ),
                     )),
                 ]);
               },
@@ -966,7 +981,7 @@ class _ExerciseCard extends StatelessWidget {
           ]),
 
           // ── Checkmark (top-right) ────────────────────────────
-          if (selected)
+          if (widget.selected)
             Positioned(top: 8, right: 8,
               child: Container(width: 22, height: 22,
                 decoration: BoxDecoration(

@@ -46,12 +46,14 @@ class ExerciseAnimationWidget extends StatelessWidget {
   final String exerciseId;
   final Color  color;
   final double size;
+  final bool   playing;
 
   const ExerciseAnimationWidget({
     super.key,
     required this.exerciseId,
     required this.color,
-    this.size = 120,
+    this.size    = 120,
+    this.playing = false,
   });
 
   @override
@@ -63,7 +65,12 @@ class ExerciseAnimationWidget extends StatelessWidget {
       size: size,
     );
     if (uri == null) return stickman;
-    return _VideoLoopWidget(uri: uri, size: size, fallback: stickman);
+    return _VideoLoopWidget(
+      uri:      uri,
+      size:     size,
+      fallback: stickman,
+      playing:  playing,
+    );
   }
 }
 
@@ -72,10 +79,12 @@ class _VideoLoopWidget extends StatefulWidget {
   final Uri    uri;
   final double size;
   final Widget fallback;
+  final bool   playing;
   const _VideoLoopWidget({
     required this.uri,
     required this.size,
     required this.fallback,
+    required this.playing,
   });
 
   @override
@@ -93,13 +102,25 @@ class _VideoLoopWidgetState extends State<_VideoLoopWidget> {
     _ctrl = VideoPlayerController.networkUrl(widget.uri);
     _ctrl.initialize().then((_) {
       if (!mounted) return;
-      _ctrl.setLooping(true);
       _ctrl.setVolume(0);
-      _ctrl.play();
+      _ctrl.setLooping(true);
+      // No se reproduce — muestra el primer frame estático
       setState(() => _ready = true);
     }).catchError((_) {
       if (mounted) setState(() => _failed = true);
     });
+  }
+
+  @override
+  void didUpdateWidget(_VideoLoopWidget old) {
+    super.didUpdateWidget(old);
+    if (!_ready || old.playing == widget.playing) return;
+    if (widget.playing) {
+      _ctrl.play();
+    } else {
+      _ctrl.pause();
+      _ctrl.seekTo(Duration.zero);
+    }
   }
 
   @override
