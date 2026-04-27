@@ -7,13 +7,11 @@
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
 
-// ── URL de Supabase Storage ───────────────────────────────────────
+// ── Supabase Storage ──────────────────────────────────────────────
 // Bucket público: exercise-animations
-// Estructura: <grupo>/<id>.mp4  (ej: pectoral/pec1.mp4)
-// Para agregar un video: solo súbelo al bucket con el nombre correcto.
-// No se requiere ningún cambio de código.
+// Sube el GIF con el nombre del ID: pectoral/pec1.gif, hombros/hom1.gif…
+// Sin cambios de código al agregar nuevos GIFs.
 const _kStorageBase =
     'https://ntxbjwmkxnewzzducfzz.supabase.co/storage/v1/object/public/exercise-animations';
 
@@ -32,151 +30,53 @@ const _kPrefixToFolder = <String, String>{
   'isq': 'isquiotibiales',
 };
 
-Uri? _videoUri(String exerciseId) {
+String? _gifUrl(String exerciseId) {
   final prefix = exerciseId.replaceAll(RegExp(r'[0-9]'), '');
-  final folder = _kPrefixToFolder[prefix];
+  final folder  = _kPrefixToFolder[prefix];
   if (folder == null) return null;
-  return Uri.parse('$_kStorageBase/$folder/$exerciseId.mp4');
+  return '$_kStorageBase/$folder/$exerciseId.gif';
 }
 
-// ── Widget principal (router) ─────────────────────────────────────
-// Intenta cargar el video desde Supabase Storage.
-// Mientras carga o si no existe → muestra el stickman.
+// ── Widget principal ──────────────────────────────────────────────
+// Muestra el GIF animado desde Supabase Storage.
+// Mientras carga o si no existe → stickman como fallback.
 class ExerciseAnimationWidget extends StatelessWidget {
   final String exerciseId;
   final Color  color;
   final double size;
-  final bool   playing;
 
   const ExerciseAnimationWidget({
     super.key,
     required this.exerciseId,
     required this.color,
-    this.size    = 120,
-    this.playing = false,
+    this.size = 120,
   });
 
   @override
   Widget build(BuildContext context) {
-    final uri = _videoUri(exerciseId);
+    final url      = _gifUrl(exerciseId);
     final stickman = _StickmanWidget(
       exerciseId: exerciseId,
-      color: color,
-      size: size,
+      color:      color,
+      size:       size,
     );
-    if (uri == null) return stickman;
-    return _VideoLoopWidget(
-      uri:      uri,
-      size:     size,
-      fallback: stickman,
-      playing:  playing,
+    if (url == null) return stickman;
+
+    return SizedBox(
+      width:  size,
+      height: size * 1.15,
+      child: Image.network(
+        url,
+        width:           size,
+        height:          size * 1.15,
+        fit:             BoxFit.contain,
+        gaplessPlayback: true,
+        errorBuilder:    (_, __, ___) => stickman,
+        loadingBuilder:  (_, child, progress) =>
+            progress == null ? child : stickman,
+      ),
     );
   }
-}
-
-// ── Reproductor de video en bucle ─────────────────────────────────
-class _VideoLoopWidget extends StatefulWidget {
-  final Uri    uri;
-  final double size;
-  final Widget fallback;
-  final bool   playing;
-  const _VideoLoopWidget({
-    required this.uri,
-    required this.size,
-    required this.fallback,
-    required this.playing,
-  });
-
-  @override
-  State<_VideoLoopWidget> createState() => _VideoLoopWidgetState();
-}
-
-class _VideoLoopWidgetState extends State<_VideoLoopWidget> {
-  VideoPlayerController? _ctrl;
-  bool _ready   = false;
-  bool _failed  = false;
-  bool _loading = false;
-
-  // Solo carga el video la primera vez que el usuario presiona play.
-  void _load() {
-    if (_loading || _ready || _failed) return;
-    _loading = true;
-    final ctrl = VideoPlayerController.networkUrl(widget.uri);
-    ctrl.initialize().then((_) {
-      if (!mounted) { ctrl.dispose(); return; }
-      ctrl.setVolume(0);
-      ctrl.setLooping(true);
-      ctrl.play();
-      _ctrl = ctrl;
-      setState(() { _ready = true; _loading = false; });
-    }).catchError((_) {
-      ctrl.dispose();
-      if (mounted) setState(() { _failed = true; _loading = false; });
-    });
-  }
-
-  @override
-  void didUpdateWidget(_VideoLoopWidget old) {
-    super.didUpdateWidget(old);
-    if (widget.playing && !old.playing) {
-      if (_ready) {
-        _ctrl!.play();
-      } else {
-        _load(); // primera vez: carga y reproduce
-      }
-    } else if (!widget.playing && old.playing && _ready) {
-      _ctrl!.pause();
-      _ctrl!.seekTo(Duration.zero);
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctrl?.dispose();
-    super.dispose();
-  }
-
-  // Misma URL que el video pero con .jpg — thumbnail del ejercicio
-  String get _thumbnailUrl =>
-      widget.uri.toString().replaceFirst('.mp4', '.jpg');
-
-  @override
-  Widget build(BuildContext context) {
-    // Video reproduciéndose
-    if (_ready && widget.playing) {
-      return SizedBox(
-        width:  widget.size,
-        height: widget.size * 1.15,
-        child: ClipRect(
-          child: AspectRatio(
-            aspectRatio: _ctrl!.value.aspectRatio,
-            child: VideoPlayer(_ctrl!),
-          ),
-        ),
-      );
-    }
-
-    // Paused / no iniciado: muestra imagen, stickman si la imagen falla
-    if (!_failed) {
-      return SizedBox(
-        width:  widget.size,
-        height: widget.size * 1.15,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.network(
-            _thumbnailUrl,
-            width:  widget.size,
-            height: widget.size * 1.15,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => widget.fallback,
-          ),
-        ),
-      );
-    }
-
-    return widget.fallback;
-  }
-
 }
 
 // ── Stickman animado (fallback) ───────────────────────────────────

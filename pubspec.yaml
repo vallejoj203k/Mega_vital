@@ -16,7 +16,6 @@ dependencies:
   percent_indicator: ^4.2.3
   image_picker: ^1.0.7
   supabase_flutter: ^2.8.4
-  video_player: ^2.9.2
 
 dev_dependencies:
   flutter_test:

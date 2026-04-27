@@ -863,7 +863,7 @@ String _diffLabel(ExerciseDifficulty d) {
 // ─────────────────────────────────────────────────────────────────
 // TARJETA DE EJERCICIO — estilo grid con animación siempre visible
 // ─────────────────────────────────────────────────────────────────
-class _ExerciseCard extends StatefulWidget {
+class _ExerciseCard extends StatelessWidget {
   final ExerciseItem exercise;
   final Color        muscleColor;
   final bool         selected;
@@ -873,32 +873,25 @@ class _ExerciseCard extends StatefulWidget {
     required this.selected, required this.onToggle});
 
   @override
-  State<_ExerciseCard> createState() => _ExerciseCardState();
-}
-
-class _ExerciseCardState extends State<_ExerciseCard> {
-  bool _playing = false;
-
-  @override
   Widget build(BuildContext context) {
-    final ex  = widget.exercise;
-    final col = widget.muscleColor;
+    final ex  = exercise;
+    final col = muscleColor;
     final dc  = _diffColor(ex.difficulty);
 
     return GestureDetector(
-      onTap: widget.onToggle,
+      onTap: onToggle,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         decoration: BoxDecoration(
-          color: widget.selected
+          color: selected
               ? col.withOpacity(0.10)
               : AppColors.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: widget.selected ? col.withOpacity(0.5) : AppColors.border,
-            width: widget.selected ? 1.5 : 0.5,
+            color: selected ? col.withOpacity(0.5) : AppColors.border,
+            width: selected ? 1.5 : 0.5,
           ),
-          boxShadow: widget.selected
+          boxShadow: selected
               ? [BoxShadow(color: col.withOpacity(0.15), blurRadius: 12)]
               : null,
         ),
@@ -920,35 +913,11 @@ class _ExerciseCardState extends State<_ExerciseCard> {
             Expanded(child: LayoutBuilder(
               builder: (ctx, box) {
                 final sz = box.maxWidth * 0.68;
-                return Stack(alignment: Alignment.center, children: [
-                  ExerciseAnimationWidget(
-                    exerciseId: ex.id,
-                    color: col,
-                    size: sz,
-                    playing: _playing,
-                  ),
-                  Positioned(
-                    bottom: 6,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => setState(() => _playing = !_playing),
-                      child: Container(
-                        width: 30, height: 30,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(
-                            color: AppColors.primary.withOpacity(0.45),
-                            blurRadius: 10, spreadRadius: 1)],
-                        ),
-                        child: Icon(
-                          _playing
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
-                          color: Colors.black, size: 17),
-                      ),
-                    )),
-                ]);
+                return ExerciseAnimationWidget(
+                  exerciseId: ex.id,
+                  color: col,
+                  size: sz,
+                );
               },
             )),
 
@@ -981,7 +950,7 @@ class _ExerciseCardState extends State<_ExerciseCard> {
           ]),
 
           // ── Checkmark (top-right) ────────────────────────────
-          if (widget.selected)
+          if (selected)
             Positioned(top: 8, right: 8,
               child: Container(width: 22, height: 22,
                 decoration: BoxDecoration(
