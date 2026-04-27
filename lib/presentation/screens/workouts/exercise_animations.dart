@@ -92,53 +92,61 @@ class _VideoLoopWidget extends StatefulWidget {
 }
 
 class _VideoLoopWidgetState extends State<_VideoLoopWidget> {
-  late VideoPlayerController _ctrl;
-  bool _ready  = false;
-  bool _failed = false;
+  VideoPlayerController? _ctrl;
+  bool _ready   = false;
+  bool _failed  = false;
+  bool _loading = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = VideoPlayerController.networkUrl(widget.uri);
-    _ctrl.initialize().then((_) {
-      if (!mounted) return;
-      _ctrl.setVolume(0);
-      _ctrl.setLooping(true);
-      // No se reproduce — muestra el primer frame estático
-      setState(() => _ready = true);
+  // Solo carga el video la primera vez que el usuario presiona play.
+  void _load() {
+    if (_loading || _ready || _failed) return;
+    _loading = true;
+    final ctrl = VideoPlayerController.networkUrl(widget.uri);
+    ctrl.initialize().then((_) {
+      if (!mounted) { ctrl.dispose(); return; }
+      ctrl.setVolume(0);
+      ctrl.setLooping(true);
+      ctrl.play();
+      _ctrl = ctrl;
+      setState(() { _ready = true; _loading = false; });
     }).catchError((_) {
-      if (mounted) setState(() => _failed = true);
+      ctrl.dispose();
+      if (mounted) setState(() { _failed = true; _loading = false; });
     });
   }
 
   @override
   void didUpdateWidget(_VideoLoopWidget old) {
     super.didUpdateWidget(old);
-    if (!_ready || old.playing == widget.playing) return;
-    if (widget.playing) {
-      _ctrl.play();
-    } else {
-      _ctrl.pause();
-      _ctrl.seekTo(Duration.zero);
+    if (widget.playing && !old.playing) {
+      if (_ready) {
+        _ctrl!.play();
+      } else {
+        _load(); // primera vez: carga y reproduce
+      }
+    } else if (!widget.playing && old.playing && _ready) {
+      _ctrl!.pause();
+      _ctrl!.seekTo(Duration.zero);
     }
   }
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    _ctrl?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_ready || _failed) return widget.fallback;
+    // Muestra stickman hasta que el video esté listo y reproduciéndose
+    if (!_ready || _failed || !widget.playing) return widget.fallback;
     return SizedBox(
       width:  widget.size,
       height: widget.size * 1.15,
       child: ClipRect(
         child: AspectRatio(
-          aspectRatio: _ctrl.value.aspectRatio,
-          child: VideoPlayer(_ctrl),
+          aspectRatio: _ctrl!.value.aspectRatio,
+          child: VideoPlayer(_ctrl!),
         ),
       ),
     );
