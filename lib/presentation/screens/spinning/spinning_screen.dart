@@ -714,24 +714,35 @@ class _ClassCard extends StatelessWidget {
                 // Divisor
                 Container(height: 0.5, color: AppColors.border),
                 const SizedBox(height: 10),
-                Row(
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
                   children: [
                     _InfoPill(
                       icon: Icons.access_time_rounded,
                       label: cls.time,
                       color: AppColors.accentBlue,
                     ),
-                    const SizedBox(width: 8),
                     _InfoPill(
                       icon: Icons.local_fire_department_rounded,
                       label: '${cls.caloriesMin}–${cls.caloriesMax} kcal',
                       color: AppColors.accentOrange,
                     ),
-                    const SizedBox(width: 8),
                     _InfoPill(
                       icon: Icons.timer_rounded,
                       label: '${cls.durationMinutes} min',
                       color: AppColors.accentPurple,
+                    ),
+                    _InfoPill(
+                      icon: Icons.people_rounded,
+                      label: isFull
+                          ? 'Sin cupos'
+                          : '${cls.availableSpots}/${cls.totalSpots} cupos',
+                      color: isFull
+                          ? AppColors.error
+                          : cls.availableSpots <= 3
+                              ? AppColors.warning
+                              : AppColors.primary,
                     ),
                   ],
                 ),
