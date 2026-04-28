@@ -891,8 +891,10 @@ END;
 $$;
 
 -- ─── spinning_bookings ──────────────────────────────────────────────────────
+-- Borrar versión anterior si existe (no hay datos reales aún)
+DROP TABLE IF EXISTS public.spinning_bookings;
 
-CREATE TABLE IF NOT EXISTS public.spinning_bookings (
+CREATE TABLE public.spinning_bookings (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID NOT NULL,
   class_id    TEXT NOT NULL,
@@ -901,8 +903,8 @@ CREATE TABLE IF NOT EXISTS public.spinning_bookings (
   CONSTRAINT spinning_seat_unique UNIQUE (class_id, seat_index)
 );
 
--- REPLICA IDENTITY FULL permite que los eventos DELETE incluyan los datos del
--- registro eliminado, necesario para actualizar la UI en tiempo real.
+-- REPLICA IDENTITY FULL es necesario para que los eventos DELETE
+-- de Realtime incluyan los datos del registro eliminado.
 ALTER TABLE public.spinning_bookings REPLICA IDENTITY FULL;
 
 ALTER TABLE public.spinning_bookings ENABLE ROW LEVEL SECURITY;

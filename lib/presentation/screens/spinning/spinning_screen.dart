@@ -340,7 +340,8 @@ class _SpinningScreenState extends State<SpinningScreen>
         'class_id': cls.id,
         'seat_index': result,
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('spinning_bookings insert error: $e');
       // Revert on error
       if (!mounted) return;
       setState(() {
@@ -355,7 +356,7 @@ class _SpinningScreenState extends State<SpinningScreen>
       _showSnackBar(
         icon: Icons.error_outline_rounded,
         iconColor: AppColors.error,
-        text: 'Error al guardar la reserva. Inténtalo de nuevo.',
+        text: 'Error: $e',
       );
     }
   }
