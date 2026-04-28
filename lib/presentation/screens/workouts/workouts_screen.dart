@@ -913,27 +913,11 @@ class _ExerciseCard extends StatelessWidget {
             Expanded(child: LayoutBuilder(
               builder: (ctx, box) {
                 final sz = box.maxWidth * 0.68;
-                return Stack(alignment: Alignment.center, children: [
-                  ExerciseAnimationWidget(
-                    exerciseId: ex.id,
-                    color: col,
-                    size: sz,
-                  ),
-                  // Play button
-                  Positioned(bottom: 6,
-                    child: Container(
-                      width: 30, height: 30,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(
-                          color: AppColors.primary.withOpacity(0.45),
-                          blurRadius: 10, spreadRadius: 1)],
-                      ),
-                      child: const Icon(Icons.play_arrow_rounded,
-                          color: Colors.black, size: 17),
-                    )),
-                ]);
+                return ExerciseAnimationWidget(
+                  exerciseId: ex.id,
+                  color: col,
+                  size: sz,
+                );
               },
             )),
 

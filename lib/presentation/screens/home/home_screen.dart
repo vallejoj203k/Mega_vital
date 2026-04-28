@@ -112,6 +112,7 @@ class _HomeScreenState extends State<HomeScreen>
               child: _TopBar(
                 nombre:     profile.name,
                 iniciales:  auth.userInitials,
+                photoUrl:   profile.avatarUrl,
                 saludo:     _saludo,
                 saludoIcon: _saludoIcon,
                 fecha:      _fechaHoy,
@@ -379,15 +380,16 @@ class _ErrorHome extends StatelessWidget {
 // ── Top bar ───────────────────────────────────────────────────────
 class _TopBar extends StatelessWidget {
   final String nombre, iniciales, saludo, fecha;
+  final String? photoUrl;
   final IconData saludoIcon;
   final int streak;
   const _TopBar({required this.nombre, required this.iniciales,
     required this.saludo, required this.saludoIcon, required this.fecha,
-    required this.streak});
+    required this.streak, this.photoUrl});
 
   @override
   Widget build(BuildContext context) => Row(children: [
-    InitialsAvatar(initials: iniciales),
+    InitialsAvatar(initials: iniciales, photoUrl: photoUrl),
     const SizedBox(width: 12),
     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
       children: [

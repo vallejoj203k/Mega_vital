@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import 'seat_selection_screen.dart';
@@ -104,7 +105,7 @@ List<SpinClass> _buildClasses() => [
     durationMinutes: 60,
     caloriesMin: 550,
     caloriesMax: 750,
-    totalSpots: 15,
+    totalSpots: 18,
     bookedSpots: 0,
   ),
   SpinClass(
@@ -119,7 +120,7 @@ List<SpinClass> _buildClasses() => [
     durationMinutes: 60,
     caloriesMin: 450,
     caloriesMax: 600,
-    totalSpots: 15,
+    totalSpots: 18,
     bookedSpots: 0,
   ),
   SpinClass(
@@ -134,7 +135,7 @@ List<SpinClass> _buildClasses() => [
     durationMinutes: 60,
     caloriesMin: 550,
     caloriesMax: 700,
-    totalSpots: 15,
+    totalSpots: 18,
     bookedSpots: 0,
   ),
 ];
@@ -153,21 +154,114 @@ class _SpinningScreenState extends State<SpinningScreen>
   @override
   bool get wantKeepAlive => true;
 
+  final _supabase = Supabase.instance.client;
+  RealtimeChannel? _realtimeChannel;
+
   late TabController _tabController;
   late List<SpinClass> _classes;
-  final Set<String> _myBookings = {};
+  final Map<String, int> _myBookings = {}; // classId → seatIndex
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _classes = _buildClasses();
+    _loadBookings();
+    _subscribeRealtime();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _realtimeChannel?.unsubscribe();
     super.dispose();
+  }
+
+  // ── Supabase helpers ────────────────────────────────────
+
+  SpinClass? _classById(String id) {
+    for (final c in _classes) {
+      if (c.id == id) return c;
+    }
+    return null;
+  }
+
+  Future<void> _loadBookings() async {
+    try {
+      final rows = await _supabase
+          .from('spinning_bookings')
+          .select('class_id, seat_index, user_id');
+      if (!mounted) return;
+      final myId = _supabase.auth.currentUser?.id;
+      setState(() {
+        for (final row in rows) {
+          final classId = row['class_id'] as String;
+          final seatIndex = row['seat_index'] as int;
+          final userId = row['user_id'] as String;
+          final cls = _classById(classId);
+          if (cls != null && cls.reservedSeats.add(seatIndex)) {
+            cls.bookedSpots++;
+          }
+          if (myId != null && userId == myId) {
+            _myBookings[classId] = seatIndex;
+          }
+        }
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _subscribeRealtime() {
+    _realtimeChannel = _supabase
+        .channel('spinning_bookings_rt')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'spinning_bookings',
+          callback: (payload) {
+            if (!mounted) return;
+            final classId = payload.newRecord['class_id'] as String?;
+            final seatIndex = payload.newRecord['seat_index'] as int?;
+            final userId = payload.newRecord['user_id'] as String?;
+            if (classId == null || seatIndex == null) return;
+            setState(() {
+              final cls = _classById(classId);
+              if (cls != null && cls.reservedSeats.add(seatIndex)) {
+                cls.bookedSpots++;
+              }
+              final myId = _supabase.auth.currentUser?.id;
+              if (myId != null && userId == myId) {
+                _myBookings[classId] = seatIndex;
+              }
+            });
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.delete,
+          schema: 'public',
+          table: 'spinning_bookings',
+          callback: (payload) {
+            if (!mounted) return;
+            final classId = payload.oldRecord['class_id'] as String?;
+            final seatIndex = payload.oldRecord['seat_index'] as int?;
+            final userId = payload.oldRecord['user_id'] as String?;
+            if (classId == null || seatIndex == null) return;
+            setState(() {
+              final cls = _classById(classId);
+              if (cls != null && cls.reservedSeats.remove(seatIndex)) {
+                cls.bookedSpots--;
+              }
+              final myId = _supabase.auth.currentUser?.id;
+              if (myId != null && userId == myId) {
+                _myBookings.remove(classId);
+              }
+            });
+          },
+        )
+        .subscribe();
   }
 
   Color _levelColor(SpinLevel l) {
@@ -192,45 +286,175 @@ class _SpinningScreenState extends State<SpinningScreen>
     }
   }
 
-  void _openSeatSelection(SpinClass cls) async {
+  String _seatLabel(int index) {
+    const cols = 6;
+    final row = index ~/ cols;
+    final col = index % cols;
+    return '${String.fromCharCode('A'.codeUnitAt(0) + row)}${col + 1}';
+  }
+
+  void _openSeatSelection(SpinClass cls, {int? oldSeat}) async {
     final result = await Navigator.push<int>(
       context,
       MaterialPageRoute(
-        builder: (_) => SeatSelectionScreen(spinClass: cls),
+        builder: (_) => SeatSelectionScreen(
+          spinClass: cls,
+          currentSeat: oldSeat,
+        ),
       ),
     );
-    if (result != null && mounted) {
-      setState(() {
-        cls.reservedSeats.add(result);
-        cls.bookedSpots++;
-        _myBookings.add(cls.id);
-      });
-      HapticFeedback.mediumImpact();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_rounded,
-                    color: AppColors.primary, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Puesto ${result + 1} reservado en ${cls.name}',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: AppColors.surface,
-            behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+
+    if (!mounted || result == null || result == oldSeat) return;
+
+    // Optimistic update
+    setState(() {
+      if (oldSeat != null && cls.reservedSeats.remove(oldSeat)) cls.bookedSpots--;
+      if (cls.reservedSeats.add(result)) cls.bookedSpots++;
+      _myBookings[cls.id] = result;
+    });
+
+    HapticFeedback.mediumImpact();
+    final label = _seatLabel(result);
+    final isChange = oldSeat != null;
+    _showSnackBar(
+      icon: Icons.check_circle_rounded,
+      iconColor: AppColors.primary,
+      text: isChange
+          ? 'Cambiaste al puesto $label en ${cls.name}'
+          : 'Puesto $label reservado en ${cls.name}',
+    );
+
+    // Persist to Supabase
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return;
+      if (oldSeat != null) {
+        await _supabase
+            .from('spinning_bookings')
+            .delete()
+            .eq('user_id', userId)
+            .eq('class_id', cls.id);
       }
+      await _supabase.from('spinning_bookings').insert({
+        'user_id': userId,
+        'class_id': cls.id,
+        'seat_index': result,
+      });
+    } catch (e) {
+      debugPrint('spinning_bookings insert error: $e');
+      // Revert on error
+      if (!mounted) return;
+      setState(() {
+        if (cls.reservedSeats.remove(result)) cls.bookedSpots--;
+        if (oldSeat != null && cls.reservedSeats.add(oldSeat)) {
+          cls.bookedSpots++;
+          _myBookings[cls.id] = oldSeat;
+        } else {
+          _myBookings.remove(cls.id);
+        }
+      });
+      _showSnackBar(
+        icon: Icons.error_outline_rounded,
+        iconColor: AppColors.error,
+        text: 'Error: $e',
+      );
     }
+  }
+
+  void _cancelBooking(SpinClass cls) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text(
+          'Cancelar reserva',
+          style: TextStyle(
+              color: AppColors.textPrimary, fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          '¿Seguro que quieres cancelar tu puesto en ${cls.name}?',
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('No',
+                style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sí, cancelar',
+                style: TextStyle(
+                    color: AppColors.error, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final seat = _myBookings[cls.id];
+
+    // Optimistic update
+    setState(() {
+      if (seat != null && cls.reservedSeats.remove(seat)) cls.bookedSpots--;
+      _myBookings.remove(cls.id);
+    });
+
+    HapticFeedback.mediumImpact();
+    _showSnackBar(
+      icon: Icons.info_outline_rounded,
+      iconColor: AppColors.textSecondary,
+      text: 'Reserva cancelada en ${cls.name}',
+    );
+
+    // Delete from Supabase
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return;
+      await _supabase
+          .from('spinning_bookings')
+          .delete()
+          .eq('user_id', userId)
+          .eq('class_id', cls.id);
+    } catch (_) {
+      // Revert on error
+      if (!mounted || seat == null) return;
+      setState(() {
+        if (cls.reservedSeats.add(seat)) cls.bookedSpots++;
+        _myBookings[cls.id] = seat;
+      });
+      _showSnackBar(
+        icon: Icons.error_outline_rounded,
+        iconColor: AppColors.error,
+        text: 'Error al cancelar la reserva. Inténtalo de nuevo.',
+      );
+    }
+  }
+
+  void _showSnackBar({
+    required IconData icon,
+    required Color iconColor,
+    required String text,
+  }) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(icon, color: iconColor, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(text, style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.surface,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
   }
 
   @override
@@ -245,25 +469,39 @@ class _SpinningScreenState extends State<SpinningScreen>
             _buildHeader(),
             _buildTabBar(),
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _ScheduleTab(
-                    classes: _classes,
-                    myBookings: _myBookings,
-                    levelColor: _levelColor,
-                    levelLabel: _levelLabel,
-                    onBook: _openSeatSelection,
-                  ),
-                  _InstructorsTab(instructors: _instructors),
-                  _MyBookingsTab(
-                    classes: _classes,
-                    myBookings: _myBookings,
-                    levelColor: _levelColor,
-                    levelLabel: _levelLabel,
-                  ),
-                ],
-              ),
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _ScheduleTab(
+                          classes: _classes,
+                          myBookings: _myBookings,
+                          levelColor: _levelColor,
+                          levelLabel: _levelLabel,
+                          onBook: _openSeatSelection,
+                          onChangeSeat: (cls, oldSeat) =>
+                              _openSeatSelection(cls, oldSeat: oldSeat),
+                          onCancel: _cancelBooking,
+                        ),
+                        _InstructorsTab(instructors: _instructors),
+                        _MyBookingsTab(
+                          classes: _classes,
+                          myBookings: _myBookings,
+                          levelColor: _levelColor,
+                          levelLabel: _levelLabel,
+                          seatLabel: _seatLabel,
+                          onChangeSeat: (cls, oldSeat) =>
+                              _openSeatSelection(cls, oldSeat: oldSeat),
+                          onCancel: _cancelBooking,
+                        ),
+                      ],
+                    ),
             ),
           ],
         ),
@@ -500,10 +738,12 @@ class _StatChip extends StatelessWidget {
 
 class _ScheduleTab extends StatelessWidget {
   final List<SpinClass> classes;
-  final Set<String> myBookings;
+  final Map<String, int> myBookings;
   final Color Function(SpinLevel) levelColor;
   final String Function(SpinLevel) levelLabel;
   final void Function(SpinClass) onBook;
+  final void Function(SpinClass, int) onChangeSeat;
+  final void Function(SpinClass) onCancel;
 
   const _ScheduleTab({
     required this.classes,
@@ -511,6 +751,8 @@ class _ScheduleTab extends StatelessWidget {
     required this.levelColor,
     required this.levelLabel,
     required this.onBook,
+    required this.onChangeSeat,
+    required this.onCancel,
   });
 
   @override
@@ -518,13 +760,21 @@ class _ScheduleTab extends StatelessWidget {
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
       itemCount: classes.length,
-      itemBuilder: (context, i) => _ClassCard(
-        cls: classes[i],
-        isBooked: myBookings.contains(classes[i].id),
-        levelColor: levelColor,
-        levelLabel: levelLabel,
-        onBook: () => onBook(classes[i]),
-      ),
+      itemBuilder: (context, i) {
+        final cls = classes[i];
+        final bookedSeat = myBookings[cls.id];
+        return _ClassCard(
+          cls: cls,
+          isBooked: bookedSeat != null,
+          bookedSeat: bookedSeat,
+          levelColor: levelColor,
+          levelLabel: levelLabel,
+          onBook: () => onBook(cls),
+          onChangeSeat:
+              bookedSeat != null ? () => onChangeSeat(cls, bookedSeat) : null,
+          onCancel: bookedSeat != null ? () => onCancel(cls) : null,
+        );
+      },
     );
   }
 }
@@ -534,16 +784,22 @@ class _ScheduleTab extends StatelessWidget {
 class _ClassCard extends StatelessWidget {
   final SpinClass cls;
   final bool isBooked;
+  final int? bookedSeat;
   final Color Function(SpinLevel) levelColor;
   final String Function(SpinLevel) levelLabel;
   final VoidCallback onBook;
+  final VoidCallback? onChangeSeat;
+  final VoidCallback? onCancel;
 
   const _ClassCard({
     required this.cls,
     required this.isBooked,
+    this.bookedSeat,
     required this.levelColor,
     required this.levelLabel,
     required this.onBook,
+    this.onChangeSeat,
+    this.onCancel,
   });
 
   @override
@@ -643,9 +899,14 @@ class _ClassCard extends StatelessWidget {
                             border: Border.all(color: color.withOpacity(0.6), width: 1),
                           ),
                           child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Icon(Icons.check_circle_rounded, size: 12, color: color),
+                            Icon(Icons.event_seat_rounded, size: 12, color: color),
                             const SizedBox(width: 4),
-                            Text('Reservado', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+                            Text(
+                              bookedSeat != null
+                                  ? 'Bici ${_seatFromIndex(bookedSeat!)}'
+                                  : 'Reservado',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
+                            ),
                           ]),
                         )
                       : Container(
@@ -714,24 +975,35 @@ class _ClassCard extends StatelessWidget {
                 // Divisor
                 Container(height: 0.5, color: AppColors.border),
                 const SizedBox(height: 10),
-                Row(
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
                   children: [
                     _InfoPill(
                       icon: Icons.access_time_rounded,
                       label: cls.time,
                       color: AppColors.accentBlue,
                     ),
-                    const SizedBox(width: 8),
                     _InfoPill(
                       icon: Icons.local_fire_department_rounded,
                       label: '${cls.caloriesMin}–${cls.caloriesMax} kcal',
                       color: AppColors.accentOrange,
                     ),
-                    const SizedBox(width: 8),
                     _InfoPill(
                       icon: Icons.timer_rounded,
                       label: '${cls.durationMinutes} min',
                       color: AppColors.accentPurple,
+                    ),
+                    _InfoPill(
+                      icon: Icons.people_rounded,
+                      label: isFull
+                          ? 'Sin cupos'
+                          : '${cls.availableSpots}/${cls.totalSpots} cupos',
+                      color: isFull
+                          ? AppColors.error
+                          : cls.availableSpots <= 3
+                              ? AppColors.warning
+                              : AppColors.primary,
                     ),
                   ],
                 ),
@@ -774,12 +1046,53 @@ class _ClassCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
+                // Booked seat info row
+                if (isBooked && bookedSeat != null) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 9),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: color.withOpacity(0.2), width: 0.5),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.event_seat_rounded,
+                            size: 14, color: color),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Tu puesto reservado:',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary),
+                        ),
+                        const Spacer(),
+                        Text(
+                          'Bici ${_seatFromIndex(bookedSeat!)}',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: color,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 // Book button
                 SizedBox(
                   width: double.infinity,
                   height: 46,
                   child: isBooked
-                      ? _BookedButton(color: color)
+                      ? _BookedActions(
+                          color: color,
+                          onChangeSeat: onChangeSeat ?? () {},
+                          onCancel: onCancel ?? () {},
+                        )
                       : isFull
                           ? _FullButton()
                           : _BookButton(
@@ -802,6 +1115,13 @@ class _ClassCard extends StatelessWidget {
       case SpinLevel.avanzado:
         return Icons.signal_cellular_alt_rounded;
     }
+  }
+
+  static String _seatFromIndex(int index) {
+    const cols = 6;
+    final row = index ~/ cols;
+    final col = index % cols;
+    return '${String.fromCharCode('A'.codeUnitAt(0) + row)}${col + 1}';
   }
 }
 
@@ -973,33 +1293,79 @@ class _BookButton extends StatelessWidget {
   }
 }
 
-class _BookedButton extends StatelessWidget {
+class _BookedActions extends StatelessWidget {
   final Color color;
+  final VoidCallback onChangeSeat;
+  final VoidCallback onCancel;
 
-  const _BookedButton({required this.color});
+  const _BookedActions({
+    required this.color,
+    required this.onChangeSeat,
+    required this.onCancel,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.4), width: 1),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.check_circle_rounded, size: 18, color: color),
-          const SizedBox(width: 8),
-          Text(
-            'Puesto reservado',
-            style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: color),
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: onChangeSeat,
+            child: Container(
+              height: 46,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: color.withOpacity(0.4), width: 1),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.swap_horiz_rounded, size: 16, color: color),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Cambiar lugar',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: color),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: GestureDetector(
+            onTap: onCancel,
+            child: Container(
+              height: 46,
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: AppColors.error.withOpacity(0.3), width: 1),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.cancel_outlined,
+                      size: 16, color: AppColors.error),
+                  SizedBox(width: 6),
+                  Text(
+                    'Cancelar',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.error),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1347,20 +1713,27 @@ class _MiniStat extends StatelessWidget {
 
 class _MyBookingsTab extends StatelessWidget {
   final List<SpinClass> classes;
-  final Set<String> myBookings;
+  final Map<String, int> myBookings;
   final Color Function(SpinLevel) levelColor;
   final String Function(SpinLevel) levelLabel;
+  final String Function(int) seatLabel;
+  final void Function(SpinClass, int) onChangeSeat;
+  final void Function(SpinClass) onCancel;
 
   const _MyBookingsTab({
     required this.classes,
     required this.myBookings,
     required this.levelColor,
     required this.levelLabel,
+    required this.seatLabel,
+    required this.onChangeSeat,
+    required this.onCancel,
   });
 
   @override
   Widget build(BuildContext context) {
-    final booked = classes.where((c) => myBookings.contains(c.id)).toList();
+    final booked =
+        classes.where((c) => myBookings.containsKey(c.id)).toList();
     if (booked.isEmpty) {
       return Center(
         child: Column(
@@ -1393,6 +1766,8 @@ class _MyBookingsTab extends StatelessWidget {
       itemBuilder: (context, i) {
         final cls = booked[i];
         final color = levelColor(cls.level);
+        final seat = myBookings[cls.id]!;
+        final label = seatLabel(seat);
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
@@ -1401,61 +1776,140 @@ class _MyBookingsTab extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: color.withOpacity(0.4), width: 1),
           ),
-          child: Row(
+          child: Column(
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.directions_bike_rounded,
-                    color: color, size: 24),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(cls.name, style: AppTextStyles.headingSmall),
-                    const SizedBox(height: 2),
-                    Text(
-                      cls.time,
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary),
-                    ),
-                    Text(
-                      cls.days,
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.textMuted),
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
                       color: color.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(
-                      levelLabel(cls.level),
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: color,
-                          fontWeight: FontWeight.w700),
+                    child: Icon(Icons.directions_bike_rounded,
+                        color: color, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(cls.name, style: AppTextStyles.headingSmall),
+                        const SizedBox(height: 2),
+                        Text(
+                          cls.time,
+                          style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary),
+                        ),
+                        Text(
+                          cls.days,
+                          style: const TextStyle(
+                              fontSize: 11, color: AppColors.textMuted),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${cls.caloriesMin}–${cls.caloriesMax} kcal',
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textSecondary),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          levelLabel(cls.level),
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: color,
+                              fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Bici $label',
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: color),
+                      ),
+                      Text(
+                        '${cls.caloriesMin}–${cls.caloriesMax} kcal',
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Container(height: 0.5, color: AppColors.border),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => onChangeSeat(cls, seat),
+                      child: Container(
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                              color: color.withOpacity(0.35), width: 1),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.swap_horiz_rounded,
+                                size: 15, color: color),
+                            const SizedBox(width: 5),
+                            Text(
+                              'Cambiar lugar',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: color),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => onCancel(cls),
+                      child: Container(
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                              color: AppColors.error.withOpacity(0.25),
+                              width: 1),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.cancel_outlined,
+                                size: 15, color: AppColors.error),
+                            SizedBox(width: 5),
+                            Text(
+                              'Cancelar',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.error),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),

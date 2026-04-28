@@ -8,8 +8,39 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
+// ── Supabase Storage ──────────────────────────────────────────────
+// Bucket público: exercise-animations
+// Sube el GIF con el nombre del ID: pectoral/pec1.gif, hombros/hom1.gif…
+// Sin cambios de código al agregar nuevos GIFs.
+const _kStorageBase =
+    'https://ntxbjwmkxnewzzducfzz.supabase.co/storage/v1/object/public/exercise-animations';
+
+const _kPrefixToFolder = <String, String>{
+  'pec': 'pectoral',
+  'hom': 'hombros',
+  'bic': 'biceps',
+  'tri': 'triceps',
+  'esp': 'espalda',
+  'dor': 'dorsales',
+  'lum': 'lumbar',
+  'abs': 'abdominales',
+  'cua': 'cuadriceps',
+  'gem': 'gemelos',
+  'glu': 'gluteos',
+  'isq': 'isquiotibiales',
+};
+
+String? _gifUrl(String exerciseId) {
+  final prefix = exerciseId.replaceAll(RegExp(r'[0-9]'), '');
+  final folder  = _kPrefixToFolder[prefix];
+  if (folder == null) return null;
+  return '$_kStorageBase/$folder/$exerciseId.gif';
+}
+
 // ── Widget principal ──────────────────────────────────────────────
-class ExerciseAnimationWidget extends StatefulWidget {
+// Muestra el GIF animado desde Supabase Storage.
+// Mientras carga o si no existe → stickman como fallback.
+class ExerciseAnimationWidget extends StatelessWidget {
   final String exerciseId;
   final Color  color;
   final double size;
@@ -22,11 +53,48 @@ class ExerciseAnimationWidget extends StatefulWidget {
   });
 
   @override
-  State<ExerciseAnimationWidget> createState() =>
-      _ExerciseAnimationWidgetState();
+  Widget build(BuildContext context) {
+    final url      = _gifUrl(exerciseId);
+    final stickman = _StickmanWidget(
+      exerciseId: exerciseId,
+      color:      color,
+      size:       size,
+    );
+    if (url == null) return stickman;
+
+    return SizedBox(
+      width:  size,
+      height: size * 1.15,
+      child: Image.network(
+        url,
+        width:           size,
+        height:          size * 1.15,
+        fit:             BoxFit.contain,
+        gaplessPlayback: true,
+        errorBuilder:    (_, __, ___) => stickman,
+        loadingBuilder:  (_, child, progress) =>
+            progress == null ? child : stickman,
+      ),
+    );
+  }
 }
 
-class _ExerciseAnimationWidgetState extends State<ExerciseAnimationWidget>
+// ── Stickman animado (fallback) ───────────────────────────────────
+class _StickmanWidget extends StatefulWidget {
+  final String exerciseId;
+  final Color  color;
+  final double size;
+  const _StickmanWidget({
+    required this.exerciseId,
+    required this.color,
+    this.size = 120,
+  });
+
+  @override
+  State<_StickmanWidget> createState() => _StickmanWidgetState();
+}
+
+class _StickmanWidgetState extends State<_StickmanWidget>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double>   _anim;
