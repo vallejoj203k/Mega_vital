@@ -894,7 +894,7 @@ $$;
 
 CREATE TABLE IF NOT EXISTS public.spinning_bookings (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     TEXT NOT NULL,
+  user_id     UUID NOT NULL,
   class_id    TEXT NOT NULL,
   seat_index  INTEGER NOT NULL,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -913,8 +913,8 @@ CREATE POLICY "spinning_select" ON public.spinning_bookings
 
 -- Solo puedes insertar reservas propias
 CREATE POLICY "spinning_insert" ON public.spinning_bookings
-  FOR INSERT TO authenticated WITH CHECK (auth.uid()::text = user_id);
+  FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
 
 -- Solo puedes cancelar tus propias reservas
 CREATE POLICY "spinning_delete" ON public.spinning_bookings
-  FOR DELETE TO authenticated USING (auth.uid()::text = user_id);
+  FOR DELETE TO authenticated USING (auth.uid() = user_id);
