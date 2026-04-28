@@ -6,8 +6,9 @@ import 'spinning_screen.dart';
 
 class SeatSelectionScreen extends StatefulWidget {
   final SpinClass spinClass;
+  final int? currentSeat; // pre-selected when the user is changing their seat
 
-  const SeatSelectionScreen({super.key, required this.spinClass});
+  const SeatSelectionScreen({super.key, required this.spinClass, this.currentSeat});
 
   @override
   State<SeatSelectionScreen> createState() => _SeatSelectionScreenState();
@@ -26,6 +27,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
   @override
   void initState() {
     super.initState();
+    _selectedSeat = widget.currentSeat; // pre-select when changing seat
     _confirmAnim = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
@@ -53,7 +55,8 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
   }
 
   void _onSeatTap(int index) {
-    if (widget.spinClass.reservedSeats.contains(index)) return;
+    final isMySeat = index == widget.currentSeat;
+    if (widget.spinClass.reservedSeats.contains(index) && !isMySeat) return;
     HapticFeedback.selectionClick();
     setState(() {
       _selectedSeat = _selectedSeat == index ? null : index;
@@ -107,7 +110,10 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Elegir Puesto', style: AppTextStyles.headingMedium),
+                Text(
+                  widget.currentSeat != null ? 'Cambiar lugar' : 'Elegir Puesto',
+                  style: AppTextStyles.headingMedium,
+                ),
                 Text(
                   widget.spinClass.name,
                   style: const TextStyle(
@@ -189,14 +195,21 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
   Widget _buildLegend() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 14,
+        runSpacing: 6,
         children: [
           _LegendItem(color: AppColors.surface, border: _accentColor, label: 'Disponible'),
-          const SizedBox(width: 16),
           _LegendItem(color: _accentColor, border: _accentColor, label: 'Seleccionado'),
-          const SizedBox(width: 16),
           _LegendItem(color: AppColors.border, border: AppColors.border, label: 'Ocupado'),
+          if (widget.currentSeat != null)
+            _LegendItem(
+              color: _accentColor.withOpacity(0.2),
+              border: _accentColor,
+              label: 'Tu lugar actual',
+              icon: Icons.person_rounded,
+            ),
         ],
       ),
     );
@@ -269,9 +282,45 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
                 // Seats
                 ...List.generate(cols, (col) {
                   final index = row * cols + col;
+                  final isMySeat = index == widget.currentSeat;
                   final isOccupied =
-                      widget.spinClass.reservedSeats.contains(index);
+                      widget.spinClass.reservedSeats.contains(index) &&
+                          !isMySeat;
                   final isSelected = _selectedSeat == index;
+
+                  Color bgColor;
+                  Color borderColor;
+                  Color iconColor;
+                  Color textColor;
+                  IconData iconData;
+
+                  if (isOccupied) {
+                    bgColor = AppColors.border;
+                    borderColor = AppColors.border;
+                    iconColor = AppColors.textMuted;
+                    textColor = AppColors.textMuted;
+                    iconData = Icons.close_rounded;
+                  } else if (isSelected) {
+                    bgColor = _accentColor;
+                    borderColor = _accentColor;
+                    iconColor = Colors.white;
+                    textColor = Colors.white;
+                    iconData = isMySeat
+                        ? Icons.person_rounded
+                        : Icons.directions_bike_rounded;
+                  } else if (isMySeat) {
+                    bgColor = _accentColor.withOpacity(0.2);
+                    borderColor = _accentColor;
+                    iconColor = _accentColor;
+                    textColor = _accentColor;
+                    iconData = Icons.person_rounded;
+                  } else {
+                    bgColor = AppColors.surface;
+                    borderColor = _accentColor.withOpacity(0.3);
+                    iconColor = _accentColor.withOpacity(0.7);
+                    textColor = AppColors.textSecondary;
+                    iconData = Icons.directions_bike_rounded;
+                  }
 
                   return Expanded(
                     child: Padding(
@@ -282,25 +331,16 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
                           duration: const Duration(milliseconds: 200),
                           curve: Curves.easeInOut,
                           decoration: BoxDecoration(
-                            color: isOccupied
-                                ? AppColors.border
-                                : isSelected
-                                    ? _accentColor
-                                    : AppColors.surface,
+                            color: bgColor,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: isOccupied
-                                  ? AppColors.border
-                                  : isSelected
-                                      ? _accentColor
-                                      : _accentColor.withOpacity(0.3),
-                              width: isSelected ? 2 : 1,
+                              color: borderColor,
+                              width: (isSelected || isMySeat) ? 2 : 1,
                             ),
                             boxShadow: isSelected
                                 ? [
                                     BoxShadow(
-                                      color:
-                                          _accentColor.withOpacity(0.5),
+                                      color: _accentColor.withOpacity(0.5),
                                       blurRadius: 12,
                                       spreadRadius: 1,
                                     )
@@ -310,28 +350,14 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
-                                isOccupied
-                                    ? Icons.close_rounded
-                                    : Icons.directions_bike_rounded,
-                                size: 20,
-                                color: isOccupied
-                                    ? AppColors.textMuted
-                                    : isSelected
-                                        ? Colors.white
-                                        : _accentColor.withOpacity(0.7),
-                              ),
+                              Icon(iconData, size: 20, color: iconColor),
                               const SizedBox(height: 2),
                               Text(
                                 '${_rowLabel(row)}${col + 1}',
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
-                                  color: isOccupied
-                                      ? AppColors.textMuted
-                                      : isSelected
-                                          ? Colors.white
-                                          : AppColors.textSecondary,
+                                  color: textColor,
                                 ),
                               ),
                             ],
@@ -507,9 +533,14 @@ class _LegendItem extends StatelessWidget {
   final Color color;
   final Color border;
   final String label;
+  final IconData icon;
 
-  const _LegendItem(
-      {required this.color, required this.border, required this.label});
+  const _LegendItem({
+    required this.color,
+    required this.border,
+    required this.label,
+    this.icon = Icons.directions_bike_rounded,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -524,8 +555,7 @@ class _LegendItem extends StatelessWidget {
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: border, width: 1.5),
           ),
-          child: const Icon(Icons.directions_bike_rounded,
-              size: 12, color: AppColors.textSecondary),
+          child: Icon(icon, size: 12, color: AppColors.textSecondary),
         ),
         const SizedBox(width: 6),
         Text(

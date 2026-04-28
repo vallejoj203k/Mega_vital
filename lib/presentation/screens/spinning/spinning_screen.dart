@@ -200,23 +200,24 @@ class _SpinningScreenState extends State<SpinningScreen>
   }
 
   void _openSeatSelection(SpinClass cls, {int? oldSeat}) async {
-    if (oldSeat != null) {
-      // Temporarily free the old seat so it shows as available in the picker
-      setState(() {
-        cls.reservedSeats.remove(oldSeat);
-        cls.bookedSpots--;
-      });
-    }
-
     final result = await Navigator.push<int>(
       context,
       MaterialPageRoute(
-        builder: (_) => SeatSelectionScreen(spinClass: cls),
+        builder: (_) => SeatSelectionScreen(
+          spinClass: cls,
+          currentSeat: oldSeat,
+        ),
       ),
     );
 
     if (result != null && mounted) {
+      if (result == oldSeat) return; // user confirmed the same seat — no change
       setState(() {
+        if (oldSeat != null) {
+          // Replace old seat with new one
+          cls.reservedSeats.remove(oldSeat);
+          cls.bookedSpots--;
+        }
         cls.reservedSeats.add(result);
         cls.bookedSpots++;
         _myBookings[cls.id] = result;
@@ -250,12 +251,6 @@ class _SpinningScreenState extends State<SpinningScreen>
           ),
         );
       }
-    } else if (oldSeat != null && mounted) {
-      // User cancelled the change — restore old seat
-      setState(() {
-        cls.reservedSeats.add(oldSeat);
-        cls.bookedSpots++;
-      });
     }
   }
 
@@ -761,9 +756,14 @@ class _ClassCard extends StatelessWidget {
                             border: Border.all(color: color.withOpacity(0.6), width: 1),
                           ),
                           child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Icon(Icons.check_circle_rounded, size: 12, color: color),
+                            Icon(Icons.event_seat_rounded, size: 12, color: color),
                             const SizedBox(width: 4),
-                            Text('Reservado', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+                            Text(
+                              bookedSeat != null
+                                  ? 'Bici ${_seatFromIndex(bookedSeat!)}'
+                                  : 'Reservado',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
+                            ),
                           ]),
                         )
                       : Container(
@@ -903,6 +903,43 @@ class _ClassCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
+                // Booked seat info row
+                if (isBooked && bookedSeat != null) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 9),
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: color.withOpacity(0.2), width: 0.5),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.event_seat_rounded,
+                            size: 14, color: color),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Tu puesto reservado:',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary),
+                        ),
+                        const Spacer(),
+                        Text(
+                          'Bici ${_seatFromIndex(bookedSeat!)}',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: color,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 // Book button
                 SizedBox(
                   width: double.infinity,
@@ -935,6 +972,13 @@ class _ClassCard extends StatelessWidget {
       case SpinLevel.avanzado:
         return Icons.signal_cellular_alt_rounded;
     }
+  }
+
+  static String _seatFromIndex(int index) {
+    const cols = 6;
+    final row = index ~/ cols;
+    final col = index % cols;
+    return '${String.fromCharCode('A'.codeUnitAt(0) + row)}${col + 1}';
   }
 }
 
