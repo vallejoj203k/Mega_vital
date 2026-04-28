@@ -7,8 +7,10 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/mock/mock_data.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/premium_provider.dart';
 import '../../../core/providers/workout_log_provider.dart';
 import '../../widgets/shared_widgets.dart';
+import '../admin/admin_panel_screen.dart';
 import '../api_keys/api_keys_screen.dart';
 import '../edit_profile/edit_profile_screen.dart';
 
@@ -165,6 +167,12 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
 
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
+            // Estado premium
+            SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _PremiumStatusCard())),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
             // Menú de configuración
             SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20),
               child: _SettingsList())),
@@ -271,6 +279,10 @@ class _SettingsList extends StatelessWidget {
           color: AppColors.primary,
           onTap: () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const ApiKeysScreen()))),
+      _SI(icon: Icons.admin_panel_settings_rounded, label: 'Panel de Administración',
+          color: AppColors.accentOrange,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const AdminAccessScreen()))),
     ];
     return DarkCard(padding: const EdgeInsets.symmetric(vertical: 8), child: Column(
       children: items.map((item) => GestureDetector(
@@ -284,6 +296,202 @@ class _SettingsList extends StatelessWidget {
           ])),
       )).toList(),
     ));
+  }
+}
+
+// ── Tarjeta de estado premium ─────────────────────────────────────
+class _PremiumStatusCard extends StatelessWidget {
+  String _formatDate(DateTime dt) =>
+      '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+
+  void _showRedeemDialog(BuildContext context) {
+    final ctrl = TextEditingController();
+    showDialog(context: context, builder: (_) => _RedeemDialogProfile(ctrl: ctrl));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final premium = context.watch<PremiumProvider>();
+
+    if (premium.isLoading) {
+      return const SizedBox(
+        height: 60,
+        child: Center(child: CircularProgressIndicator(color: AppColors.accentOrange, strokeWidth: 2)),
+      );
+    }
+
+    final status = premium.status;
+
+    // Colores según estado
+    Color badgeColor;
+    String badgeLabel;
+    String subtitle;
+    IconData badgeIcon;
+
+    switch (status.tier) {
+      case PremiumTier.trial:
+        badgeColor = AppColors.accentBlue;
+        badgeLabel = 'PRUEBA GRATUITA';
+        badgeIcon  = Icons.access_time_rounded;
+        subtitle   = 'Acceso premium hasta el ${_formatDate(status.expiresAt!)} · ${status.daysRemaining} día(s) restante(s)';
+        break;
+      case PremiumTier.active:
+        badgeColor = AppColors.primary;
+        badgeLabel = 'PREMIUM ACTIVO';
+        badgeIcon  = Icons.star_rounded;
+        subtitle   = 'Plan ${status.type} · Vence el ${_formatDate(status.expiresAt!)}';
+        break;
+      case PremiumTier.expired:
+        badgeColor = AppColors.accentOrange;
+        badgeLabel = 'SIN PREMIUM';
+        badgeIcon  = Icons.lock_rounded;
+        subtitle   = 'Activa un código en administración para acceder a Nutrición y Comunidad.';
+        break;
+    }
+
+    return DarkCard(
+      borderColor: badgeColor.withOpacity(0.3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: badgeColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(badgeIcon, color: badgeColor, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: badgeColor.withOpacity(0.14),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(badgeLabel,
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800,
+                        color: badgeColor, letterSpacing: 1.2)),
+              ),
+              const SizedBox(height: 4),
+              Text(subtitle,
+                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                  maxLines: 2),
+            ])),
+          ]),
+          if (status.tier == PremiumTier.expired) ...[
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () => _showRedeemDialog(context),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFFB020), Color(0xFFFF6B35)],
+                    begin: Alignment.centerLeft, end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.vpn_key_rounded, color: Colors.white, size: 16),
+                  SizedBox(width: 6),
+                  Text('Activar código premium',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                ]),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Dialog canjear código (desde perfil) ──────────────────────────
+class _RedeemDialogProfile extends StatefulWidget {
+  final TextEditingController ctrl;
+  const _RedeemDialogProfile({required this.ctrl});
+  @override
+  State<_RedeemDialogProfile> createState() => _RedeemDialogProfileState();
+}
+
+class _RedeemDialogProfileState extends State<_RedeemDialogProfile> {
+  bool _loading = false;
+  String? _error;
+
+  Future<void> _redeem() async {
+    final code = widget.ctrl.text.trim();
+    if (code.isEmpty) return;
+    setState(() { _loading = true; _error = null; });
+    final auth    = context.read<AuthProvider>();
+    final premium = context.read<PremiumProvider>();
+    final userId  = auth.firebaseUser?.uid ?? auth.profile?.uid ?? '';
+    final created = auth.profile?.createdAt ?? DateTime.now();
+    final result  = await premium.redeemCode(code, userId, created);
+    if (!mounted) return;
+    if (result.success) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('¡Premium activado! Vence el ${_fmt(result.expiresAt)}'),
+        backgroundColor: AppColors.primary,
+      ));
+    } else {
+      setState(() { _loading = false; _error = result.message; });
+    }
+  }
+
+  String _fmt(DateTime? dt) {
+    if (dt == null) return '—';
+    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(children: [
+        const Icon(Icons.vpn_key_rounded, color: AppColors.accentOrange, size: 22),
+        const SizedBox(width: 10),
+        Text('Activar Premium', style: AppTextStyles.headingSmall),
+      ]),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text('Ingresa el código proporcionado por administración:',
+            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+        const SizedBox(height: 16),
+        TextField(
+          controller: widget.ctrl,
+          textCapitalization: TextCapitalization.characters,
+          style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, letterSpacing: 2),
+          decoration: InputDecoration(
+            hintText: 'MV-XXXX-XXXX',
+            hintStyle: const TextStyle(color: AppColors.textMuted),
+            filled: true, fillColor: AppColors.surfaceVariant,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.accentOrange, width: 1.5)),
+            errorText: _error,
+          ),
+        ),
+      ]),
+      actions: [
+        TextButton(
+          onPressed: _loading ? null : () => Navigator.of(context).pop(),
+          child: Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+        ),
+        TextButton(
+          onPressed: _loading ? null : _redeem,
+          child: _loading
+              ? const SizedBox(width: 18, height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accentOrange))
+              : const Text('Activar',
+                  style: TextStyle(color: AppColors.accentOrange, fontWeight: FontWeight.w700)),
+        ),
+      ],
+    );
   }
 }
 

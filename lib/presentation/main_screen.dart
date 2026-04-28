@@ -7,7 +7,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../core/providers/auth_provider.dart';
 import '../core/providers/nav_provider.dart';
+import '../core/providers/premium_provider.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/workouts/workouts_screen.dart';
 import 'screens/nutrition/nutrition_screen.dart';
@@ -33,8 +35,38 @@ class _MainScreenState extends State<MainScreen> {
     ProfileScreen(),
   ];
 
+  bool _premiumInitialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_premiumInitialized) {
+      final auth = context.read<AuthProvider>();
+      final uid  = auth.firebaseUser?.uid ?? auth.profile?.uid;
+      final created = auth.profile?.createdAt;
+      if (uid != null && created != null) {
+        _premiumInitialized = true;
+        context.read<PremiumProvider>().checkStatus(uid, created);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Re-check premium when profile loads (it may not be available on first build)
+    final auth    = context.watch<AuthProvider>();
+    final premium = context.read<PremiumProvider>();
+    if (!_premiumInitialized && !auth.profileLoading) {
+      final uid     = auth.firebaseUser?.uid ?? auth.profile?.uid;
+      final created = auth.profile?.createdAt;
+      if (uid != null && created != null) {
+        _premiumInitialized = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          premium.checkStatus(uid, created);
+        });
+      }
+    }
+
     final nav = context.watch<NavProvider>();
     return Scaffold(
       backgroundColor: Colors.transparent,

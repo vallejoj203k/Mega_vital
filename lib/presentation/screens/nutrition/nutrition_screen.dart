@@ -20,7 +20,9 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/config/app_config.dart';
 import '../../../services/food_search_service.dart';
 import '../../../services/food_vision_service.dart';
+import '../../../core/providers/premium_provider.dart';
 import '../../widgets/shared_widgets.dart';
+import '../../screens/premium/premium_locked_widget.dart';
 import '../meal_detail/meal_detail_screen.dart';
 import '../api_keys/api_keys_screen.dart';
 
@@ -38,6 +40,14 @@ class _NutritionScreenState extends State<NutritionScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
+    final premium = context.watch<PremiumProvider>();
+    if (!premium.isLoading && !premium.hasAccess) {
+      return const PremiumLockedWidget(
+        sectionName: 'Nutrición',
+        sectionIcon: Icons.restaurant_rounded,
+      );
+    }
 
     final nutrition = context.watch<NutritionProvider>();
     final auth      = context.watch<AuthProvider>();

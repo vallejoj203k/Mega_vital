@@ -12,9 +12,11 @@ import '../../../core/providers/community_provider.dart';
 import '../../../core/providers/follow_provider.dart';
 import '../../../core/providers/notification_provider.dart';
 import '../../../core/providers/stories_provider.dart';
+import '../../../core/providers/premium_provider.dart';
 import '../../../services/challenges_service.dart';
 import '../../../services/community_service.dart';
 import '../../widgets/shared_widgets.dart';
+import '../../screens/premium/premium_locked_widget.dart';
 import '../notifications/notifications_screen.dart';
 import 'stories_row.dart';
 import 'user_profile_screen.dart';
@@ -77,6 +79,15 @@ class _CommunityScreenState extends State<CommunityScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
+    final premium = context.watch<PremiumProvider>();
+    if (!premium.isLoading && !premium.hasAccess) {
+      return const PremiumLockedWidget(
+        sectionName: 'Comunidad',
+        sectionIcon: Icons.group_rounded,
+      );
+    }
+
     final userName      = _currentUserName(context);
     final userId        = _currentUserId(context);
     final userInitials  = _currentUserInitials(context);
