@@ -14,5 +14,9 @@ class SupabaseConfig {
   // Ejemplo: 'https://xyzcompany.supabase.co'
 
   static const String anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50eGJqd21reG5ld3p6ZHVjZnp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0MDQ5ODYsImV4cCI6MjA5MTk4MDk4Nn0.8gc2LnlGwmEGnAIONeudlx1zRFiE-EdokEpvCg8nZzM';
-// Ejemplo: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+
+  // Clave de servicio (service_role). Necesaria para crear usuarios sin correo.
+  // Encuéntrala en: Supabase Dashboard → Settings → API → "service_role" key
+  // IMPORTANTE: esta clave solo debe usarse en apps de administración interna.
+  static const String serviceRoleKey = '';
 }

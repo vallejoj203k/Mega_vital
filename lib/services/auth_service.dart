@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../core/config/supabase_config.dart';
 
 class AuthResult {
   final bool success;
@@ -192,6 +195,13 @@ class AuthService {
 
       // Si no hay sesión, Supabase requiere confirmación de correo electrónico.
       if (response.session == null) {
+        // Para usuarios sin correo real: confirmar automáticamente vía admin API.
+        if (realEmail.isEmpty && SupabaseConfig.serviceRoleKey.isNotEmpty) {
+          final confirmed = await _adminConfirmUser(supaUser.id);
+          if (confirmed) {
+            return await login(email: email.trim(), password: password);
+          }
+        }
         return AuthResult.emailPending(AppUser.fromSupabase(supaUser));
       }
 
@@ -234,6 +244,25 @@ class AuthService {
       return AuthResult.fail(_translateError(e.message));
     } catch (_) {
       return AuthResult.fail('No se pudo enviar el correo. Intenta de nuevo.');
+    }
+  }
+
+  /// Confirma un usuario en Supabase usando la Admin API (service_role key).
+  /// Solo se invoca para usuarios sin correo real que no pueden confirmar por email.
+  Future<bool> _adminConfirmUser(String userId) async {
+    try {
+      final resp = await http.put(
+        Uri.parse('${SupabaseConfig.url}/auth/v1/admin/users/$userId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${SupabaseConfig.serviceRoleKey}',
+          'apikey': SupabaseConfig.serviceRoleKey,
+        },
+        body: jsonEncode({'email_confirm': true}),
+      );
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
     }
   }
 

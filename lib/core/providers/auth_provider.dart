@@ -124,7 +124,13 @@ class AuthProvider extends ChangeNotifier {
 
     // Supabase requiere confirmar el correo antes de dar sesión activa.
     if (result.requiresEmailConfirmation) {
-      _errorMessage  = 'Registro exitoso. Revisa tu correo y confirma tu cuenta para iniciar sesión.';
+      if (realEmail.isEmpty) {
+        _errorMessage = 'La cuenta fue creada pero requiere activación manual.\n'
+            'Ve a Supabase → Authentication → Users y confirma el usuario, '
+            'o agrega la "service_role key" en supabase_config.dart para activación automática.';
+      } else {
+        _errorMessage = 'Registro exitoso. Revisa tu correo y confirma tu cuenta para iniciar sesión.';
+      }
       _isRegistering = false;
       _setLoading(false);
       return false;
