@@ -43,17 +43,26 @@ class _NutritionScreenState extends State<NutritionScreen>
     final auth      = context.watch<AuthProvider>();
     final profile   = auth.profile;
 
-    // Metas calculadas con datos reales del usuario
+    // Metas calculadas con datos reales del usuario + nivel de intensidad
+    final nivel = profile?.nutritionLevel ?? 1;
     final calc = profile != null
         ? FitnessCalculator(
-        weight: profile.weight, height: profile.height,
-        age: profile.age, goal: profile.goal)
+            weight: profile.weight, height: profile.height,
+            age: profile.age, goal: profile.goal, nivel: nivel)
         : null;
 
     final metaCal   = calc?.metaCalorias  ?? 2000;
     final metaProt  = calc?.metaProteina  ?? 120.0;
     final metaCarbs = calc?.metaCarbos    ?? 250.0;
     final metaFat   = calc?.metaGrasas    ?? 60.0;
+
+    // Kcal para cada nivel (para el preview en el selector)
+    final levelCalories = profile != null
+        ? List<int>.generate(4, (i) => FitnessCalculator(
+              weight: profile.weight, height: profile.height,
+              age: profile.age, goal: profile.goal, nivel: i + 1)
+            .metaCalorias)
+        : [2000, 2150, 2300, 2500];
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -73,6 +82,20 @@ class _NutritionScreenState extends State<NutritionScreen>
             )),
 
             const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+            // ── Selector de nivel de intensidad calórica ──
+            SliverToBoxAdapter(child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+              child: _LevelSelector(
+                goal: profile?.goal ?? '',
+                currentLevel: nivel,
+                levelCalories: levelCalories,
+                onLevelSelected: (level) =>
+                    context.read<AuthProvider>().updateNutritionLevel(level),
+              ),
+            )),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
             // ── Anillo calórico con metas reales ──
             SliverToBoxAdapter(child: Padding(
@@ -613,6 +636,83 @@ class _AddFab extends StatelessWidget {
       ]),
     ),
   );
+}
+
+// ── Selector de nivel de intensidad calórica ─────────────────────
+class _LevelSelector extends StatelessWidget {
+  final String goal;
+  final int currentLevel;
+  final List<int> levelCalories;
+  final ValueChanged<int> onLevelSelected;
+
+  const _LevelSelector({
+    required this.goal,
+    required this.currentLevel,
+    required this.levelCalories,
+    required this.onLevelSelected,
+  });
+
+  static const _labels = ['1', '2', '3', '⚡'];
+  static const _colors = [
+    AppColors.primary,
+    AppColors.accentBlue,
+    AppColors.accentOrange,
+    AppColors.accentPurple,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final desc = FitnessCalculator.nivelDescripcion(goal, currentLevel);
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Text('Intensidad calórica', style: AppTextStyles.labelLarge),
+        const Spacer(),
+        Text(desc, style: AppTextStyles.caption
+            .copyWith(color: _colors[currentLevel - 1])),
+      ]),
+      const SizedBox(height: 8),
+      Row(children: List.generate(4, (i) {
+        final level  = i + 1;
+        final color  = _colors[i];
+        final active = currentLevel == level;
+        return Expanded(child: Padding(
+          padding: EdgeInsets.only(right: i < 3 ? 8 : 0),
+          child: GestureDetector(
+            onTap: () => onLevelSelected(level),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              height: 52,
+              decoration: BoxDecoration(
+                color: active ? color.withOpacity(0.14) : AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: active ? color : AppColors.border,
+                  width: active ? 1.5 : 0.5,
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(_labels[i], style: TextStyle(
+                    fontSize: i == 3 ? 15 : 14,
+                    fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+                    color: active ? color : AppColors.textSecondary,
+                  )),
+                  const SizedBox(height: 2),
+                  Text('${levelCalories[i]}', style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: active ? color.withOpacity(0.9) : AppColors.textMuted,
+                  )),
+                ],
+              ),
+            ),
+          ),
+        ));
+      })),
+    ]);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────

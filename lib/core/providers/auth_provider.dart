@@ -211,6 +211,15 @@ class AuthProvider extends ChangeNotifier {
     return url;
   }
 
+  /// Cambia el nivel de intensidad calórica del usuario (1–4).
+  /// Actualiza el perfil local de forma optimista y persiste en Supabase.
+  Future<void> updateNutritionLevel(int level) async {
+    if (_profile == null || _user == null) return;
+    _profile = _profile!.copyWith(nutritionLevel: level.clamp(1, 4));
+    notifyListeners();
+    await _service.updateUserProfile(_user!.uid, {'nutrition_level': level.clamp(1, 4)});
+  }
+
   Future<void> reloadProfile() async {
     final user = _user;
     if (user == null) return;

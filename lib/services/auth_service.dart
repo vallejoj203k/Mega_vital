@@ -57,6 +57,7 @@ class UserProfile {
   final String gender;       // 'hombre' | 'mujer'
   final String? referredBy;
   final String? avatarUrl;
+  final int nutritionLevel;  // 1–4 (4 = Flash)
 
   const UserProfile({
     required this.uid,
@@ -70,9 +71,38 @@ class UserProfile {
     this.gender = 'mujer',
     this.referredBy,
     this.avatarUrl,
+    this.nutritionLevel = 1,
   });
 
   bool get isMale => gender == 'hombre';
+
+  UserProfile copyWith({
+    String? uid,
+    String? name,
+    String? email,
+    String? goal,
+    double? weight,
+    double? height,
+    int? age,
+    DateTime? createdAt,
+    String? gender,
+    String? referredBy,
+    String? avatarUrl,
+    int? nutritionLevel,
+  }) => UserProfile(
+    uid:            uid            ?? this.uid,
+    name:           name           ?? this.name,
+    email:          email          ?? this.email,
+    goal:           goal           ?? this.goal,
+    weight:         weight         ?? this.weight,
+    height:         height         ?? this.height,
+    age:            age            ?? this.age,
+    createdAt:      createdAt      ?? this.createdAt,
+    gender:         gender         ?? this.gender,
+    referredBy:     referredBy     ?? this.referredBy,
+    avatarUrl:      avatarUrl      ?? this.avatarUrl,
+    nutritionLevel: nutritionLevel ?? this.nutritionLevel,
+  );
 
   Map<String, dynamic> toMap() => {
     'uid': uid,
@@ -91,19 +121,20 @@ class UserProfile {
   };
 
   factory UserProfile.fromMap(Map<String, dynamic> m) => UserProfile(
-    uid: m['uid'] ?? '',
-    name: m['name'] ?? '',
-    email: m['email'] ?? '',
-    goal: m['goal'] ?? 'Ganar músculo',
-    weight: (m['weight'] ?? 70.0).toDouble(),
-    height: (m['height'] ?? 170.0).toDouble(),
-    age: m['age'] ?? 25,
+    uid:            m['uid']    ?? '',
+    name:           m['name']   ?? '',
+    email:          m['email']  ?? '',
+    goal:           m['goal']   ?? 'Ganar músculo',
+    weight:         (m['weight'] ?? 70.0).toDouble(),
+    height:         (m['height'] ?? 170.0).toDouble(),
+    age:            m['age']    ?? 25,
     createdAt: m['created_at'] != null
         ? DateTime.tryParse(m['created_at']) ?? DateTime.now()
         : DateTime.now(),
-    gender: m['gender'] ?? 'mujer',
-    referredBy: m['referred_by'],
-    avatarUrl: m['avatar_url'] as String?,
+    gender:         m['gender']       ?? 'mujer',
+    referredBy:     m['referred_by'],
+    avatarUrl:      m['avatar_url']   as String?,
+    nutritionLevel: (m['nutrition_level'] as int?) ?? 1,
   );
 }
 

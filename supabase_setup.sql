@@ -920,3 +920,8 @@ CREATE POLICY "spinning_insert" ON public.spinning_bookings
 -- Solo puedes cancelar tus propias reservas
 CREATE POLICY "spinning_delete" ON public.spinning_bookings
   FOR DELETE TO authenticated USING (auth.uid() = user_id);
+
+
+-- Nivel de intensidad calórica del usuario (1–4)
+ALTER TABLE public.user_profiles
+  ADD COLUMN IF NOT EXISTS nutrition_level INTEGER NOT NULL DEFAULT 1;
