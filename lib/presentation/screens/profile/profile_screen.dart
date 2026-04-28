@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/mock/mock_data.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/workout_log_provider.dart';
 import '../../widgets/shared_widgets.dart';
 import '../api_keys/api_keys_screen.dart';
 import '../edit_profile/edit_profile_screen.dart';
@@ -118,11 +119,7 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
                     const SizedBox(height: 6),
                     Row(children: [const Icon(Icons.flag_outlined, size: 13, color: AppColors.textMuted), const SizedBox(width: 4), Text(goal, style: AppTextStyles.bodyMedium)]),
                     const SizedBox(height: 10),
-                    Row(children: [
-                      StreakBadge(days: MockData.currentUser.streak),
-                      const SizedBox(width: 8),
-                      _Chip(label: '${MockData.achievements.where((a) => a.unlocked).length} logros', color: AppColors.accentBlue),
-                    ]),
+                    _Chip(label: '${MockData.achievements.where((a) => a.unlocked).length} logros', color: AppColors.accentBlue),
                   ])),
                 ]),
               ),
@@ -244,11 +241,14 @@ class _AchievementCard extends StatelessWidget {
 class _LifetimeStats extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final history = context.watch<WorkoutLogProvider>().history;
+    final totalWorkouts = history.length;
+    final totalMinutes  = history.fold<int>(0, (sum, s) => sum + s.durationMinutes);
+    final totalHours    = (totalMinutes / 60).toStringAsFixed(1);
+
     final stats = [
-      {'label': 'Total entrenamientos', 'value': '47', 'icon': Icons.fitness_center_rounded, 'color': AppColors.primary},
-      {'label': 'Calorías totales', 'value': '18,420 kcal', 'icon': Icons.local_fire_department_rounded, 'color': AppColors.accentOrange},
-      {'label': 'Horas de ejercicio', 'value': '62 horas', 'icon': Icons.timer_rounded, 'color': AppColors.accentBlue},
-      {'label': 'Racha máxima', 'value': '21 días', 'icon': Icons.trending_up_rounded, 'color': AppColors.accentPurple},
+      {'label': 'Total entrenamientos', 'value': '$totalWorkouts', 'icon': Icons.fitness_center_rounded, 'color': AppColors.primary},
+      {'label': 'Horas de ejercicio',   'value': '$totalHours h',  'icon': Icons.timer_rounded,           'color': AppColors.accentBlue},
     ];
     return DarkCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('Estadísticas totales', style: AppTextStyles.headingSmall),
@@ -271,14 +271,6 @@ class _SettingsList extends StatelessWidget {
           color: AppColors.primary,
           onTap: () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const ApiKeysScreen()))),
-      _SI(icon: Icons.notifications_outlined, label: 'Notificaciones',
-          color: AppColors.accentBlue, onTap: () {}),
-      _SI(icon: Icons.privacy_tip_outlined, label: 'Privacidad',
-          color: AppColors.accentPurple, onTap: () {}),
-      _SI(icon: Icons.sync_outlined, label: 'Sincronizar dispositivos',
-          color: AppColors.accentOrange, onTap: () {}),
-      _SI(icon: Icons.help_outline_rounded, label: 'Ayuda y soporte',
-          color: AppColors.textSecondary, onTap: () {}),
     ];
     return DarkCard(padding: const EdgeInsets.symmetric(vertical: 8), child: Column(
       children: items.map((item) => GestureDetector(
