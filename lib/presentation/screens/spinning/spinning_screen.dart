@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import 'seat_selection_screen.dart';
@@ -153,21 +154,114 @@ class _SpinningScreenState extends State<SpinningScreen>
   @override
   bool get wantKeepAlive => true;
 
+  final _supabase = Supabase.instance.client;
+  RealtimeChannel? _realtimeChannel;
+
   late TabController _tabController;
   late List<SpinClass> _classes;
   final Map<String, int> _myBookings = {}; // classId → seatIndex
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _classes = _buildClasses();
+    _loadBookings();
+    _subscribeRealtime();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _realtimeChannel?.unsubscribe();
     super.dispose();
+  }
+
+  // ── Supabase helpers ────────────────────────────────────
+
+  SpinClass? _classById(String id) {
+    for (final c in _classes) {
+      if (c.id == id) return c;
+    }
+    return null;
+  }
+
+  Future<void> _loadBookings() async {
+    try {
+      final rows = await _supabase
+          .from('spinning_bookings')
+          .select('class_id, seat_index, user_id');
+      if (!mounted) return;
+      final myId = _supabase.auth.currentUser?.id;
+      setState(() {
+        for (final row in rows) {
+          final classId = row['class_id'] as String;
+          final seatIndex = row['seat_index'] as int;
+          final userId = row['user_id'] as String;
+          final cls = _classById(classId);
+          if (cls != null && cls.reservedSeats.add(seatIndex)) {
+            cls.bookedSpots++;
+          }
+          if (myId != null && userId == myId) {
+            _myBookings[classId] = seatIndex;
+          }
+        }
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _subscribeRealtime() {
+    _realtimeChannel = _supabase
+        .channel('spinning_bookings_rt')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'spinning_bookings',
+          callback: (payload) {
+            if (!mounted) return;
+            final classId = payload.newRecord['class_id'] as String?;
+            final seatIndex = payload.newRecord['seat_index'] as int?;
+            final userId = payload.newRecord['user_id'] as String?;
+            if (classId == null || seatIndex == null) return;
+            setState(() {
+              final cls = _classById(classId);
+              if (cls != null && cls.reservedSeats.add(seatIndex)) {
+                cls.bookedSpots++;
+              }
+              final myId = _supabase.auth.currentUser?.id;
+              if (myId != null && userId == myId) {
+                _myBookings[classId] = seatIndex;
+              }
+            });
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.delete,
+          schema: 'public',
+          table: 'spinning_bookings',
+          callback: (payload) {
+            if (!mounted) return;
+            final classId = payload.oldRecord['class_id'] as String?;
+            final seatIndex = payload.oldRecord['seat_index'] as int?;
+            final userId = payload.oldRecord['user_id'] as String?;
+            if (classId == null || seatIndex == null) return;
+            setState(() {
+              final cls = _classById(classId);
+              if (cls != null && cls.reservedSeats.remove(seatIndex)) {
+                cls.bookedSpots--;
+              }
+              final myId = _supabase.auth.currentUser?.id;
+              if (myId != null && userId == myId) {
+                _myBookings.remove(classId);
+              }
+            });
+          },
+        )
+        .subscribe();
   }
 
   Color _levelColor(SpinLevel l) {
@@ -210,47 +304,59 @@ class _SpinningScreenState extends State<SpinningScreen>
       ),
     );
 
-    if (result != null && mounted) {
-      if (result == oldSeat) return; // user confirmed the same seat — no change
-      setState(() {
-        if (oldSeat != null) {
-          // Replace old seat with new one
-          cls.reservedSeats.remove(oldSeat);
-          cls.bookedSpots--;
-        }
-        cls.reservedSeats.add(result);
-        cls.bookedSpots++;
-        _myBookings[cls.id] = result;
-      });
-      HapticFeedback.mediumImpact();
-      if (mounted) {
-        final label = _seatLabel(result);
-        final isChange = oldSeat != null;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_rounded,
-                    color: AppColors.primary, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    isChange
-                        ? 'Cambiaste al puesto $label en ${cls.name}'
-                        : 'Puesto $label reservado en ${cls.name}',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: AppColors.surface,
-            behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+    if (!mounted || result == null || result == oldSeat) return;
+
+    // Optimistic update
+    setState(() {
+      if (oldSeat != null && cls.reservedSeats.remove(oldSeat)) cls.bookedSpots--;
+      if (cls.reservedSeats.add(result)) cls.bookedSpots++;
+      _myBookings[cls.id] = result;
+    });
+
+    HapticFeedback.mediumImpact();
+    final label = _seatLabel(result);
+    final isChange = oldSeat != null;
+    _showSnackBar(
+      icon: Icons.check_circle_rounded,
+      iconColor: AppColors.primary,
+      text: isChange
+          ? 'Cambiaste al puesto $label en ${cls.name}'
+          : 'Puesto $label reservado en ${cls.name}',
+    );
+
+    // Persist to Supabase
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return;
+      if (oldSeat != null) {
+        await _supabase
+            .from('spinning_bookings')
+            .delete()
+            .eq('user_id', userId)
+            .eq('class_id', cls.id);
       }
+      await _supabase.from('spinning_bookings').insert({
+        'user_id': userId,
+        'class_id': cls.id,
+        'seat_index': result,
+      });
+    } catch (_) {
+      // Revert on error
+      if (!mounted) return;
+      setState(() {
+        if (cls.reservedSeats.remove(result)) cls.bookedSpots--;
+        if (oldSeat != null && cls.reservedSeats.add(oldSeat)) {
+          cls.bookedSpots++;
+          _myBookings[cls.id] = oldSeat;
+        } else {
+          _myBookings.remove(cls.id);
+        }
+      });
+      _showSnackBar(
+        icon: Icons.error_outline_rounded,
+        iconColor: AppColors.error,
+        text: 'Error al guardar la reserva. Inténtalo de nuevo.',
+      );
     }
   }
 
@@ -284,41 +390,70 @@ class _SpinningScreenState extends State<SpinningScreen>
         ],
       ),
     );
-    if (confirmed == true && mounted) {
+    if (confirmed != true || !mounted) return;
+
+    final seat = _myBookings[cls.id];
+
+    // Optimistic update
+    setState(() {
+      if (seat != null && cls.reservedSeats.remove(seat)) cls.bookedSpots--;
+      _myBookings.remove(cls.id);
+    });
+
+    HapticFeedback.mediumImpact();
+    _showSnackBar(
+      icon: Icons.info_outline_rounded,
+      iconColor: AppColors.textSecondary,
+      text: 'Reserva cancelada en ${cls.name}',
+    );
+
+    // Delete from Supabase
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return;
+      await _supabase
+          .from('spinning_bookings')
+          .delete()
+          .eq('user_id', userId)
+          .eq('class_id', cls.id);
+    } catch (_) {
+      // Revert on error
+      if (!mounted || seat == null) return;
       setState(() {
-        final seat = _myBookings[cls.id];
-        if (seat != null) {
-          cls.reservedSeats.remove(seat);
-          cls.bookedSpots--;
-        }
-        _myBookings.remove(cls.id);
+        if (cls.reservedSeats.add(seat)) cls.bookedSpots++;
+        _myBookings[cls.id] = seat;
       });
-      HapticFeedback.mediumImpact();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.info_outline_rounded,
-                    color: AppColors.textSecondary, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Reserva cancelada en ${cls.name}',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: AppColors.surface,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
-      }
+      _showSnackBar(
+        icon: Icons.error_outline_rounded,
+        iconColor: AppColors.error,
+        text: 'Error al cancelar la reserva. Inténtalo de nuevo.',
+      );
     }
+  }
+
+  void _showSnackBar({
+    required IconData icon,
+    required Color iconColor,
+    required String text,
+  }) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(icon, color: iconColor, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(text, style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.surface,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
   }
 
   @override
@@ -333,32 +468,39 @@ class _SpinningScreenState extends State<SpinningScreen>
             _buildHeader(),
             _buildTabBar(),
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _ScheduleTab(
-                    classes: _classes,
-                    myBookings: _myBookings,
-                    levelColor: _levelColor,
-                    levelLabel: _levelLabel,
-                    onBook: _openSeatSelection,
-                    onChangeSeat: (cls, oldSeat) =>
-                        _openSeatSelection(cls, oldSeat: oldSeat),
-                    onCancel: _cancelBooking,
-                  ),
-                  _InstructorsTab(instructors: _instructors),
-                  _MyBookingsTab(
-                    classes: _classes,
-                    myBookings: _myBookings,
-                    levelColor: _levelColor,
-                    levelLabel: _levelLabel,
-                    seatLabel: _seatLabel,
-                    onChangeSeat: (cls, oldSeat) =>
-                        _openSeatSelection(cls, oldSeat: oldSeat),
-                    onCancel: _cancelBooking,
-                  ),
-                ],
-              ),
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _ScheduleTab(
+                          classes: _classes,
+                          myBookings: _myBookings,
+                          levelColor: _levelColor,
+                          levelLabel: _levelLabel,
+                          onBook: _openSeatSelection,
+                          onChangeSeat: (cls, oldSeat) =>
+                              _openSeatSelection(cls, oldSeat: oldSeat),
+                          onCancel: _cancelBooking,
+                        ),
+                        _InstructorsTab(instructors: _instructors),
+                        _MyBookingsTab(
+                          classes: _classes,
+                          myBookings: _myBookings,
+                          levelColor: _levelColor,
+                          levelLabel: _levelLabel,
+                          seatLabel: _seatLabel,
+                          onChangeSeat: (cls, oldSeat) =>
+                              _openSeatSelection(cls, oldSeat: oldSeat),
+                          onCancel: _cancelBooking,
+                        ),
+                      ],
+                    ),
             ),
           ],
         ),
