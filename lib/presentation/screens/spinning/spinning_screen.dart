@@ -104,7 +104,7 @@ List<SpinClass> _buildClasses() => [
     durationMinutes: 60,
     caloriesMin: 550,
     caloriesMax: 750,
-    totalSpots: 15,
+    totalSpots: 18,
     bookedSpots: 0,
   ),
   SpinClass(
@@ -119,7 +119,7 @@ List<SpinClass> _buildClasses() => [
     durationMinutes: 60,
     caloriesMin: 450,
     caloriesMax: 600,
-    totalSpots: 15,
+    totalSpots: 18,
     bookedSpots: 0,
   ),
   SpinClass(
@@ -134,7 +134,7 @@ List<SpinClass> _buildClasses() => [
     durationMinutes: 60,
     caloriesMin: 550,
     caloriesMax: 700,
-    totalSpots: 15,
+    totalSpots: 18,
     bookedSpots: 0,
   ),
 ];
