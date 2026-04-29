@@ -29,6 +29,12 @@ class StoriesRow extends StatelessWidget {
     this.currentUserAvatarUrl,
   });
 
+  UserStoriesGroup? get _myGroup =>
+      groups.cast<UserStoriesGroup?>().firstWhere(
+        (g) => g!.userId == currentUserId,
+        orElse: () => null,
+      );
+
   List<UserStoriesGroup> get _others =>
       groups.where((g) => g.userId != currentUserId).toList();
 
@@ -47,6 +53,7 @@ class StoriesRow extends StatelessWidget {
               userName:  currentUserName,
               initials:  currentUserInitials,
               avatarUrl: currentUserAvatarUrl,
+              myGroup:   _myGroup,
             );
           }
           final group = _others[i - 1];
@@ -77,30 +84,63 @@ class StoriesRow extends StatelessWidget {
 class _MyCircle extends StatelessWidget {
   final String userId, userName, initials;
   final String? avatarUrl;
-  const _MyCircle({required this.userId, required this.userName, required this.initials, this.avatarUrl});
+  final UserStoriesGroup? myGroup;
+  const _MyCircle({
+    required this.userId,
+    required this.userName,
+    required this.initials,
+    this.avatarUrl,
+    this.myGroup,
+  });
+
+  bool get _hasStories => myGroup != null && myGroup!.stories.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => _openSheet(context),
+      onTap: () => _hasStories ? _openViewer(context) : _openSheet(context),
       child: _CircleLayout(
         label: 'Tú',
         avatar: Stack(children: [
-          _Ring(hasNew: true, child: _AvatarContent(initials: initials, hasNew: true, avatarUrl: avatarUrl)),
+          _Ring(
+            hasNew: _hasStories,
+            child: _AvatarContent(
+              initials: initials,
+              hasNew: _hasStories,
+              avatarUrl: avatarUrl,
+            ),
+          ),
           Positioned(
             right: 0, bottom: 0,
-            child: Container(
-              width: 22, height: 22,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppColors.primaryGradient,
+            child: GestureDetector(
+              onTap: () => _openSheet(context),
+              child: Container(
+                width: 22, height: 22,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppColors.primaryGradient,
+                ),
+                child: const Icon(Icons.add, size: 14, color: AppColors.background),
               ),
-              child: const Icon(Icons.add, size: 14, color: AppColors.background),
             ),
           ),
         ]),
       ),
     );
+  }
+
+  void _openViewer(BuildContext ctx) {
+    Navigator.of(ctx).push(PageRouteBuilder(
+      opaque: false,
+      barrierDismissible: true,
+      barrierColor: Colors.black,
+      pageBuilder: (_, __, ___) => StoryViewerPage(
+        groups: [myGroup!],
+        initialGroupIndex: 0,
+        isOwner: true,
+        onAddStory: () => _openSheet(ctx),
+      ),
+    ));
   }
 
   void _openSheet(BuildContext ctx) {
@@ -242,7 +282,15 @@ class _AvatarContent extends StatelessWidget {
 class StoryViewerPage extends StatefulWidget {
   final List<UserStoriesGroup> groups;
   final int initialGroupIndex;
-  const StoryViewerPage({super.key, required this.groups, required this.initialGroupIndex});
+  final bool isOwner;
+  final VoidCallback? onAddStory;
+  const StoryViewerPage({
+    super.key,
+    required this.groups,
+    required this.initialGroupIndex,
+    this.isOwner = false,
+    this.onAddStory,
+  });
 
   @override
   State<StoryViewerPage> createState() => _StoryViewerPageState();
@@ -255,10 +303,13 @@ class _StoryViewerPageState extends State<StoryViewerPage>
   Timer? _timer;
   late AnimationController _progress;
   bool _paused = false;
+  bool _deleting = false;
+  late List<UserStoriesGroup> _groups;
 
   @override
   void initState() {
     super.initState();
+    _groups = List.from(widget.groups);
     _gIdx = widget.initialGroupIndex;
     _progress = AnimationController(vsync: this, duration: _kStoryDuration);
     _start();
@@ -271,7 +322,7 @@ class _StoryViewerPageState extends State<StoryViewerPage>
     super.dispose();
   }
 
-  UserStoriesGroup get _group => widget.groups[_gIdx];
+  UserStoriesGroup get _group => _groups[_gIdx];
   StoryModel       get _story => _group.stories[_sIdx];
 
   void _start() {
@@ -299,7 +350,7 @@ class _StoryViewerPageState extends State<StoryViewerPage>
   void _next() {
     if (_sIdx < _group.stories.length - 1) {
       setState(() => _sIdx++);
-    } else if (_gIdx < widget.groups.length - 1) {
+    } else if (_gIdx < _groups.length - 1) {
       setState(() { _gIdx++; _sIdx = 0; });
     } else {
       Navigator.of(context).pop();
@@ -312,8 +363,43 @@ class _StoryViewerPageState extends State<StoryViewerPage>
     if (_sIdx > 0) {
       setState(() => _sIdx--);
     } else if (_gIdx > 0) {
-      setState(() { _gIdx--; _sIdx = widget.groups[_gIdx].stories.length - 1; });
+      setState(() { _gIdx--; _sIdx = _groups[_gIdx].stories.length - 1; });
     }
+    _start();
+  }
+
+  Future<void> _deleteCurrentStory() async {
+    _pause();
+    final storyId = _story.id;
+    setState(() => _deleting = true);
+    final ok = await context.read<StoriesProvider>().deleteStory(storyId);
+    if (!mounted) return;
+    setState(() => _deleting = false);
+
+    if (!ok) {
+      _resume();
+      return;
+    }
+
+    final currentGroup = _group;
+    final updatedStories = currentGroup.stories.where((s) => s.id != storyId).toList();
+
+    if (updatedStories.isEmpty) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    final updatedGroup = UserStoriesGroup(
+      userId:    currentGroup.userId,
+      userName:  currentGroup.userName,
+      avatarUrl: currentGroup.avatarUrl,
+      stories:   updatedStories,
+    );
+
+    setState(() {
+      _groups[_gIdx] = updatedGroup;
+      if (_sIdx >= updatedStories.length) _sIdx = updatedStories.length - 1;
+    });
     _start();
   }
 
@@ -336,6 +422,7 @@ class _StoryViewerPageState extends State<StoryViewerPage>
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTapUp: (d) {
+          if (_deleting) return;
           final w = MediaQuery.of(context).size.width;
           if (d.globalPosition.dx < w / 2) { _prev(); } else { _next(); }
         },
@@ -500,6 +587,45 @@ class _StoryViewerPageState extends State<StoryViewerPage>
                           style: AppTextStyles.caption.copyWith(color: Colors.white60)),
                     ]),
                     const Spacer(),
+                    if (widget.isOwner) ...[
+                      GestureDetector(
+                        onTap: widget.onAddStory != null
+                            ? () {
+                                Navigator.of(context).pop();
+                                widget.onAddStory!();
+                              }
+                            : null,
+                        child: Container(
+                          width: 36, height: 36,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.15),
+                          ),
+                          child: const Icon(Icons.add_rounded,
+                              color: Colors.white, size: 20),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: _deleting ? null : _deleteCurrentStory,
+                        child: Container(
+                          width: 36, height: 36,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.15),
+                          ),
+                          child: _deleting
+                              ? const Padding(
+                                  padding: EdgeInsets.all(8),
+                                  child: CircularProgressIndicator(
+                                      color: Colors.white, strokeWidth: 2),
+                                )
+                              : const Icon(Icons.delete_outline_rounded,
+                                  color: Colors.white, size: 20),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                     GestureDetector(
                       onTap: () => Navigator.of(context).pop(),
                       child: const Icon(Icons.close, color: Colors.white, size: 24),
@@ -509,6 +635,15 @@ class _StoryViewerPageState extends State<StoryViewerPage>
               ],
             ),
           ),
+
+          if (_deleting)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black45,
+                alignment: Alignment.center,
+                child: const CircularProgressIndicator(color: Colors.white),
+              ),
+            ),
 
         ]),
       ),
