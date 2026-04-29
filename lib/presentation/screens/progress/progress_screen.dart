@@ -31,75 +31,58 @@ class _ProgressScreenState extends State<ProgressScreen>
   static const _metrics = ['Peso máx.', 'Volumen'];
   int _metricIdx = 0;
 
-  // Datos del cloud
-  Map<String, List<ExerciseProgressEntry>> _cloudData = {};
-  bool _loadingCloud = true;
+  // Estado del sync con el cloud (solo indicador visual, no afecta los datos)
+  bool _syncing = true;
+  bool _syncOk = false;
   bool _synced = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _initData());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncToCloud());
   }
 
-  Future<void> _initData() async {
-    if (!mounted) return;
+  Future<void> _syncToCloud() async {
+    if (!mounted || _synced) return;
+    _synced = true;
 
-    // Sync historial local → Supabase (una sola vez por sesión de pantalla)
-    if (!_synced) {
-      _synced = true;
-      final local = context.read<WorkoutLogProvider>().history;
-      await ExerciseProgressService.instance.syncAllSessions(local);
+    final local = context.read<WorkoutLogProvider>().history;
+    await ExerciseProgressService.instance.syncAllSessions(local);
+
+    if (mounted) {
+      setState(() {
+        _syncing = false;
+        _syncOk = true;
+      });
     }
-
-    // Cargar desde Supabase
-    final data = await ExerciseProgressService.instance.fetchAllProgress();
-    if (mounted) setState(() { _cloudData = data; _loadingCloud = false; });
   }
 
-  // ── Construye datos combinados: Supabase primero, local como fallback ──
+  // ── Siempre usa datos locales (granularidad por sesión) ──────────
+  // El cloud es solo backup; tiene 1 fila por (ejercicio+día) por el
+  // UNIQUE constraint, por lo que no puede representar múltiples
+  // sesiones en el mismo día.
 
-  Map<String, _ExerciseData> _buildExerciseMap() {
+  Map<String, _ExerciseData> _buildExerciseMap(List<WorkoutSession> history) {
     final Map<String, _ExerciseData> map = {};
 
-    if (_cloudData.isNotEmpty) {
-      // Usar datos de Supabase
-      for (final entry in _cloudData.entries) {
-        final ex = _ExerciseData(
-          name: entry.key,
-          muscle: entry.value.isNotEmpty ? entry.value.first.muscleId : '',
-        );
-        for (final p in entry.value) {
-          ex.points.add(_DataPoint(
-            date: p.date,
-            maxWeight: p.maxWeight,
-            volume: p.volume,
-          ));
-        }
-        map[entry.key] = ex;
-      }
-    } else {
-      // Fallback a datos locales
-      final localSessions =
-          context.read<WorkoutLogProvider>().history
-            .where((s) => s.isCompleted)
-            .toList()
-            ..sort((a, b) => a.date.compareTo(b.date));
+    final sorted = history
+        .where((s) => s.isCompleted)
+        .toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
 
-      for (final session in localSessions) {
-        for (final ex in session.exercises) {
-          final done = ex.sets.where((s) => s.isDone).toList();
-          if (done.isEmpty) continue;
-          map.putIfAbsent(
-            ex.exerciseName,
-            () => _ExerciseData(name: ex.exerciseName, muscle: ex.muscleId),
-          );
-          map[ex.exerciseName]!.points.add(_DataPoint(
-            date: session.date,
-            maxWeight: ex.maxWeight,
-            volume: ex.totalVolume,
-          ));
-        }
+    for (final session in sorted) {
+      for (final ex in session.exercises) {
+        final done = ex.sets.where((s) => s.isDone).toList();
+        if (done.isEmpty) continue;
+        map.putIfAbsent(
+          ex.exerciseName,
+          () => _ExerciseData(name: ex.exerciseName, muscle: ex.muscleId),
+        );
+        map[ex.exerciseName]!.points.add(_DataPoint(
+          date: session.date,
+          maxWeight: ex.maxWeight,
+          volume: ex.totalVolume,
+        ));
       }
     }
 
@@ -108,18 +91,17 @@ class _ProgressScreenState extends State<ProgressScreen>
 
   @override
   Widget build(BuildContext context) {
-    context.watch<WorkoutLogProvider>(); // reacciona a cambios locales
-    final exerciseMap = _buildExerciseMap();
+    final log = context.watch<WorkoutLogProvider>();
+    final history = log.history;
+
+    final exerciseMap = _buildExerciseMap(history);
     final exercises = exerciseMap.values.toList()
       ..sort((a, b) => a.name.compareTo(b.name));
 
-    final auth = context.read<AuthProvider>();
-    final userName = auth.profile?.name ?? 'Usuario';
-
+    final userName =
+        context.read<AuthProvider>().profile?.name ?? 'Usuario';
     final completedSessions =
-        context.read<WorkoutLogProvider>().history
-          .where((s) => s.isCompleted)
-          .toList();
+        history.where((s) => s.isCompleted).toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -156,28 +138,20 @@ class _ProgressScreenState extends State<ProgressScreen>
                         Text('Evolución por ejercicio',
                             style: AppTextStyles.caption
                                 .copyWith(color: AppColors.textMuted)),
-                        if (_loadingCloud) ...[
-                          const SizedBox(width: 8),
-                          SizedBox(
-                            width: 10,
-                            height: 10,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 1.5,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ] else ...[
-                          const SizedBox(width: 6),
-                          Icon(
-                            _cloudData.isNotEmpty
-                                ? Icons.cloud_done_rounded
-                                : Icons.cloud_off_rounded,
-                            size: 12,
-                            color: _cloudData.isNotEmpty
-                                ? AppColors.primary
-                                : AppColors.textMuted,
-                          ),
-                        ],
+                        const SizedBox(width: 6),
+                        Icon(
+                          _syncing
+                              ? Icons.cloud_sync_rounded
+                              : (_syncOk
+                                  ? Icons.cloud_done_rounded
+                                  : Icons.cloud_off_rounded),
+                          size: 12,
+                          color: _syncing
+                              ? AppColors.textMuted
+                              : (_syncOk
+                                  ? AppColors.primary
+                                  : AppColors.textMuted),
+                        ),
                       ]),
                     ],
                   ),
@@ -246,24 +220,21 @@ class _ProgressScreenState extends State<ProgressScreen>
 
             // ── Lista de gráficas ─────────────────────────────────
             Expanded(
-              child: _loadingCloud && exercises.isEmpty
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                          color: AppColors.primary))
-                  : exercises.isEmpty
-                      ? _EmptyState()
-                      : ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                          physics: const BouncingScrollPhysics(),
-                          itemCount: exercises.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 16),
-                          itemBuilder: (context, i) => _ExerciseChart(
-                            data: exercises[i],
-                            showVolume: _metricIdx == 1,
-                            userName: userName,
-                          ),
-                        ),
+              child: exercises.isEmpty
+                  ? _EmptyState()
+                  : ListView.separated(
+                      padding:
+                          const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: exercises.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: 16),
+                      itemBuilder: (context, i) => _ExerciseChart(
+                        data: exercises[i],
+                        showVolume: _metricIdx == 1,
+                        userName: userName,
+                      ),
+                    ),
             ),
           ],
         ),
