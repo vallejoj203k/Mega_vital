@@ -356,7 +356,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
           : _referredByCtrl.text.trim(),
     );
 
-    if (!ok && mounted) {
+    if (!mounted) return;
+
+    if (ok) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -380,7 +384,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       );
     }
-    // Si ok → AuthWrapper redirige al MainScreen automáticamente
   }
 }
 

@@ -138,6 +138,21 @@ List<SpinClass> _buildClasses() => [
     totalSpots: 18,
     bookedSpots: 0,
   ),
+  SpinClass(
+    id: 'c4',
+    name: 'Saturday Ride',
+    description: 'Arranca el fin de semana con energía. Sesión de ciclismo indoor para todos los niveles con ritmo progresivo y ambiente motivador. El mejor plan para el sábado.',
+    features: ['Bicicleta Keiser M3', 'Monitor cardíaco', 'Todos los niveles'],
+    instructor: _instructors[1], // Julio
+    level: SpinLevel.intermedio,
+    time: '09:00 AM',
+    days: 'Sáb',
+    durationMinutes: 60,
+    caloriesMin: 450,
+    caloriesMax: 600,
+    totalSpots: 18,
+    bookedSpots: 0,
+  ),
 ];
 
 // ── Main Screen ────────────────────────────────────────
