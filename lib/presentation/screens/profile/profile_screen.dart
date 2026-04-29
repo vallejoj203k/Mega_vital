@@ -272,17 +272,33 @@ class _LifetimeStats extends StatelessWidget {
 }
 
 class _SettingsList extends StatelessWidget {
+  // Usuarios con acceso al panel de administración
+  static const _adminEmails = <String>{
+    'vallejoj645@gmail.com',
+    'veronicagalvis33@gmail.com',
+    'vallejojuanpablo27@gmail.com',
+    'laurasofii2623@gmail.com',
+    // 'usuario5@gmail.com',  // descomentar cuando esté disponible
+    // 'usuario6@gmail.com',
+    // 'usuario7@gmail.com',
+    // 'usuario8@gmail.com',
+  };
+
   @override
   Widget build(BuildContext context) {
+    final email = context.read<AuthProvider>().profile?.email ?? '';
+    final isAdmin = _adminEmails.contains(email.toLowerCase().trim());
+
     final items = [
       _SI(icon: Icons.auto_awesome_rounded, label: 'Claves de IA (análisis fotos)',
           color: AppColors.primary,
           onTap: () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const ApiKeysScreen()))),
-      _SI(icon: Icons.admin_panel_settings_rounded, label: 'Panel de Administración',
-          color: AppColors.accentOrange,
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const AdminAccessScreen()))),
+      if (isAdmin)
+        _SI(icon: Icons.admin_panel_settings_rounded, label: 'Panel de Administración',
+            color: AppColors.accentOrange,
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const AdminAccessScreen()))),
     ];
     return DarkCard(padding: const EdgeInsets.symmetric(vertical: 8), child: Column(
       children: items.map((item) => GestureDetector(
