@@ -57,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen>
         transitionsBuilder: (_, anim, __, child) => SlideTransition(
           position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
               .animate(
-                  CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+              CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
           child: child,
         ),
       ),
@@ -465,7 +465,7 @@ class _LoginSheetState extends State<_LoginSheet> {
     FocusScope.of(context).unfocus();
     final auth = context.read<AuthProvider>();
     final ok =
-        await auth.login(email: _emailCtrl.text, password: _passCtrl.text);
+    await auth.login(email: _emailCtrl.text, password: _passCtrl.text);
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Row(children: [
@@ -480,7 +480,7 @@ class _LoginSheetState extends State<_LoginSheet> {
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
         shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ));
     }
   }
@@ -520,10 +520,10 @@ class _LoginSheetState extends State<_LoginSheet> {
               children: [
                 AuthField(
                   controller: _emailCtrl,
-                  label: 'Correo electrónico',
-                  hint: 'tu@correo.com',
-                  icon: Icons.email_outlined,
-                  keyboardType: TextInputType.emailAddress,
+                  label: 'Nombre de usuario o correo',
+                  hint: 'Tu nombre o tu@correo.com',
+                  icon: Icons.person_outline_rounded,
+                  keyboardType: TextInputType.text,
                   onChanged: (_) {
                     if (!_emailTouched)
                       setState(() => _emailTouched = true);
@@ -532,10 +532,7 @@ class _LoginSheetState extends State<_LoginSheet> {
                   validator: (v) {
                     if (!_emailTouched) return null;
                     if (v == null || v.trim().isEmpty)
-                      return 'Ingresa tu correo';
-                    if (!RegExp(r'^[\w.]+@[\w]+\.\w+$')
-                        .hasMatch(v.trim()))
-                      return 'Formato inválido';
+                      return 'Ingresa tu nombre de usuario o correo';
                     return null;
                   },
                 ),
@@ -603,32 +600,32 @@ class _LoginSheetState extends State<_LoginSheet> {
                         boxShadow: auth.isLoading
                             ? null
                             : [
-                                BoxShadow(
-                                  color: AppColors.primary
-                                      .withOpacity(0.3),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
+                          BoxShadow(
+                            color: AppColors.primary
+                                .withOpacity(0.3),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
                       ),
                       alignment: Alignment.center,
                       child: auth.isLoading
                           ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: AppColors.primary),
-                            )
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: AppColors.primary),
+                      )
                           : const Text(
-                              'Iniciar sesión',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.background,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
+                        'Iniciar sesión',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.background,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -681,7 +678,7 @@ class AuthField extends StatelessWidget {
         hintText: hint,
         labelStyle: AppTextStyles.bodyMedium,
         hintStyle:
-            AppTextStyles.bodyMedium.copyWith(color: AppColors.textMuted),
+        AppTextStyles.bodyMedium.copyWith(color: AppColors.textMuted),
         prefixIcon: Icon(icon, size: 20, color: AppColors.textMuted),
         suffixIcon: suffixIcon,
         filled: true,
@@ -689,32 +686,32 @@ class AuthField extends StatelessWidget {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide:
-              const BorderSide(color: AppColors.border, width: 0.5),
+          const BorderSide(color: AppColors.border, width: 0.5),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide:
-              const BorderSide(color: AppColors.border, width: 0.5),
+          const BorderSide(color: AppColors.border, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide:
-              const BorderSide(color: AppColors.primary, width: 1.5),
+          const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide:
-              const BorderSide(color: AppColors.error, width: 1),
+          const BorderSide(color: AppColors.error, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide:
-              const BorderSide(color: AppColors.error, width: 1.5),
+          const BorderSide(color: AppColors.error, width: 1.5),
         ),
         errorStyle:
-            AppTextStyles.bodySmall.copyWith(color: AppColors.error),
+        AppTextStyles.bodySmall.copyWith(color: AppColors.error),
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }
