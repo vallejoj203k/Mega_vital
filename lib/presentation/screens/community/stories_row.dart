@@ -29,6 +29,12 @@ class StoriesRow extends StatelessWidget {
     this.currentUserAvatarUrl,
   });
 
+  UserStoriesGroup? get _myGroup =>
+      groups.cast<UserStoriesGroup?>().firstWhere(
+        (g) => g!.userId == currentUserId,
+        orElse: () => null,
+      );
+
   List<UserStoriesGroup> get _others =>
       groups.where((g) => g.userId != currentUserId).toList();
 
@@ -47,6 +53,7 @@ class StoriesRow extends StatelessWidget {
               userName:  currentUserName,
               initials:  currentUserInitials,
               avatarUrl: currentUserAvatarUrl,
+              myGroup:   _myGroup,
             );
           }
           final group = _others[i - 1];
@@ -77,30 +84,63 @@ class StoriesRow extends StatelessWidget {
 class _MyCircle extends StatelessWidget {
   final String userId, userName, initials;
   final String? avatarUrl;
-  const _MyCircle({required this.userId, required this.userName, required this.initials, this.avatarUrl});
+  final UserStoriesGroup? myGroup;
+  const _MyCircle({
+    required this.userId,
+    required this.userName,
+    required this.initials,
+    this.avatarUrl,
+    this.myGroup,
+  });
+
+  bool get _hasStories => myGroup != null && myGroup!.stories.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => _openSheet(context),
+      onTap: () => _hasStories ? _openViewer(context) : _openSheet(context),
       child: _CircleLayout(
         label: 'Tú',
         avatar: Stack(children: [
-          _Ring(hasNew: true, child: _AvatarContent(initials: initials, hasNew: true, avatarUrl: avatarUrl)),
+          _Ring(
+            hasNew: _hasStories,
+            child: _AvatarContent(
+              initials: initials,
+              hasNew: _hasStories,
+              avatarUrl: avatarUrl,
+            ),
+          ),
           Positioned(
             right: 0, bottom: 0,
-            child: Container(
-              width: 22, height: 22,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppColors.primaryGradient,
+            child: GestureDetector(
+              onTap: () => _openSheet(context),
+              child: Container(
+                width: 22, height: 22,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppColors.primaryGradient,
+                ),
+                child: const Icon(Icons.add, size: 14, color: AppColors.background),
               ),
-              child: const Icon(Icons.add, size: 14, color: AppColors.background),
             ),
           ),
         ]),
       ),
     );
+  }
+
+  void _openViewer(BuildContext ctx) {
+    Navigator.of(ctx).push(PageRouteBuilder(
+      opaque: false,
+      barrierDismissible: true,
+      barrierColor: Colors.black,
+      pageBuilder: (_, __, ___) => StoryViewerPage(
+        groups: [myGroup!],
+        initialGroupIndex: 0,
+        isOwner: true,
+        onAddStory: () => _openSheet(ctx),
+      ),
+    ));
   }
 
   void _openSheet(BuildContext ctx) {
@@ -242,7 +282,15 @@ class _AvatarContent extends StatelessWidget {
 class StoryViewerPage extends StatefulWidget {
   final List<UserStoriesGroup> groups;
   final int initialGroupIndex;
-  const StoryViewerPage({super.key, required this.groups, required this.initialGroupIndex});
+  final bool isOwner;
+  final VoidCallback? onAddStory;
+  const StoryViewerPage({
+    super.key,
+    required this.groups,
+    required this.initialGroupIndex,
+    this.isOwner = false,
+    this.onAddStory,
+  });
 
   @override
   State<StoryViewerPage> createState() => _StoryViewerPageState();
@@ -255,10 +303,13 @@ class _StoryViewerPageState extends State<StoryViewerPage>
   Timer? _timer;
   late AnimationController _progress;
   bool _paused = false;
+  bool _deleting = false;
+  late List<UserStoriesGroup> _groups;
 
   @override
   void initState() {
     super.initState();
+    _groups = List.from(widget.groups);
     _gIdx = widget.initialGroupIndex;
     _progress = AnimationController(vsync: this, duration: _kStoryDuration);
     _start();
@@ -271,7 +322,7 @@ class _StoryViewerPageState extends State<StoryViewerPage>
     super.dispose();
   }
 
-  UserStoriesGroup get _group => widget.groups[_gIdx];
+  UserStoriesGroup get _group => _groups[_gIdx];
   StoryModel       get _story => _group.stories[_sIdx];
 
   void _start() {
@@ -299,7 +350,7 @@ class _StoryViewerPageState extends State<StoryViewerPage>
   void _next() {
     if (_sIdx < _group.stories.length - 1) {
       setState(() => _sIdx++);
-    } else if (_gIdx < widget.groups.length - 1) {
+    } else if (_gIdx < _groups.length - 1) {
       setState(() { _gIdx++; _sIdx = 0; });
     } else {
       Navigator.of(context).pop();
@@ -312,8 +363,43 @@ class _StoryViewerPageState extends State<StoryViewerPage>
     if (_sIdx > 0) {
       setState(() => _sIdx--);
     } else if (_gIdx > 0) {
-      setState(() { _gIdx--; _sIdx = widget.groups[_gIdx].stories.length - 1; });
+      setState(() { _gIdx--; _sIdx = _groups[_gIdx].stories.length - 1; });
     }
+    _start();
+  }
+
+  Future<void> _deleteCurrentStory() async {
+    _pause();
+    final storyId = _story.id;
+    setState(() => _deleting = true);
+    final ok = await context.read<StoriesProvider>().deleteStory(storyId);
+    if (!mounted) return;
+    setState(() => _deleting = false);
+
+    if (!ok) {
+      _resume();
+      return;
+    }
+
+    final currentGroup = _group;
+    final updatedStories = currentGroup.stories.where((s) => s.id != storyId).toList();
+
+    if (updatedStories.isEmpty) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    final updatedGroup = UserStoriesGroup(
+      userId:    currentGroup.userId,
+      userName:  currentGroup.userName,
+      avatarUrl: currentGroup.avatarUrl,
+      stories:   updatedStories,
+    );
+
+    setState(() {
+      _groups[_gIdx] = updatedGroup;
+      if (_sIdx >= updatedStories.length) _sIdx = updatedStories.length - 1;
+    });
     _start();
   }
 
@@ -336,6 +422,7 @@ class _StoryViewerPageState extends State<StoryViewerPage>
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTapUp: (d) {
+          if (_deleting) return;
           final w = MediaQuery.of(context).size.width;
           if (d.globalPosition.dx < w / 2) { _prev(); } else { _next(); }
         },
@@ -500,6 +587,45 @@ class _StoryViewerPageState extends State<StoryViewerPage>
                           style: AppTextStyles.caption.copyWith(color: Colors.white60)),
                     ]),
                     const Spacer(),
+                    if (widget.isOwner) ...[
+                      GestureDetector(
+                        onTap: widget.onAddStory != null
+                            ? () {
+                                Navigator.of(context).pop();
+                                widget.onAddStory!();
+                              }
+                            : null,
+                        child: Container(
+                          width: 36, height: 36,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.15),
+                          ),
+                          child: const Icon(Icons.add_rounded,
+                              color: Colors.white, size: 20),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: _deleting ? null : _deleteCurrentStory,
+                        child: Container(
+                          width: 36, height: 36,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.15),
+                          ),
+                          child: _deleting
+                              ? const Padding(
+                                  padding: EdgeInsets.all(8),
+                                  child: CircularProgressIndicator(
+                                      color: Colors.white, strokeWidth: 2),
+                                )
+                              : const Icon(Icons.delete_outline_rounded,
+                                  color: Colors.white, size: 20),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                     GestureDetector(
                       onTap: () => Navigator.of(context).pop(),
                       child: const Icon(Icons.close, color: Colors.white, size: 24),
@@ -510,10 +636,217 @@ class _StoryViewerPageState extends State<StoryViewerPage>
             ),
           ),
 
+          if (widget.isOwner)
+            Positioned(
+              left: 0, right: 0, bottom: 0,
+              child: SafeArea(
+                child: GestureDetector(
+                  onTap: _deleting ? null : _showViewers,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [Colors.black87, Colors.transparent],
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.remove_rounded,
+                            color: Colors.white60, size: 20),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.visibility_outlined,
+                            color: Colors.white, size: 18),
+                        const SizedBox(width: 6),
+                        Text('Ver quién vio',
+                            style: AppTextStyles.labelLarge
+                                .copyWith(color: Colors.white)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          if (_deleting)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black45,
+                alignment: Alignment.center,
+                child: const CircularProgressIndicator(color: Colors.white),
+              ),
+            ),
+
         ]),
       ),
     );
   }
+
+  void _showViewers() {
+    _pause();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _StoryViewersSheet(storyId: _story.id),
+    ).then((_) {
+      if (mounted) _resume();
+    });
+  }
+}
+
+// ─── Sheet de vistas de una historia ─────────────────────────────────────────
+
+class _StoryViewersSheet extends StatefulWidget {
+  final String storyId;
+  const _StoryViewersSheet({required this.storyId});
+
+  @override
+  State<_StoryViewersSheet> createState() => _StoryViewersSheetState();
+}
+
+class _StoryViewersSheetState extends State<_StoryViewersSheet> {
+  List<StoryViewer>? _viewers;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final viewers = await context
+        .read<StoriesProvider>()
+        .fetchStoryViewers(widget.storyId);
+    if (mounted) setState(() => _viewers = viewers);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.6,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border, width: 0.5),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: Row(children: [
+              const Icon(Icons.visibility_outlined,
+                  color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Text('Vistas', style: AppTextStyles.headingMedium),
+              if (_viewers != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${_viewers!.length}',
+                    style: AppTextStyles.labelLarge
+                        .copyWith(color: AppColors.primary),
+                  ),
+                ),
+              ],
+            ]),
+          ),
+          const Divider(height: 1),
+          if (_viewers == null)
+            const Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
+          else if (_viewers!.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.visibility_off_outlined,
+                    color: AppColors.textMuted, size: 40),
+                const SizedBox(height: 12),
+                Text('Nadie ha visto esta historia aún',
+                    style: AppTextStyles.bodyLarge
+                        .copyWith(color: AppColors.textMuted)),
+              ]),
+            )
+          else
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: _viewers!.length,
+                itemBuilder: (_, i) {
+                  final v = _viewers![i];
+                  return ListTile(
+                    leading: _ViewerAvatar(viewer: v),
+                    title: Text(v.name, style: AppTextStyles.bodyLarge),
+                    dense: true,
+                  );
+                },
+              ),
+            ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
+class _ViewerAvatar extends StatelessWidget {
+  final StoryViewer viewer;
+  const _ViewerAvatar({required this.viewer});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasPhoto = viewer.avatarUrl != null && viewer.avatarUrl!.isNotEmpty;
+    return Container(
+      width: 40, height: 40,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: AppColors.primaryGradient,
+      ),
+      alignment: Alignment.center,
+      child: hasPhoto
+          ? Image.network(
+              viewer.avatarUrl!,
+              width: 40, height: 40,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _initials(),
+            )
+          : _initials(),
+    );
+  }
+
+  Widget _initials() => Text(
+    viewer.initials,
+    style: AppTextStyles.labelLarge.copyWith(
+      color: AppColors.background,
+      fontWeight: FontWeight.w800,
+    ),
+  );
 }
 
 // ─── Sheet para crear historia ────────────────────────────────────────────────

@@ -70,6 +70,24 @@ class UserStoriesGroup {
   }
 }
 
+class StoryViewer {
+  final String userId;
+  final String name;
+  final String? avatarUrl;
+
+  const StoryViewer({
+    required this.userId,
+    required this.name,
+    this.avatarUrl,
+  });
+
+  String get initials {
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+  }
+}
+
 class StoriesService {
   static const _bucket = 'stories';
 
@@ -212,6 +230,31 @@ class StoriesService {
       };
     } catch (_) {
       return {};
+    }
+  }
+
+  Future<List<StoryViewer>> fetchViewers(String storyId) async {
+    try {
+      final views = await _db
+          .from('story_views')
+          .select('viewer_id')
+          .eq('story_id', storyId);
+
+      final ids = (views as List).map((v) => v['viewer_id'] as String).toList();
+      if (ids.isEmpty) return [];
+
+      final profiles = await _db
+          .from('user_profiles')
+          .select('uid, name, avatar_url')
+          .inFilter('uid', ids);
+
+      return (profiles as List).map((p) => StoryViewer(
+        userId:    p['uid'] as String,
+        name:      (p['name'] as String?) ?? 'Usuario',
+        avatarUrl: p['avatar_url'] as String?,
+      )).toList();
+    } catch (_) {
+      return [];
     }
   }
 
