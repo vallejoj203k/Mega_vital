@@ -220,46 +220,38 @@ class _Header extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Logo
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF00FF87),
-                    accentColor.withOpacity(0.7),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.asset(
-                  'assets/images/app_icon.png',
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.fitness_center_rounded,
-                    color: Colors.black,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'MEGA VITAL',
-                  style: TextStyle(
-                    color: Color(0xFF00FF87),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.5,
-                  ),
+                // Logo + nombre en la misma línea
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: Image.asset(
+                        'assets/images/app_icon.png',
+                        width: 20,
+                        height: 20,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.fitness_center_rounded,
+                          color: Color(0xFF00FF87),
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'MEGA VITAL',
+                      style: TextStyle(
+                        color: Color(0xFF00FF87),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ],
                 ),
                 Text(
                   'Mi Progreso · $userName',
