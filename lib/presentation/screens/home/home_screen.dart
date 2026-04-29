@@ -14,6 +14,7 @@ import '../../../core/providers/workout_log_provider.dart';
 import '../../../services/fitness_calculator.dart';
 import '../../../services/workout_log_service.dart';
 import '../../widgets/shared_widgets.dart';
+import '../progress/progress_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -453,6 +454,39 @@ class _WelcomeCard extends StatelessWidget {
               label: 'Iniciar entrenamiento',
               icon: Icons.play_arrow_rounded,
               onTap: () => context.read<NavProvider>().goTo(1)),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (_) => const ProgressScreen()),
+            ),
+            child: Container(
+              width: double.infinity,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.accentPurple.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: AppColors.accentPurple.withOpacity(0.3),
+                    width: 1),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.bar_chart_rounded,
+                      color: AppColors.accentPurple, size: 16),
+                  const SizedBox(width: 8),
+                  Text('Ver progreso',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.accentPurple,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      )),
+                ],
+              ),
+            ),
+          ),
         ],
       )),
       const SizedBox(width: 14),
@@ -1171,15 +1205,24 @@ class _MotivationCard extends StatelessWidget {
 class _QuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    // (icon, label, color, tabIndex or -1 for progress screen)
     final items = [
-      (Icons.fitness_center_rounded,  'Entreno',  AppColors.primary,       1),
-      (Icons.restaurant_menu_rounded, 'Comida',   AppColors.accentBlue,    2),
-      (Icons.monitor_weight_outlined, 'Peso',     AppColors.accentOrange,  4),
-      (Icons.bar_chart_rounded,       'Progreso', AppColors.accentPurple,  4),
+      (Icons.fitness_center_rounded,  'Entreno',  AppColors.primary,      1),
+      (Icons.restaurant_menu_rounded, 'Comida',   AppColors.accentBlue,   2),
+      (Icons.monitor_weight_outlined, 'Peso',     AppColors.accentOrange, 4),
+      (Icons.bar_chart_rounded,       'Progreso', AppColors.accentPurple, -1),
     ];
     return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: items.map((a) => GestureDetector(
-        onTap: () => context.read<NavProvider>().goTo(a.$4),
+        onTap: () {
+          if (a.$4 == -1) {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ProgressScreen()),
+            );
+          } else {
+            context.read<NavProvider>().goTo(a.$4);
+          }
+        },
         child: DarkCard(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           child: Column(children: [
