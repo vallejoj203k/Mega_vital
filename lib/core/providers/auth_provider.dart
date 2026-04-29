@@ -122,9 +122,32 @@ class AuthProvider extends ChangeNotifier {
       gender: gender, referredBy: referredBy, realEmail: realEmail,
     );
 
-    // Supabase requiere confirmar el correo antes de dar sesión activa.
+    // Supabase requiere confirmar el correo — intentamos login inmediato
+    // para cuentas creadas por admin (incluyendo correos placeholder).
     if (result.requiresEmailConfirmation) {
-      _errorMessage  = 'Registro exitoso. Revisa tu correo y confirma tu cuenta para iniciar sesión.';
+      final loginResult = await _service.login(email: email, password: password);
+      if (loginResult.success && loginResult.user != null) {
+        _user           = loginResult.user;
+        _status         = AuthStatus.authenticated;
+        _profileLoading = true;
+        _setLoading(false);
+        _profile = await _service.createProfileWithData(
+          user:       loginResult.user!,
+          name:       name,
+          goal:       goal,
+          weight:     weight,
+          height:     height,
+          age:        age,
+          gender:     gender,
+          referredBy: referredBy,
+          realEmail:  realEmail,
+        );
+        _profileLoading = false;
+        _isRegistering  = false;
+        notifyListeners();
+        return true;
+      }
+      _errorMessage  = 'Cuenta creada. El miembro puede iniciar sesión con sus credenciales.';
       _isRegistering = false;
       _setLoading(false);
       return false;
