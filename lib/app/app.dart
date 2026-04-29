@@ -12,6 +12,7 @@ import '../core/providers/nutrition_provider.dart';
 import '../core/providers/workout_log_provider.dart';
 import '../core/providers/stories_provider.dart';
 import '../core/providers/challenges_provider.dart';
+import '../core/providers/premium_provider.dart';
 import '../services/api_key_manager.dart';
 import '../presentation/screens/auth/auth_wrapper.dart';
 
@@ -40,6 +41,7 @@ class GymApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => FollowProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => ChallengesProvider()),
+        ChangeNotifierProvider(create: (_) => PremiumProvider()),
       ],
       child: MaterialApp(
         title: 'Mega Vital',
