@@ -520,10 +520,10 @@ class _LoginSheetState extends State<_LoginSheet> {
               children: [
                 AuthField(
                   controller: _emailCtrl,
-                  label: 'Correo electrónico',
-                  hint: 'tu@correo.com',
-                  icon: Icons.email_outlined,
-                  keyboardType: TextInputType.emailAddress,
+                  label: 'Nombre de usuario o correo',
+                  hint: 'Tu nombre o tu@correo.com',
+                  icon: Icons.person_outline_rounded,
+                  keyboardType: TextInputType.text,
                   onChanged: (_) {
                     if (!_emailTouched)
                       setState(() => _emailTouched = true);
@@ -532,10 +532,7 @@ class _LoginSheetState extends State<_LoginSheet> {
                   validator: (v) {
                     if (!_emailTouched) return null;
                     if (v == null || v.trim().isEmpty)
-                      return 'Ingresa tu correo';
-                    if (!RegExp(r'^[\w.]+@[\w]+\.\w+$')
-                        .hasMatch(v.trim()))
-                      return 'Formato inválido';
+                      return 'Ingresa tu nombre de usuario o correo';
                     return null;
                   },
                 ),

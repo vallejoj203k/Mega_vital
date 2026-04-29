@@ -203,13 +203,21 @@ class AuthService {
     }
   }
 
+  static String usernameToEmail(String name) {
+    final slug = name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    return 'u.${slug.isNotEmpty ? slug : 'miembro'}@megavital.app';
+  }
+
   Future<AuthResult> login({
     required String email,
     required String password,
   }) async {
+    final resolved = email.trim().contains('@')
+        ? email.trim()
+        : usernameToEmail(email.trim());
     try {
       final response = await _supabase.auth.signInWithPassword(
-        email: email.trim(),
+        email: resolved,
         password: password,
       );
 
@@ -411,17 +419,17 @@ class AuthService {
     final lower = message.toLowerCase();
     if (lower.contains('invalid login credentials') ||
         lower.contains('invalid credentials')) {
-      return 'Correo o contraseña incorrectos.';
+      return 'Nombre de usuario o contraseña incorrectos.';
     }
     if (lower.contains('user already registered') ||
         lower.contains('already registered')) {
-      return 'Ese correo ya está registrado.';
+      return 'Ya existe un usuario con ese nombre. Usa un nombre diferente.';
     }
     if (lower.contains('password should be at least')) {
       return 'La contraseña debe tener al menos 6 caracteres.';
     }
     if (lower.contains('unable to validate email')) {
-      return 'Correo electrónico no válido.';
+      return 'Nombre de usuario no válido.';
     }
     if (lower.contains('email not confirmed')) {
       return 'Debes confirmar tu correo antes de iniciar sesión.';

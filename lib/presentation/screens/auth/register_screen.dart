@@ -262,10 +262,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   String _generatePlaceholderEmail(String name) {
     final slug = name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
-    final suffix = (DateTime.now().millisecondsSinceEpoch % 10000)
-        .toString()
-        .padLeft(4, '0');
-    return 'noemail_${slug.isNotEmpty ? slug : 'miembro'}$suffix@megavital.app';
+    return 'u.${slug.isNotEmpty ? slug : 'miembro'}@megavital.app';
   }
 
   // ── Enviar registro ──
@@ -294,7 +291,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Se asignará el siguiente usuario de acceso. Anótalo para dárselo al miembro:',
+                'El miembro iniciará sesión con su nombre y la contraseña que acabas de asignar:',
                 style: AppTextStyles.bodyMedium,
               ),
               const SizedBox(height: 12),
@@ -308,17 +305,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       color: AppColors.primary.withOpacity(0.4), width: 1),
                 ),
                 child: SelectableText(
-                  emailForAuth,
+                  _nameCtrl.text.trim(),
                   style: const TextStyle(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w700,
-                    fontSize: 13,
+                    fontSize: 15,
                   ),
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'El miembro usará este usuario junto con su contraseña para iniciar sesión.',
+                'En la pantalla de inicio de sesión, el miembro escribe su nombre tal como aparece arriba.',
                 style: AppTextStyles.bodySmall,
               ),
             ],
