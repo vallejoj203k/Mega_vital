@@ -1,12 +1,22 @@
 // lib/presentation/screens/progress/progress_screen.dart
+import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/community_provider.dart';
 import '../../../core/providers/workout_log_provider.dart';
+import '../../../services/exercise_progress_service.dart';
 import '../../../services/workout_log_service.dart';
 import '../../widgets/shared_widgets.dart';
+import 'progress_share_card.dart';
 
 class ProgressScreen extends StatefulWidget {
   const ProgressScreen({super.key});
@@ -17,59 +27,106 @@ class ProgressScreen extends StatefulWidget {
 
 class _ProgressScreenState extends State<ProgressScreen>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  // Métricas posibles a visualizar
+  // Métricas
   static const _metrics = ['Peso máx.', 'Volumen'];
   int _metricIdx = 0;
+
+  // Datos del cloud
+  Map<String, List<ExerciseProgressEntry>> _cloudData = {};
+  bool _loadingCloud = true;
+  bool _synced = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() => setState(() {}));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initData());
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  Future<void> _initData() async {
+    if (!mounted) return;
+
+    // Sync historial local → Supabase (una sola vez por sesión de pantalla)
+    if (!_synced) {
+      _synced = true;
+      final local = context.read<WorkoutLogProvider>().history;
+      await ExerciseProgressService.instance.syncAllSessions(local);
+    }
+
+    // Cargar desde Supabase
+    final data = await ExerciseProgressService.instance.fetchAllProgress();
+    if (mounted) setState(() { _cloudData = data; _loadingCloud = false; });
+  }
+
+  // ── Construye datos combinados: Supabase primero, local como fallback ──
+
+  Map<String, _ExerciseData> _buildExerciseMap() {
+    final Map<String, _ExerciseData> map = {};
+
+    if (_cloudData.isNotEmpty) {
+      // Usar datos de Supabase
+      for (final entry in _cloudData.entries) {
+        final ex = _ExerciseData(
+          name: entry.key,
+          muscle: entry.value.isNotEmpty ? entry.value.first.muscleId : '',
+        );
+        for (final p in entry.value) {
+          ex.points.add(_DataPoint(
+            date: p.date,
+            maxWeight: p.maxWeight,
+            volume: p.volume,
+          ));
+        }
+        map[entry.key] = ex;
+      }
+    } else {
+      // Fallback a datos locales
+      final localSessions =
+          context.read<WorkoutLogProvider>().history
+            .where((s) => s.isCompleted)
+            .toList()
+            ..sort((a, b) => a.date.compareTo(b.date));
+
+      for (final session in localSessions) {
+        for (final ex in session.exercises) {
+          final done = ex.sets.where((s) => s.isDone).toList();
+          if (done.isEmpty) continue;
+          map.putIfAbsent(
+            ex.exerciseName,
+            () => _ExerciseData(name: ex.exerciseName, muscle: ex.muscleId),
+          );
+          map[ex.exerciseName]!.points.add(_DataPoint(
+            date: session.date,
+            maxWeight: ex.maxWeight,
+            volume: ex.totalVolume,
+          ));
+        }
+      }
+    }
+
+    return map;
   }
 
   @override
   Widget build(BuildContext context) {
-    final log = context.watch<WorkoutLogProvider>();
-    final completed =
-        log.history.where((s) => s.isCompleted).toList()
-          ..sort((a, b) => a.date.compareTo(b.date));
-
-    // Agrupar por ejercicio → lista de (fecha, maxWeight, volumen)
-    final Map<String, _ExerciseData> byExercise = {};
-    for (final session in completed) {
-      for (final ex in session.exercises) {
-        final doneSets = ex.sets.where((s) => s.isDone).toList();
-        if (doneSets.isEmpty) continue;
-        byExercise.putIfAbsent(
-          ex.exerciseName,
-          () => _ExerciseData(name: ex.exerciseName, muscle: ex.muscleId),
-        );
-        byExercise[ex.exerciseName]!.points.add(_DataPoint(
-          date: session.date,
-          maxWeight: ex.maxWeight,
-          volume: ex.totalVolume,
-        ));
-      }
-    }
-
-    final exercises = byExercise.values.toList()
+    context.watch<WorkoutLogProvider>(); // reacciona a cambios locales
+    final exerciseMap = _buildExerciseMap();
+    final exercises = exerciseMap.values.toList()
       ..sort((a, b) => a.name.compareTo(b.name));
+
+    final auth = context.read<AuthProvider>();
+    final userName = auth.profile?.name ?? 'Usuario';
+
+    final completedSessions =
+        context.read<WorkoutLogProvider>().history
+          .where((s) => s.isCompleted)
+          .toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
-            // ── Header ──────────────────────────────────────────────
+            // ── Header ─────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
@@ -95,9 +152,33 @@ class _ProgressScreenState extends State<ProgressScreen>
                     children: [
                       Text('Mi Progreso',
                           style: AppTextStyles.headingLarge),
-                      Text('Evolución por ejercicio',
-                          style: AppTextStyles.caption
-                              .copyWith(color: AppColors.textMuted)),
+                      Row(children: [
+                        Text('Evolución por ejercicio',
+                            style: AppTextStyles.caption
+                                .copyWith(color: AppColors.textMuted)),
+                        if (_loadingCloud) ...[
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 10,
+                            height: 10,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.5,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ] else ...[
+                          const SizedBox(width: 6),
+                          Icon(
+                            _cloudData.isNotEmpty
+                                ? Icons.cloud_done_rounded
+                                : Icons.cloud_off_rounded,
+                            size: 12,
+                            color: _cloudData.isNotEmpty
+                                ? AppColors.primary
+                                : AppColors.textMuted,
+                          ),
+                        ],
+                      ]),
                     ],
                   ),
                 ],
@@ -106,7 +187,7 @@ class _ProgressScreenState extends State<ProgressScreen>
 
             const SizedBox(height: 16),
 
-            // ── Selector de métrica ─────────────────────────────────
+            // ── Selector de métrica ───────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Container(
@@ -114,8 +195,8 @@ class _ProgressScreenState extends State<ProgressScreen>
                 decoration: BoxDecoration(
                   color: AppColors.surfaceVariant,
                   borderRadius: BorderRadius.circular(12),
-                  border:
-                      Border.all(color: AppColors.border, width: 0.5),
+                  border: Border.all(
+                      color: AppColors.border, width: 0.5),
                 ),
                 child: Row(
                   children: List.generate(_metrics.length, (i) {
@@ -154,30 +235,35 @@ class _ProgressScreenState extends State<ProgressScreen>
 
             const SizedBox(height: 16),
 
-            // ── Resumen global ──────────────────────────────────────
-            if (completed.isNotEmpty)
+            // ── Resumen global ────────────────────────────────────
+            if (completedSessions.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: _SummaryRow(sessions: completed),
+                child: _SummaryRow(sessions: completedSessions),
               ),
 
             const SizedBox(height: 16),
 
-            // ── Lista de gráficas ───────────────────────────────────
+            // ── Lista de gráficas ─────────────────────────────────
             Expanded(
-              child: exercises.isEmpty
-                  ? _EmptyState()
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: exercises.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(height: 16),
-                      itemBuilder: (context, i) => _ExerciseChart(
-                        data: exercises[i],
-                        showVolume: _metricIdx == 1,
-                      ),
-                    ),
+              child: _loadingCloud && exercises.isEmpty
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                          color: AppColors.primary))
+                  : exercises.isEmpty
+                      ? _EmptyState()
+                      : ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: exercises.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 16),
+                          itemBuilder: (context, i) => _ExerciseChart(
+                            data: exercises[i],
+                            showVolume: _metricIdx == 1,
+                            userName: userName,
+                          ),
+                        ),
             ),
           ],
         ),
@@ -205,7 +291,7 @@ class _ExerciseData {
   _ExerciseData({required this.name, required this.muscle});
 }
 
-// ── Resumen global ──────────────────────────────────────────────────
+// ── Resumen global ─────────────────────────────────────────────────
 
 class _SummaryRow extends StatelessWidget {
   final List<WorkoutSession> sessions;
@@ -277,7 +363,8 @@ class _MiniStat extends StatelessWidget {
                       .copyWith(color: Colors.white)),
               Text(label,
                   style: AppTextStyles.caption
-                      .copyWith(color: AppColors.textMuted, fontSize: 10)),
+                      .copyWith(
+                          color: AppColors.textMuted, fontSize: 10)),
             ],
           ),
         ),
@@ -289,8 +376,12 @@ class _MiniStat extends StatelessWidget {
 class _ExerciseChart extends StatelessWidget {
   final _ExerciseData data;
   final bool showVolume;
+  final String userName;
   const _ExerciseChart(
-      {required this.data, required this.showVolume, super.key});
+      {required this.data,
+      required this.showVolume,
+      required this.userName,
+      super.key});
 
   Color get _muscleColor {
     switch (data.muscle) {
@@ -326,7 +417,6 @@ class _ExerciseChart extends StatelessWidget {
     final minVal = values.isEmpty ? 0.0 : values.reduce(math.min);
     final color = _muscleColor;
 
-    // Estadísticas rápidas
     final current = values.isNotEmpty ? values.last : 0.0;
     final best = values.isNotEmpty ? maxVal : 0.0;
     final diff = values.length >= 2 ? values.last - values.first : 0.0;
@@ -338,7 +428,7 @@ class _ExerciseChart extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Encabezado ejercicio ────────────────────────────────
+          // ── Encabezado ──────────────────────────────────────────
           Row(
             children: [
               Container(
@@ -370,14 +460,16 @@ class _ExerciseChart extends StatelessWidget {
                             ? Icons.trending_up_rounded
                             : Icons.trending_down_rounded,
                         size: 12,
-                        color: isUp ? AppColors.primary : AppColors.error,
+                        color:
+                            isUp ? AppColors.primary : AppColors.error,
                       ),
                       const SizedBox(width: 3),
                       Text(
                         '${isUp ? "+" : ""}${diff.toStringAsFixed(1)} $unit',
                         style: AppTextStyles.caption.copyWith(
-                          color:
-                              isUp ? AppColors.primary : AppColors.error,
+                          color: isUp
+                              ? AppColors.primary
+                              : AppColors.error,
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
                         ),
@@ -385,21 +477,38 @@ class _ExerciseChart extends StatelessWidget {
                     ],
                   ),
                 ),
+              const SizedBox(width: 8),
+              // ── Botón compartir ────────────────────────────────
+              GestureDetector(
+                onTap: () => _showShareSheet(
+                    context, color, values, current, best, diff, isUp, unit),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: AppColors.border, width: 0.5),
+                  ),
+                  child: const Icon(Icons.share_rounded,
+                      color: AppColors.textSecondary, size: 16),
+                ),
+              ),
             ],
           ),
 
           const SizedBox(height: 4),
-          Text(
-            data.muscle.isNotEmpty
-                ? '${data.muscle[0].toUpperCase()}${data.muscle.substring(1)}'
-                : '',
-            style: AppTextStyles.caption
-                .copyWith(color: AppColors.textMuted, fontSize: 10),
-          ),
+          if (data.muscle.isNotEmpty)
+            Text(
+              '${data.muscle[0].toUpperCase()}${data.muscle.substring(1)}',
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textMuted, fontSize: 10),
+            ),
 
           const SizedBox(height: 12),
 
-          // ── Mini stats ──────────────────────────────────────────
+          // ── Mini stats ─────────────────────────────────────────
           Row(
             children: [
               _ChartStat(
@@ -419,7 +528,7 @@ class _ExerciseChart extends StatelessWidget {
 
           const SizedBox(height: 14),
 
-          // ── Gráfica de línea ────────────────────────────────────
+          // ── Gráfica ────────────────────────────────────────────
           if (points.isEmpty)
             Container(
               height: 90,
@@ -430,9 +539,7 @@ class _ExerciseChart extends StatelessWidget {
             )
           else if (points.length == 1)
             _SinglePointChart(
-                value: values.first,
-                unit: unit,
-                color: color)
+                value: values.first, unit: unit, color: color)
           else
             SizedBox(
               height: 100,
@@ -449,15 +556,14 @@ class _ExerciseChart extends StatelessWidget {
 
           const SizedBox(height: 8),
 
-          // ── Etiquetas de fecha ──────────────────────────────────
           if (points.length >= 2)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(_formatDate(points.first.date),
+                Text(_fmt(points.first.date),
                     style: AppTextStyles.caption.copyWith(
                         color: AppColors.textMuted, fontSize: 9)),
-                Text(_formatDate(points.last.date),
+                Text(_fmt(points.last.date),
                     style: AppTextStyles.caption.copyWith(
                         color: AppColors.textMuted, fontSize: 9)),
               ],
@@ -467,9 +573,365 @@ class _ExerciseChart extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime d) =>
+  void _showShareSheet(
+    BuildContext context,
+    Color color,
+    List<double> values,
+    double current,
+    double best,
+    double diff,
+    bool isUp,
+    String unit,
+  ) {
+    final auth = context.read<AuthProvider>();
+    final userName = auth.profile?.name ?? 'Usuario';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _ShareSheet(
+        exerciseName: data.name,
+        muscle: data.muscle,
+        userName: userName,
+        maxWeight: current,
+        bestWeight: best,
+        volume: data.points.isNotEmpty
+            ? data.points.last.volume
+            : 0.0,
+        sessions: data.points.length,
+        chartValues: values,
+        isUp: isUp,
+        diff: diff,
+        accentColor: color,
+      ),
+    );
+  }
+
+  String _fmt(DateTime d) =>
       '${d.day}/${d.month}/${d.year.toString().substring(2)}';
 }
+
+// ── Bottom sheet para compartir ───────────────────────────────────
+
+class _ShareSheet extends StatefulWidget {
+  final String exerciseName, muscle, userName;
+  final double maxWeight, bestWeight, volume, diff;
+  final int sessions;
+  final List<double> chartValues;
+  final bool isUp;
+  final Color accentColor;
+
+  const _ShareSheet({
+    required this.exerciseName,
+    required this.muscle,
+    required this.userName,
+    required this.maxWeight,
+    required this.bestWeight,
+    required this.volume,
+    required this.sessions,
+    required this.chartValues,
+    required this.isUp,
+    required this.diff,
+    required this.accentColor,
+  });
+
+  @override
+  State<_ShareSheet> createState() => _ShareSheetState();
+}
+
+class _ShareSheetState extends State<_ShareSheet> {
+  final GlobalKey _cardKey = GlobalKey();
+  bool _sharing = false;
+  bool _posting = false;
+
+  // Captura el widget con RepaintBoundary y retorna los bytes PNG
+  Future<Uint8List?> _captureCard() async {
+    try {
+      final boundary = _cardKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) return null;
+      await Future.delayed(const Duration(milliseconds: 80));
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      return byteData?.buffer.asUint8List();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _shareExternal() async {
+    setState(() => _sharing = true);
+    HapticFeedback.lightImpact();
+    final bytes = await _captureCard();
+    if (bytes == null) {
+      setState(() => _sharing = false);
+      if (mounted) _showError('No se pudo generar la imagen.');
+      return;
+    }
+
+    try {
+      final dir = await getTemporaryDirectory();
+      final file =
+          File('${dir.path}/progreso_mega_vital.png');
+      await file.writeAsBytes(bytes);
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: '¡Mira mi progreso en ${widget.exerciseName}! 💪\n#MegaVital',
+      );
+    } catch (_) {
+      if (mounted) _showError('Error al compartir.');
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
+  }
+
+  Future<void> _postToCommunity() async {
+    setState(() => _posting = true);
+    HapticFeedback.lightImpact();
+    final bytes = await _captureCard();
+    if (bytes == null) {
+      setState(() => _posting = false);
+      if (mounted) _showError('No se pudo generar la imagen.');
+      return;
+    }
+
+    try {
+      final dir = await getTemporaryDirectory();
+      final file =
+          File('${dir.path}/progreso_comunidad.png');
+      await file.writeAsBytes(bytes);
+
+      final content =
+          '¡Revisen mi progreso en ${widget.exerciseName}! '
+          '${widget.isUp ? "📈 Subiendo" : "💪 Trabajando"} '
+          '(${widget.isUp ? "+" : ""}${widget.diff.toStringAsFixed(1)} kg)';
+
+      if (!mounted) return;
+      final community = context.read<CommunityProvider>();
+      final error = await community.createPost(
+        widget.userName,
+        content,
+        achievement: widget.isUp ? '¡Nuevo PB! 🏆' : 'Progreso constante 💪',
+        imageFile: file,
+      );
+
+      if (!mounted) return;
+      if (error == null || error == 'warn:image') {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(children: [
+              const Icon(Icons.check_circle_rounded,
+                  color: AppColors.primary, size: 16),
+              const SizedBox(width: 8),
+              const Text('¡Publicado en la comunidad!'),
+            ]),
+            backgroundColor: AppColors.surface,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            duration: const Duration(seconds: 3),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      } else {
+        _showError('Error al publicar: $error');
+      }
+    } catch (e) {
+      if (mounted) _showError('Error: $e');
+    } finally {
+      if (mounted) setState(() => _posting = false);
+    }
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+          20, 20, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Título
+          Text('Compartir progreso',
+              style: AppTextStyles.headingSmall),
+          const SizedBox(height: 4),
+          Text('Vista previa de tu tarjeta',
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textMuted)),
+
+          const SizedBox(height: 20),
+
+          // ── Tarjeta de preview (capturada al compartir) ────────
+          RepaintBoundary(
+            key: _cardKey,
+            child: ProgressShareCard(
+              exerciseName: widget.exerciseName,
+              muscle: widget.muscle,
+              userName: widget.userName,
+              maxWeight: widget.maxWeight,
+              bestWeight: widget.bestWeight,
+              volume: widget.volume,
+              sessions: widget.sessions,
+              chartValues: widget.chartValues,
+              isUp: widget.isUp,
+              diff: widget.diff,
+              accentColor: widget.accentColor,
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // ── Botones de acción ──────────────────────────────────
+          Row(
+            children: [
+              // Compartir en redes
+              Expanded(
+                child: GestureDetector(
+                  onTap: _sharing ? null : _shareExternal,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      gradient: _sharing
+                          ? null
+                          : const LinearGradient(
+                              colors: [
+                                Color(0xFF00FF87),
+                                Color(0xFF00CC6A)
+                              ],
+                            ),
+                      color: _sharing ? AppColors.surfaceVariant : null,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: _sharing
+                          ? null
+                          : [
+                              BoxShadow(
+                                color: AppColors.primary
+                                    .withOpacity(0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (_sharing)
+                          const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.textMuted,
+                            ),
+                          )
+                        else
+                          const Icon(Icons.share_rounded,
+                              color: Color(0xFF0A0A0A), size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          _sharing ? 'Compartiendo...' : 'Redes sociales',
+                          style: AppTextStyles.labelLarge.copyWith(
+                            color: _sharing
+                                ? AppColors.textMuted
+                                : const Color(0xFF0A0A0A),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              // Publicar en comunidad
+              Expanded(
+                child: GestureDetector(
+                  onTap: _posting ? null : _postToCommunity,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentPurple.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppColors.accentPurple.withOpacity(
+                            _posting ? 0.15 : 0.4),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (_posting)
+                          const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.accentPurple,
+                            ),
+                          )
+                        else
+                          const Icon(Icons.people_rounded,
+                              color: AppColors.accentPurple, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          _posting ? 'Publicando...' : 'Comunidad',
+                          style: AppTextStyles.labelLarge.copyWith(
+                            color: AppColors.accentPurple,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Widgets auxiliares ────────────────────────────────────────────
 
 class _ChartStat extends StatelessWidget {
   final String label, value;
@@ -488,7 +950,9 @@ class _ChartStat extends StatelessWidget {
                   .copyWith(color: AppColors.textMuted, fontSize: 9)),
           Text(value,
               style: AppTextStyles.caption.copyWith(
-                color: highlight ? AppColors.primary : AppColors.textSecondary,
+                color: highlight
+                    ? AppColors.primary
+                    : AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
                 fontSize: 11,
               )),
@@ -507,7 +971,8 @@ class _SinglePointChart extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         height: 90,
         alignment: Alignment.center,
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        child:
+            Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Container(
             width: 12,
             height: 12,
@@ -531,8 +996,6 @@ class _SinglePointChart extends StatelessWidget {
       );
 }
 
-// ── CustomPainter para la línea de progreso ────────────────────────
-
 class _LineChartPainter extends CustomPainter {
   final List<double> values;
   final double minVal, maxVal;
@@ -550,14 +1013,13 @@ class _LineChartPainter extends CustomPainter {
     if (values.length < 2) return;
 
     final range = (maxVal - minVal).abs();
-    final effectiveMin = range < 1 ? minVal - 1 : minVal - range * 0.1;
-    final effectiveMax = range < 1 ? maxVal + 1 : maxVal + range * 0.1;
-    final effectiveRange = effectiveMax - effectiveMin;
+    final effMin = range < 1 ? minVal - 1 : minVal - range * 0.1;
+    final effMax = range < 1 ? maxVal + 1 : maxVal + range * 0.1;
+    final effRange = effMax - effMin;
 
-    double xOf(int i) =>
-        i / (values.length - 1) * size.width;
+    double xOf(int i) => i / (values.length - 1) * size.width;
     double yOf(double v) =>
-        size.height - ((v - effectiveMin) / effectiveRange) * size.height;
+        size.height - ((v - effMin) / effRange) * size.height;
 
     final path = Path();
     final fillPath = Path();
@@ -567,18 +1029,16 @@ class _LineChartPainter extends CustomPainter {
     fillPath.lineTo(xOf(0), yOf(values[0]));
 
     for (int i = 1; i < values.length; i++) {
-      // Curva suave con puntos de control
-      final x0 = xOf(i - 1), y0 = yOf(values[i - 1]);
-      final x1 = xOf(i), y1 = yOf(values[i]);
-      final cpX = (x0 + x1) / 2;
-      path.cubicTo(cpX, y0, cpX, y1, x1, y1);
-      fillPath.cubicTo(cpX, y0, cpX, y1, x1, y1);
+      final cpX = (xOf(i - 1) + xOf(i)) / 2;
+      path.cubicTo(cpX, yOf(values[i - 1]), cpX, yOf(values[i]),
+          xOf(i), yOf(values[i]));
+      fillPath.cubicTo(cpX, yOf(values[i - 1]), cpX, yOf(values[i]),
+          xOf(i), yOf(values[i]));
     }
 
     fillPath.lineTo(xOf(values.length - 1), size.height);
     fillPath.close();
 
-    // Fondo degradado bajo la línea
     canvas.drawPath(
       fillPath,
       Paint()
@@ -589,7 +1049,6 @@ class _LineChartPainter extends CustomPainter {
         ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
     );
 
-    // Línea principal
     canvas.drawPath(
       path,
       Paint()
@@ -600,33 +1059,23 @@ class _LineChartPainter extends CustomPainter {
         ..strokeJoin = StrokeJoin.round,
     );
 
-    // Puntos en cada sesión
-    final dotPaint = Paint()..color = color;
-    final dotBgPaint = Paint()..color = AppColors.surface;
-
+    final dotBg = Paint()..color = AppColors.surface;
+    final dot = Paint()..color = color;
     for (int i = 0; i < values.length; i++) {
-      final x = xOf(i), y = yOf(values[i]);
-      canvas.drawCircle(Offset(x, y), 4.5, dotBgPaint);
-      canvas.drawCircle(Offset(x, y), 3.0, dotPaint);
+      canvas.drawCircle(Offset(xOf(i), yOf(values[i])), 4.5, dotBg);
+      canvas.drawCircle(Offset(xOf(i), yOf(values[i])), 3.0, dot);
     }
 
-    // Glow en el último punto
-    final lastX = xOf(values.length - 1);
-    final lastY = yOf(values.last);
+    final lx = xOf(values.length - 1), ly = yOf(values.last);
     canvas.drawCircle(
-      Offset(lastX, lastY),
-      6,
-      Paint()..color = color.withOpacity(0.3),
-    );
-    canvas.drawCircle(Offset(lastX, lastY), 4, Paint()..color = color);
+        Offset(lx, ly), 6, Paint()..color = color.withOpacity(0.3));
+    canvas.drawCircle(Offset(lx, ly), 4, Paint()..color = color);
   }
 
   @override
   bool shouldRepaint(_LineChartPainter old) =>
       old.values != values || old.color != color;
 }
-
-// ── Estado vacío ───────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
   @override

@@ -10,6 +10,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../services/workout_log_service.dart';
 import '../../services/points_service.dart';
+import '../../services/exercise_progress_service.dart';
 import '../data/muscle_data.dart';
 
 // Helpers para parsear los strings de series/reps del modelo ExerciseItem
@@ -174,7 +175,9 @@ class WorkoutLogProvider extends ChangeNotifier {
     _activeSession!.isCompleted     = true;
     await _service.saveSessionWeights(_activeSession!);
     await _service.saveSession(_activeSession!);
-    // Otorgar +100 puntos de comunidad (no bloqueante)
+    // Sync a Supabase y puntos de comunidad (no bloqueantes)
+    final completed = _activeSession!;
+    unawaited(ExerciseProgressService.instance.syncSession(completed));
     unawaited(PointsService.instance.awardWorkout(userName));
     _activeSession = null;
     _sessionStart  = null;

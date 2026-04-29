@@ -925,3 +925,40 @@ CREATE POLICY "spinning_delete" ON public.spinning_bookings
 -- Nivel de intensidad calórica del usuario (1–4)
 ALTER TABLE public.user_profiles
   ADD COLUMN IF NOT EXISTS nutrition_level INTEGER NOT NULL DEFAULT 1;
+
+
+-- ─── exercise_progress ──────────────────────────────────────────────────────
+-- Progreso de cada ejercicio por usuario, sincronizado desde la app.
+-- Un registro por (usuario, ejercicio, día) — UPSERT en conflicto.
+
+CREATE TABLE IF NOT EXISTS public.exercise_progress (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id        TEXT NOT NULL,
+  exercise_name  TEXT NOT NULL,
+  muscle_id      TEXT NOT NULL DEFAULT '',
+  date           DATE NOT NULL,
+  max_weight     NUMERIC(8,2) NOT NULL DEFAULT 0,
+  volume         NUMERIC(10,2) NOT NULL DEFAULT 0,
+  sets           INTEGER NOT NULL DEFAULT 0,
+  created_at     TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (user_id, exercise_name, date)
+);
+
+ALTER TABLE public.exercise_progress ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "progress_select" ON public.exercise_progress;
+DROP POLICY IF EXISTS "progress_insert" ON public.exercise_progress;
+DROP POLICY IF EXISTS "progress_update" ON public.exercise_progress;
+
+CREATE POLICY "progress_select" ON public.exercise_progress
+  FOR SELECT USING (auth.uid()::text = user_id);
+
+CREATE POLICY "progress_insert" ON public.exercise_progress
+  FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+
+CREATE POLICY "progress_update" ON public.exercise_progress
+  FOR UPDATE USING (auth.uid()::text = user_id);
+
+-- Índice para consultas por usuario ordenadas por fecha
+CREATE INDEX IF NOT EXISTS idx_exercise_progress_user_date
+  ON public.exercise_progress (user_id, date ASC);
