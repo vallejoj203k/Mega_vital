@@ -9,6 +9,7 @@ import '../../../core/mock/mock_data.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/workout_log_provider.dart';
 import '../../widgets/shared_widgets.dart';
+import '../../../core/config/app_config.dart';
 import '../admin/admin_panel_screen.dart';
 import '../api_keys/api_keys_screen.dart';
 import '../edit_profile/edit_profile_screen.dart';
@@ -267,15 +268,18 @@ class _LifetimeStats extends StatelessWidget {
 class _SettingsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final email = context.read<AuthProvider>().profile?.email ?? '';
+    final isAdmin = AppConfig.adminEmails.contains(email.toLowerCase().trim());
     final items = [
       _SI(icon: Icons.auto_awesome_rounded, label: 'Claves de IA (análisis fotos)',
           color: AppColors.primary,
           onTap: () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const ApiKeysScreen()))),
-      _SI(icon: Icons.admin_panel_settings_outlined, label: 'Administración',
-          color: AppColors.accentPurple,
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const AdminAccessScreen()))),
+      if (isAdmin)
+        _SI(icon: Icons.admin_panel_settings_outlined, label: 'Administración',
+            color: AppColors.accentPurple,
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const AdminAccessScreen()))),
     ];
     return DarkCard(padding: const EdgeInsets.symmetric(vertical: 8), child: Column(
       children: items.map((item) => GestureDetector(
