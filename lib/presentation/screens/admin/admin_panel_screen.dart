@@ -5,8 +5,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../../../core/config/app_config.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/premium_provider.dart';
@@ -25,12 +23,6 @@ class _AdminAccessScreenState extends State<AdminAccessScreen> {
   String? _error;
 
   static const _adminKey = 'cocodemegavital';
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
 
   void _submit() {
     if (_ctrl.text.trim() == _adminKey) {
@@ -83,7 +75,6 @@ class _AdminAccessScreenState extends State<AdminAccessScreen> {
               controller: _ctrl,
               obscureText: _obscure,
               style: const TextStyle(color: AppColors.textPrimary),
-              onSubmitted: (_) => _submit(),
               decoration: InputDecoration(
                 labelText: 'Contraseña de administración',
                 labelStyle: const TextStyle(color: AppColors.textSecondary),
@@ -95,20 +86,18 @@ class _AdminAccessScreenState extends State<AdminAccessScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      const BorderSide(color: AppColors.accentOrange, width: 1.5),
+                  borderSide: const BorderSide(color: AppColors.accentOrange, width: 1.5),
                 ),
                 suffixIcon: IconButton(
                   icon: Icon(
-                    _obscure
-                        ? Icons.visibility_off_rounded
-                        : Icons.visibility_rounded,
+                    _obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
                     color: AppColors.textMuted,
                   ),
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
                 errorText: _error,
               ),
+              onSubmitted: (_) => _submit(),
             ),
             const SizedBox(height: 20),
             SizedBox(
@@ -119,11 +108,9 @@ class _AdminAccessScreenState extends State<AdminAccessScreen> {
                   backgroundColor: AppColors.accentOrange,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('Entrar',
-                    style: TextStyle(fontWeight: FontWeight.w700)),
+                child: const Text('Entrar', style: TextStyle(fontWeight: FontWeight.w700)),
               ),
             ),
           ],
@@ -145,19 +132,12 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   bool _generating = false;
   bool _loadingCodes = true;
   List<PremiumCodeInfo> _codes = [];
-
-  final _memberCtrl = TextEditingController();
+  String? _lastGenerated;
 
   @override
   void initState() {
     super.initState();
     _loadCodes();
-  }
-
-  @override
-  void dispose() {
-    _memberCtrl.dispose();
-    super.dispose();
   }
 
   Future<void> _loadCodes() async {
@@ -167,31 +147,13 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   }
 
   Future<void> _generateCode(String type) async {
-    final member = _memberCtrl.text.trim();
-    if (member.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ingresa el nombre del miembro primero.'),
-          backgroundColor: AppColors.surface,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    setState(() => _generating = true);
-
-    final code = await context
-        .read<PremiumProvider>()
-        .generateCode(type, memberName: member);
-
+    setState(() { _generating = true; _lastGenerated = null; });
+    final code = await context.read<PremiumProvider>().generateCode(type);
     if (!mounted) return;
-
     if (code != null) {
-      await _sendWhatsApp(member: member, code: code, type: type);
-      setState(() => _generating = false);
+      setState(() { _lastGenerated = code; _generating = false; });
       await _loadCodes();
-      if (mounted) _showCodeDialog(code, type, member);
+      _showCodeDialog(code, type);
     } else {
       setState(() => _generating = false);
       if (mounted) {
@@ -205,44 +167,15 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     }
   }
 
-  Future<void> _sendWhatsApp({
-    required String member,
-    required String code,
-    required String type,
-  }) async {
-    final planLabel = type[0].toUpperCase() + type.substring(1);
-    final now = DateTime.now();
-    final fecha =
-        '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}'
-        '  ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-
-    final text = Uri.encodeComponent(
-      '🏋️ *Mega Vital — Código Premium*\n\n'
-      'Se está generando un código de acceso premium:\n\n'
-      '👤 Miembro: *$member*\n'
-      '📦 Plan: *$planLabel*\n'
-      '🔑 Código: *$code*\n\n'
-      '📅 $fecha',
-    );
-
-    final uri =
-        Uri.parse('https://wa.me/${AppConfig.ownerWhatsApp}?text=$text');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  void _showCodeDialog(String code, String type, String member) {
+  void _showCodeDialog(String code, String type) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(Icons.check_circle_rounded,
-                color: AppColors.primary, size: 22),
+            const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 22),
             const SizedBox(width: 10),
             Text('Código generado', style: AppTextStyles.headingSmall),
           ],
@@ -251,9 +184,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Plan: ${type[0].toUpperCase()}${type.substring(1)}  ·  $member',
-              style: AppTextStyles.bodySmall
-                  .copyWith(color: AppColors.textSecondary),
+              'Plan: ${type[0].toUpperCase()}${type.substring(1)}',
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 16),
             Container(
@@ -262,8 +194,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               decoration: BoxDecoration(
                 color: AppColors.surfaceVariant,
                 borderRadius: BorderRadius.circular(12),
-                border:
-                    Border.all(color: AppColors.primary.withOpacity(0.3)),
+                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
               ),
               child: Text(
                 code,
@@ -277,24 +208,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.whatsapp,
-                    color: AppColors.primary, size: 14),
-                const SizedBox(width: 6),
-                Text(
-                  'Dueño notificado por WhatsApp',
-                  style: AppTextStyles.caption
-                      .copyWith(color: AppColors.textMuted),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
             Text(
               'Entrega este código al socio en la caja del gimnasio.',
-              style:
-                  AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+              style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
               textAlign: TextAlign.center,
             ),
           ],
@@ -303,18 +219,15 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           TextButton(
             onPressed: () {
               Clipboard.setData(ClipboardData(text: code));
-              ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
-                content: Text('Código copiado'),
-                backgroundColor: AppColors.primary,
-              ));
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                const SnackBar(content: Text('Código copiado'), backgroundColor: AppColors.primary),
+              );
             },
-            child: const Text('Copiar',
-                style: TextStyle(color: AppColors.primary)),
+            child: const Text('Copiar', style: TextStyle(color: AppColors.primary)),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cerrar',
-                style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text('Cerrar', style: TextStyle(color: AppColors.textSecondary)),
           ),
         ],
       ),
@@ -326,163 +239,113 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title:
-            Text('Panel de Administración', style: AppTextStyles.headingSmall),
+        title: Text('Panel de Administración', style: AppTextStyles.headingSmall),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded,
-                color: AppColors.textSecondary),
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.textSecondary),
             onPressed: _loadCodes,
           ),
         ],
       ),
-      body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            // ── Campo: nombre del miembro ───────────────────────
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // ── Generar código ──────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Generar código premium', style: AppTextStyles.headingSmall),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Selecciona el tipo de plan y entrega el código al socio.',
+                    style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      _PlanButton(
+                        label: 'Mensual',
+                        days: '30 días',
+                        color: AppColors.accentBlue,
+                        loading: _generating,
+                        onTap: () => _generateCode('mensual'),
+                      ),
+                      const SizedBox(width: 10),
+                      _PlanButton(
+                        label: 'Trimestral',
+                        days: '90 días',
+                        color: AppColors.primary,
+                        loading: _generating,
+                        onTap: () => _generateCode('trimestral'),
+                      ),
+                      const SizedBox(width: 10),
+                      _PlanButton(
+                        label: 'Anual',
+                        days: '365 días',
+                        color: AppColors.accentOrange,
+                        loading: _generating,
+                        onTap: () => _generateCode('anual'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Códigos generados ───────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Códigos generados', style: AppTextStyles.headingSmall),
+                  Text(
+                    '${_codes.length} total',
+                    style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          if (_loadingCodes)
+            const SliverToBoxAdapter(
+              child: Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                ),
+              ),
+            )
+          else if (_codes.isEmpty)
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                child: TextField(
-                  controller: _memberCtrl,
-                  textCapitalization: TextCapitalization.words,
-                  style: AppTextStyles.bodyLarge,
-                  cursorColor: AppColors.primary,
-                  decoration: InputDecoration(
-                    labelText: 'Nombre del miembro',
-                    hintText: 'Juan García',
-                    prefixIcon: const Icon(Icons.person_outline_rounded,
-                        color: AppColors.textMuted, size: 20),
-                    labelStyle: AppTextStyles.bodyMedium,
-                    filled: true,
-                    fillColor: AppColors.surface,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                          color: AppColors.border, width: 0.5),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                          color: AppColors.border, width: 0.5),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                          color: AppColors.primary, width: 1.5),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 14),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Text(
+                    'No hay códigos generados aún.',
+                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textMuted),
                   ),
                 ),
               ),
-            ),
-
-            // ── Generar código ──────────────────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Generar código premium',
-                        style: AppTextStyles.headingSmall),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Selecciona el plan. Se abrirá WhatsApp para notificar al dueño.',
-                      style: AppTextStyles.bodySmall
-                          .copyWith(color: AppColors.textMuted),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        _PlanButton(
-                          label: 'Mensual',
-                          days: '30 días',
-                          color: AppColors.accentBlue,
-                          loading: _generating,
-                          onTap: () => _generateCode('mensual'),
-                        ),
-                        const SizedBox(width: 10),
-                        _PlanButton(
-                          label: 'Trimestral',
-                          days: '90 días',
-                          color: AppColors.primary,
-                          loading: _generating,
-                          onTap: () => _generateCode('trimestral'),
-                        ),
-                        const SizedBox(width: 10),
-                        _PlanButton(
-                          label: 'Anual',
-                          days: '365 días',
-                          color: AppColors.accentOrange,
-                          loading: _generating,
-                          onTap: () => _generateCode('anual'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+            )
+          else
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                    (_, i) => _CodeTile(info: _codes[i]),
+                childCount: _codes.length,
               ),
             ),
 
-            // ── Códigos generados ───────────────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 28, 20, 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Códigos generados',
-                        style: AppTextStyles.headingSmall),
-                    Text(
-                      '${_codes.length} total',
-                      style: AppTextStyles.caption
-                          .copyWith(color: AppColors.textMuted),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            if (_loadingCodes)
-              const SliverToBoxAdapter(
-                child: Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32),
-                    child:
-                        CircularProgressIndicator(color: AppColors.primary),
-                  ),
-                ),
-              )
-            else if (_codes.isEmpty)
-              SliverToBoxAdapter(
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Text(
-                      'No hay códigos generados aún.',
-                      style: AppTextStyles.bodyMedium
-                          .copyWith(color: AppColors.textMuted),
-                    ),
-                  ),
-                ),
-              )
-            else
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (_, i) => _CodeTile(info: _codes[i]),
-                  childCount: _codes.length,
-                ),
-              ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
-          ],
-        ),
+          const SliverToBoxAdapter(child: SizedBox(height: 100)),
+        ],
       ),
     );
   }
@@ -517,32 +380,30 @@ class _PlanButton extends StatelessWidget {
           ),
           child: loading
               ? Center(
-                  child: SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: color),
-                  ),
-                )
+            child: SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: color),
+            ),
+          )
               : Column(
-                  children: [
-                    Icon(Icons.add_circle_rounded, color: color, size: 22),
-                    const SizedBox(height: 6),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: color,
-                      ),
-                    ),
-                    Text(
-                      days,
-                      style: TextStyle(
-                          fontSize: 10, color: color.withOpacity(0.7)),
-                    ),
-                  ],
+            children: [
+              Icon(Icons.add_circle_rounded, color: color, size: 22),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: color,
                 ),
+              ),
+              Text(
+                days,
+                style: TextStyle(fontSize: 10, color: color.withOpacity(0.7)),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -577,7 +438,9 @@ class _CodeTile extends StatelessWidget {
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: info.isUsed ? AppColors.border : color.withOpacity(0.3),
+            color: info.isUsed
+                ? AppColors.border
+                : color.withOpacity(0.3),
           ),
         ),
         child: Row(
@@ -602,39 +465,30 @@ class _CodeTile extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: info.isUsed
-                              ? AppColors.textMuted
-                              : AppColors.textPrimary,
+                          color: info.isUsed ? AppColors.textMuted : AppColors.textPrimary,
                           letterSpacing: 1,
                         ),
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: color.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           info.type,
-                          style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w600,
-                              color: color),
+                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: color),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    info.memberName.isNotEmpty
-                        ? '${info.memberName}  ·  ${info.isUsed ? 'Usado el ${_formatDate(info.usedAt!)}' : 'Generado el ${_formatDate(info.createdAt)}'}'
-                        : info.isUsed
-                            ? 'Usado el ${_formatDate(info.usedAt!)}'
-                            : 'Generado el ${_formatDate(info.createdAt)}',
-                    style: AppTextStyles.caption
-                        .copyWith(color: AppColors.textMuted),
+                    info.isUsed
+                        ? 'Usado el ${_formatDate(info.usedAt!)}'
+                        : 'Generado el ${_formatDate(info.createdAt)}',
+                    style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
                   ),
                 ],
               ),
@@ -650,8 +504,7 @@ class _CodeTile extends StatelessWidget {
                   ),
                 );
               },
-              child: const Icon(Icons.copy_rounded,
-                  color: AppColors.textMuted, size: 18),
+              child: const Icon(Icons.copy_rounded, color: AppColors.textMuted, size: 18),
             ),
           ],
         ),
