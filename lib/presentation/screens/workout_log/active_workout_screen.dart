@@ -175,8 +175,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             sessionName   : session.name,
             elapsedSeconds: _elapsedSeconds,
             formatTime    : _formatTime,
-            onFinish      : () => _confirmFinish(context),
-            onCancel      : () => _confirmCancel(context),
+            onFinish      : () { _confirmFinish(context); },
+            onCancel      : () { _confirmCancel(context); },
           ),
 
           // ── Lista de ejercicios ───────────────────────────────
