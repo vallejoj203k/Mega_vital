@@ -16,6 +16,7 @@ dependencies:
   percent_indicator: ^4.2.3
   image_picker: ^1.0.7
   supabase_flutter: ^2.8.4
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:

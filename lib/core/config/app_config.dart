@@ -51,4 +51,8 @@ class AppConfig {
 
   static String get visionStatus =>
       visionEnabled ? 'Activo' : 'Agrega tu clave en Ajustes → Claves API';
+
+  // ── WhatsApp del dueño del gimnasio ──────────────────────────
+  // Formato internacional sin '+' ni espacios. Ej: 521XXXXXXXXXX (México)
+  static const String ownerWhatsApp = '521XXXXXXXXXX';
 }

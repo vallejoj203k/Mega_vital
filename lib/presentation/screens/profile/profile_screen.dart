@@ -9,6 +9,7 @@ import '../../../core/mock/mock_data.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/workout_log_provider.dart';
 import '../../widgets/shared_widgets.dart';
+import '../admin/admin_screen.dart';
 import '../api_keys/api_keys_screen.dart';
 import '../edit_profile/edit_profile_screen.dart';
 
@@ -271,6 +272,10 @@ class _SettingsList extends StatelessWidget {
           color: AppColors.primary,
           onTap: () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const ApiKeysScreen()))),
+      _SI(icon: Icons.admin_panel_settings_outlined, label: 'Administración',
+          color: AppColors.accentPurple,
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const AdminScreen()))),
     ];
     return DarkCard(padding: const EdgeInsets.symmetric(vertical: 8), child: Column(
       children: items.map((item) => GestureDetector(
