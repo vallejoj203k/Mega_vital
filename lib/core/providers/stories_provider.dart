@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../services/stories_service.dart';
 
-export '../../services/stories_service.dart' show StoryModel, UserStoriesGroup;
+export '../../services/stories_service.dart' show StoryModel, UserStoriesGroup, StoryViewer;
 
 class StoriesProvider extends ChangeNotifier {
   final StoriesService _svc;
@@ -62,4 +62,7 @@ class StoriesProvider extends ChangeNotifier {
     if (ok) await load();
     return ok;
   }
+
+  Future<List<StoryViewer>> fetchStoryViewers(String storyId) =>
+      _svc.fetchViewers(storyId);
 }

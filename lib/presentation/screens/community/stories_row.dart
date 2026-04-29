@@ -636,6 +636,40 @@ class _StoryViewerPageState extends State<StoryViewerPage>
             ),
           ),
 
+          if (widget.isOwner)
+            Positioned(
+              left: 0, right: 0, bottom: 0,
+              child: SafeArea(
+                child: GestureDetector(
+                  onTap: _deleting ? null : _showViewers,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [Colors.black87, Colors.transparent],
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.remove_rounded,
+                            color: Colors.white60, size: 20),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.visibility_outlined,
+                            color: Colors.white, size: 18),
+                        const SizedBox(width: 6),
+                        Text('Ver quién vio',
+                            style: AppTextStyles.labelLarge
+                                .copyWith(color: Colors.white)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
           if (_deleting)
             Positioned.fill(
               child: Container(
@@ -649,6 +683,170 @@ class _StoryViewerPageState extends State<StoryViewerPage>
       ),
     );
   }
+
+  void _showViewers() {
+    _pause();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _StoryViewersSheet(storyId: _story.id),
+    ).then((_) {
+      if (mounted) _resume();
+    });
+  }
+}
+
+// ─── Sheet de vistas de una historia ─────────────────────────────────────────
+
+class _StoryViewersSheet extends StatefulWidget {
+  final String storyId;
+  const _StoryViewersSheet({required this.storyId});
+
+  @override
+  State<_StoryViewersSheet> createState() => _StoryViewersSheetState();
+}
+
+class _StoryViewersSheetState extends State<_StoryViewersSheet> {
+  List<StoryViewer>? _viewers;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final viewers = await context
+        .read<StoriesProvider>()
+        .fetchStoryViewers(widget.storyId);
+    if (mounted) setState(() => _viewers = viewers);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.6,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border, width: 0.5),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: Row(children: [
+              const Icon(Icons.visibility_outlined,
+                  color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Text('Vistas', style: AppTextStyles.headingMedium),
+              if (_viewers != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${_viewers!.length}',
+                    style: AppTextStyles.labelLarge
+                        .copyWith(color: AppColors.primary),
+                  ),
+                ),
+              ],
+            ]),
+          ),
+          const Divider(height: 1),
+          if (_viewers == null)
+            const Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
+          else if (_viewers!.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.visibility_off_outlined,
+                    color: AppColors.textMuted, size: 40),
+                const SizedBox(height: 12),
+                Text('Nadie ha visto esta historia aún',
+                    style: AppTextStyles.bodyLarge
+                        .copyWith(color: AppColors.textMuted)),
+              ]),
+            )
+          else
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: _viewers!.length,
+                itemBuilder: (_, i) {
+                  final v = _viewers![i];
+                  return ListTile(
+                    leading: _ViewerAvatar(viewer: v),
+                    title: Text(v.name, style: AppTextStyles.bodyLarge),
+                    dense: true,
+                  );
+                },
+              ),
+            ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
+class _ViewerAvatar extends StatelessWidget {
+  final StoryViewer viewer;
+  const _ViewerAvatar({required this.viewer});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasPhoto = viewer.avatarUrl != null && viewer.avatarUrl!.isNotEmpty;
+    return Container(
+      width: 40, height: 40,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: AppColors.primaryGradient,
+      ),
+      alignment: Alignment.center,
+      child: hasPhoto
+          ? Image.network(
+              viewer.avatarUrl!,
+              width: 40, height: 40,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _initials(),
+            )
+          : _initials(),
+    );
+  }
+
+  Widget _initials() => Text(
+    viewer.initials,
+    style: AppTextStyles.labelLarge.copyWith(
+      color: AppColors.background,
+      fontWeight: FontWeight.w800,
+    ),
+  );
 }
 
 // ─── Sheet para crear historia ────────────────────────────────────────────────
