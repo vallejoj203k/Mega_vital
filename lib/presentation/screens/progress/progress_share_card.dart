@@ -3,6 +3,7 @@
 // Diseñada para ser capturada como imagen con RepaintBoundary.
 
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 class ProgressShareCard extends StatelessWidget {
@@ -128,7 +129,7 @@ class ProgressShareCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: SizedBox(
-                height: 72,
+                height: 90,
                 width: double.infinity,
                 child: CustomPaint(
                   painter: _MiniChartPainter(
@@ -376,6 +377,8 @@ class _MiniChartPainter extends CustomPainter {
   final Color color;
   const _MiniChartPainter({required this.values, required this.color});
 
+  static const double _labelH = 20.0;
+
   @override
   void paint(Canvas canvas, Size size) {
     if (values.length < 2) return;
@@ -387,24 +390,27 @@ class _MiniChartPainter extends CustomPainter {
     final effMax = range < 1 ? maxV + 1 : maxV + range * 0.15;
     final effRange = effMax - effMin;
 
-    double x(int i) => i / (values.length - 1) * size.width;
-    double y(double v) =>
-        size.height - ((v - effMin) / effRange) * size.height;
+    final chartTop = _labelH;
+    final chartH   = size.height - chartTop;
+
+    double xi(int i) => i / (values.length - 1) * size.width;
+    double yi(double v) =>
+        chartTop + chartH - ((v - effMin) / effRange) * chartH;
 
     final linePath = Path();
     final fillPath = Path();
 
-    linePath.moveTo(x(0), y(values[0]));
-    fillPath.moveTo(x(0), size.height);
-    fillPath.lineTo(x(0), y(values[0]));
+    linePath.moveTo(xi(0), yi(values[0]));
+    fillPath.moveTo(xi(0), size.height);
+    fillPath.lineTo(xi(0), yi(values[0]));
 
     for (int i = 1; i < values.length; i++) {
-      final cx = (x(i - 1) + x(i)) / 2;
-      linePath.cubicTo(cx, y(values[i - 1]), cx, y(values[i]), x(i), y(values[i]));
-      fillPath.cubicTo(cx, y(values[i - 1]), cx, y(values[i]), x(i), y(values[i]));
+      final cx = (xi(i - 1) + xi(i)) / 2;
+      linePath.cubicTo(cx, yi(values[i - 1]), cx, yi(values[i]), xi(i), yi(values[i]));
+      fillPath.cubicTo(cx, yi(values[i - 1]), cx, yi(values[i]), xi(i), yi(values[i]));
     }
 
-    fillPath.lineTo(x(values.length - 1), size.height);
+    fillPath.lineTo(xi(values.length - 1), size.height);
     fillPath.close();
 
     canvas.drawPath(
@@ -426,10 +432,65 @@ class _MiniChartPainter extends CustomPainter {
         ..strokeCap = StrokeCap.round,
     );
 
-    // Glow en último punto
-    final lx = x(values.length - 1), ly = y(values.last);
-    canvas.drawCircle(Offset(lx, ly), 5, Paint()..color = color.withOpacity(0.3));
-    canvas.drawCircle(Offset(lx, ly), 3, Paint()..color = color);
+    // ── Puntos + etiquetas ─────────────────────────────────────
+    // Con ≤5 puntos: todos; con más: primero, último, máx y mín
+    final showLabel = <int>{};
+    if (values.length <= 5) {
+      for (int i = 0; i < values.length; i++) showLabel.add(i);
+    } else {
+      showLabel.add(0);
+      showLabel.add(values.length - 1);
+      double mx = values[0], mn = values[0];
+      int mxI = 0, mnI = 0;
+      for (int i = 1; i < values.length; i++) {
+        if (values[i] > mx) { mx = values[i]; mxI = i; }
+        if (values[i] < mn) { mn = values[i]; mnI = i; }
+      }
+      showLabel.add(mxI);
+      showLabel.add(mnI);
+    }
+
+    final dotBg   = Paint()..color = const Color(0xFF141414);
+    final dotFill = Paint()..color = color;
+
+    for (int i = 0; i < values.length; i++) {
+      final px = xi(i), py = yi(values[i]);
+      final isLast = i == values.length - 1;
+      final isMax  = values[i] == maxV;
+
+      if (isLast) {
+        canvas.drawCircle(Offset(px, py), 6,
+            Paint()..color = color.withOpacity(0.25));
+      }
+      canvas.drawCircle(Offset(px, py), 4.5, dotBg);
+      canvas.drawCircle(Offset(px, py), 3.0, dotFill);
+
+      if (showLabel.contains(i)) {
+        final raw   = values[i];
+        final label = raw == raw.truncateToDouble()
+            ? '${raw.toInt()} kg'
+            : '${raw.toStringAsFixed(1)} kg';
+
+        final builder = ui.ParagraphBuilder(ui.ParagraphStyle(
+          textDirection: ui.TextDirection.ltr,
+          maxLines: 1,
+        ))
+          ..pushStyle(ui.TextStyle(
+            color: isMax ? color : color.withOpacity(0.7),
+            fontSize: 9,
+            fontWeight: isMax ? ui.FontWeight.w700 : ui.FontWeight.w600,
+          ))
+          ..addText(label);
+
+        final para = builder.build()
+          ..layout(ui.ParagraphConstraints(width: 70));
+
+        final lx = (px - para.maxIntrinsicWidth / 2)
+            .clamp(0.0, size.width - para.maxIntrinsicWidth);
+        final ly = (py - para.height - 3 - 3).clamp(0.0, size.height);
+        canvas.drawParagraph(para, Offset(lx, ly));
+      }
+    }
   }
 
   @override

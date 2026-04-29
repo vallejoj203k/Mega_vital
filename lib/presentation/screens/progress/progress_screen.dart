@@ -513,13 +513,14 @@ class _ExerciseChart extends StatelessWidget {
                 value: values.first, unit: unit, color: color)
           else
             SizedBox(
-              height: 100,
+              height: 130,
               child: CustomPaint(
                 painter: _LineChartPainter(
                   values: values,
                   minVal: minVal,
                   maxVal: maxVal,
                   color: color,
+                  unit: unit,
                 ),
                 size: Size.infinite,
               ),
@@ -971,28 +972,39 @@ class _LineChartPainter extends CustomPainter {
   final List<double> values;
   final double minVal, maxVal;
   final Color color;
+  final String unit;
 
   const _LineChartPainter({
     required this.values,
     required this.minVal,
     required this.maxVal,
     required this.color,
+    required this.unit,
   });
+
+  // Espacio reservado en la parte superior para las etiquetas
+  static const double _labelHeight = 22.0;
+  static const double _dotRadius   = 4.0;
 
   @override
   void paint(Canvas canvas, Size size) {
     if (values.length < 2) return;
 
-    final range = (maxVal - minVal).abs();
+    // Área útil para la línea (debajo de las etiquetas)
+    final chartTop    = _labelHeight;
+    final chartHeight = size.height - chartTop;
+
+    final range  = (maxVal - minVal).abs();
     final effMin = range < 1 ? minVal - 1 : minVal - range * 0.1;
     final effMax = range < 1 ? maxVal + 1 : maxVal + range * 0.1;
     final effRange = effMax - effMin;
 
     double xOf(int i) => i / (values.length - 1) * size.width;
     double yOf(double v) =>
-        size.height - ((v - effMin) / effRange) * size.height;
+        chartTop + chartHeight - ((v - effMin) / effRange) * chartHeight;
 
-    final path = Path();
+    // ── Degradado de fondo ─────────────────────────────────────
+    final path     = Path();
     final fillPath = Path();
 
     path.moveTo(xOf(0), yOf(values[0]));
@@ -1001,10 +1013,10 @@ class _LineChartPainter extends CustomPainter {
 
     for (int i = 1; i < values.length; i++) {
       final cpX = (xOf(i - 1) + xOf(i)) / 2;
-      path.cubicTo(cpX, yOf(values[i - 1]), cpX, yOf(values[i]),
-          xOf(i), yOf(values[i]));
-      fillPath.cubicTo(cpX, yOf(values[i - 1]), cpX, yOf(values[i]),
-          xOf(i), yOf(values[i]));
+      path.cubicTo(
+          cpX, yOf(values[i - 1]), cpX, yOf(values[i]), xOf(i), yOf(values[i]));
+      fillPath.cubicTo(
+          cpX, yOf(values[i - 1]), cpX, yOf(values[i]), xOf(i), yOf(values[i]));
     }
 
     fillPath.lineTo(xOf(values.length - 1), size.height);
@@ -1020,6 +1032,7 @@ class _LineChartPainter extends CustomPainter {
         ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
     );
 
+    // ── Línea ──────────────────────────────────────────────────
     canvas.drawPath(
       path,
       Paint()
@@ -1030,22 +1043,81 @@ class _LineChartPainter extends CustomPainter {
         ..strokeJoin = StrokeJoin.round,
     );
 
-    final dotBg = Paint()..color = AppColors.surface;
-    final dot = Paint()..color = color;
-    for (int i = 0; i < values.length; i++) {
-      canvas.drawCircle(Offset(xOf(i), yOf(values[i])), 4.5, dotBg);
-      canvas.drawCircle(Offset(xOf(i), yOf(values[i])), 3.0, dot);
+    // ── Puntos + etiquetas ─────────────────────────────────────
+    final dotBg  = Paint()..color = AppColors.surface;
+    final dotFill = Paint()..color = color;
+
+    // Decidir qué índices mostrar etiqueta cuando hay muchos puntos.
+    // Con ≤6 puntos: todos. Con más: primero, último, máximo y mínimo.
+    final showLabel = <int>{};
+    if (values.length <= 6) {
+      for (int i = 0; i < values.length; i++) {
+        showLabel.add(i);
+      }
+    } else {
+      showLabel.add(0);
+      showLabel.add(values.length - 1);
+      // índice del máximo y mínimo
+      double mx = values[0], mn = values[0];
+      int mxIdx = 0, mnIdx = 0;
+      for (int i = 1; i < values.length; i++) {
+        if (values[i] > mx) { mx = values[i]; mxIdx = i; }
+        if (values[i] < mn) { mn = values[i]; mnIdx = i; }
+      }
+      showLabel.add(mxIdx);
+      showLabel.add(mnIdx);
     }
 
-    final lx = xOf(values.length - 1), ly = yOf(values.last);
-    canvas.drawCircle(
-        Offset(lx, ly), 6, Paint()..color = color.withOpacity(0.3));
-    canvas.drawCircle(Offset(lx, ly), 4, Paint()..color = color);
+    for (int i = 0; i < values.length; i++) {
+      final x = xOf(i);
+      final y = yOf(values[i]);
+      final isLast = i == values.length - 1;
+
+      // Glow en el último punto
+      if (isLast) {
+        canvas.drawCircle(Offset(x, y), 7,
+            Paint()..color = color.withOpacity(0.25));
+      }
+
+      // Punto
+      canvas.drawCircle(Offset(x, y), _dotRadius + 1.5, dotBg);
+      canvas.drawCircle(Offset(x, y), _dotRadius, dotFill);
+
+      // Etiqueta de valor
+      if (showLabel.contains(i)) {
+        final raw   = values[i];
+        final label = raw == raw.truncateToDouble()
+            ? '${raw.toInt()} $unit'
+            : '${raw.toStringAsFixed(1)} $unit';
+
+        final isMax = raw == values.reduce(math.max);
+        final labelColor = isMax ? color : color.withOpacity(0.75);
+
+        final tp = TextPainter(
+          text: TextSpan(
+            text: label,
+            style: TextStyle(
+              color: labelColor,
+              fontSize: 9.5,
+              fontWeight: isMax ? FontWeight.w700 : FontWeight.w600,
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout(maxWidth: 80);
+
+        // Centrar sobre el punto, clampear para no salirse del canvas
+        double lx = (x - tp.width / 2).clamp(0.0, size.width - tp.width);
+        // Posicionar encima del punto con un pequeño gap
+        final ly = (y - tp.height - _dotRadius - 4).clamp(0.0, size.height);
+
+        tp.paint(canvas, Offset(lx, ly));
+      }
+    }
   }
 
   @override
   bool shouldRepaint(_LineChartPainter old) =>
-      old.values != values || old.color != color;
+      old.values != values || old.color != color || old.unit != unit;
 }
 
 class _EmptyState extends StatelessWidget {
