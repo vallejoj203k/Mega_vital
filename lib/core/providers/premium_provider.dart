@@ -1,91 +1,70 @@
-import 'dart:convert';
-import 'dart:math';
-import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+// lib/core/providers/premium_provider.dart
+// Estado global del sistema premium.
 
-class PremiumCodeInfo {
-  final String code;
-  final String type;
-  final String memberName;
-  final bool isUsed;
-  final DateTime? usedAt;
-  final DateTime createdAt;
+import 'package:flutter/material.dart';
+import '../../services/premium_service.dart';
 
-  const PremiumCodeInfo({
-    required this.code,
-    required this.type,
-    required this.memberName,
-    required this.isUsed,
-    required this.createdAt,
-    this.usedAt,
-  });
-
-  Map<String, dynamic> toJson() => {
-    'code':        code,
-    'type':        type,
-    'memberName':  memberName,
-    'isUsed':      isUsed,
-    'createdAt':   createdAt.toIso8601String(),
-    if (usedAt != null) 'usedAt': usedAt!.toIso8601String(),
-  };
-
-  factory PremiumCodeInfo.fromJson(Map<String, dynamic> j) => PremiumCodeInfo(
-    code:       j['code'] as String,
-    type:       j['type'] as String,
-    memberName: j['memberName'] as String? ?? '',
-    isUsed:     j['isUsed'] as bool? ?? false,
-    createdAt:  DateTime.parse(j['createdAt'] as String),
-    usedAt:     j['usedAt'] != null ? DateTime.parse(j['usedAt'] as String) : null,
-  );
-}
+export '../../services/premium_service.dart'
+    show PremiumStatus, PremiumTier, RedeemResult, PremiumCodeInfo, kPremiumTrialDays;
 
 class PremiumProvider extends ChangeNotifier {
-  static const _prefsKey = 'premium_codes';
+  final PremiumService _service;
 
-  List<PremiumCodeInfo> _codes = [];
-  List<PremiumCodeInfo> get codes => List.unmodifiable(_codes);
+  PremiumStatus _status    = PremiumStatus.expired();
+  bool          _isLoading = false;
+  String?       _error;
 
-  static String _buildCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final rng = Random.secure();
-    return List.generate(8, (_) => chars[rng.nextInt(chars.length)]).join();
-  }
+  PremiumProvider({PremiumService? service})
+      : _service = service ?? PremiumService();
 
-  Future<List<PremiumCodeInfo>> listCodes() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getStringList(_prefsKey) ?? [];
-    _codes = raw
-        .map((e) => PremiumCodeInfo.fromJson(jsonDecode(e) as Map<String, dynamic>))
-        .toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  PremiumStatus get status    => _status;
+  bool          get isLoading => _isLoading;
+  String?       get error     => _error;
+
+  // True si el usuario puede acceder a las secciones premium
+  bool get hasAccess => _status.isAccessible;
+  bool get isTrial   => _status.tier == PremiumTier.trial;
+  bool get isActive  => _status.tier == PremiumTier.active;
+
+  // ── Verificar estado premium (llamar tras login/inicio) ───────
+  Future<void> checkStatus(String userId, DateTime accountCreatedAt) async {
+    _isLoading = true;
+    _error     = null;
     notifyListeners();
-    return _codes;
+
+    _status    = await _service.checkStatus(userId, accountCreatedAt);
+    _isLoading = false;
+    notifyListeners();
   }
 
-  Future<String?> generateCode(String type, {String memberName = ''}) async {
-    try {
-      final code = _buildCode();
-      final info = PremiumCodeInfo(
-        code:       code,
-        type:       type,
-        memberName: memberName.trim(),
-        isUsed:     false,
-        createdAt:  DateTime.now(),
-      );
-      _codes.insert(0, info);
-      await _persist();
+  // ── Canjear código ────────────────────────────────────────────
+  Future<RedeemResult> redeemCode(String code, String userId, DateTime accountCreatedAt) async {
+    _isLoading = true;
+    notifyListeners();
+
+    final result = await _service.redeemCode(code);
+
+    if (result.success) {
+      // Refrescar estado tras canjear
+      await checkStatus(userId, accountCreatedAt);
+    } else {
+      _isLoading = false;
       notifyListeners();
-      return code;
-    } catch (_) {
-      return null;
     }
+
+    return result;
   }
 
-  Future<void> _persist() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
-      _prefsKey,
-      _codes.map((e) => jsonEncode(e.toJson())).toList(),
-    );
+  // ── Operaciones de administración ─────────────────────────────
+  Future<String?> generateCode(String type) => _service.generateCode(type);
+
+  Future<List<PremiumCodeInfo>> listCodes() => _service.listCodes();
+
+  // ── Limpiar al cerrar sesión ──────────────────────────────────
+  void clear() {
+    _status    = PremiumStatus.expired();
+    _isLoading = false;
+    _error     = null;
+    notifyListeners();
   }
 }
