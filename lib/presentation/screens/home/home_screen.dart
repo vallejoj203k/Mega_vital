@@ -53,6 +53,7 @@ class _HomeScreenState extends State<HomeScreen>
         ?? profile?.weight
         ?? 70.0;
     double draft = initial;
+    final ctrl = TextEditingController(text: initial.toStringAsFixed(1));
 
     showDialog(
       context: context,
@@ -85,25 +86,51 @@ class _HomeScreenState extends State<HomeScreen>
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               _DialogAdjBtn(
                 icon: Icons.remove_rounded,
-                onTap: () => setDlg(() =>
-                    draft = double.parse(
-                        (draft - 0.1).clamp(30.0, 250.0)
-                            .toStringAsFixed(1))),
+                onTap: () {
+                  final v = (draft - 1).clamp(30.0, 250.0);
+                  setDlg(() { draft = v; ctrl.text = v.toStringAsFixed(1); });
+                },
               ),
-              const SizedBox(width: 16),
-              Column(children: [
-                Text(draft.toStringAsFixed(1),
-                    style: AppTextStyles.headingLarge
-                        .copyWith(color: AppColors.accentOrange)),
-                Text('kg', style: AppTextStyles.caption),
-              ]),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 90,
+                child: TextField(
+                  controller: ctrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.headingLarge
+                      .copyWith(color: AppColors.accentOrange, fontSize: 28),
+                  decoration: InputDecoration(
+                    suffix: Text('kg', style: AppTextStyles.caption),
+                    filled: true,
+                    fillColor: AppColors.surfaceVariant,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                          color: AppColors.accentOrange, width: 1.5),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 10),
+                  ),
+                  onChanged: (v) {
+                    final parsed = double.tryParse(v.replaceAll(',', '.'));
+                    if (parsed != null) {
+                      setDlg(() => draft = parsed.clamp(30.0, 250.0));
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
               _DialogAdjBtn(
                 icon: Icons.add_rounded,
-                onTap: () => setDlg(() =>
-                    draft = double.parse(
-                        (draft + 0.1).clamp(30.0, 250.0)
-                            .toStringAsFixed(1))),
+                onTap: () {
+                  final v = (draft + 1).clamp(30.0, 250.0);
+                  setDlg(() { draft = v; ctrl.text = v.toStringAsFixed(1); });
+                },
               ),
             ]),
           ]),
@@ -1248,6 +1275,8 @@ class _WeightChart extends StatelessWidget {
 
   void _showAddDialog(BuildContext context, WeightProvider prov) {
     double draft = prov.latest?.weight ?? 70.0;
+    final ctrl = TextEditingController(text: draft.toStringAsFixed(1));
+
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -1265,21 +1294,51 @@ class _WeightChart extends StatelessWidget {
               children: [
             _DialogAdjBtn(
               icon: Icons.remove_rounded,
-              onTap: () => setDlg(() => draft = double.parse(
-                  (draft - 0.1).clamp(30.0, 250.0).toStringAsFixed(1))),
+              onTap: () {
+                final v = (draft - 1).clamp(30.0, 250.0);
+                setDlg(() { draft = v; ctrl.text = v.toStringAsFixed(1); });
+              },
             ),
-            const SizedBox(width: 20),
-            Column(children: [
-              Text(draft.toStringAsFixed(1),
-                  style: AppTextStyles.headingLarge
-                      .copyWith(color: AppColors.accentOrange)),
-              Text('kg', style: AppTextStyles.caption),
-            ]),
-            const SizedBox(width: 20),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 90,
+              child: TextField(
+                controller: ctrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                textAlign: TextAlign.center,
+                style: AppTextStyles.headingLarge
+                    .copyWith(color: AppColors.accentOrange, fontSize: 28),
+                decoration: InputDecoration(
+                  suffix: Text('kg', style: AppTextStyles.caption),
+                  filled: true,
+                  fillColor: AppColors.surfaceVariant,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                        color: AppColors.accentOrange, width: 1.5),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 10),
+                ),
+                onChanged: (v) {
+                  final parsed = double.tryParse(v.replaceAll(',', '.'));
+                  if (parsed != null) {
+                    setDlg(() => draft = parsed.clamp(30.0, 250.0));
+                  }
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
             _DialogAdjBtn(
               icon: Icons.add_rounded,
-              onTap: () => setDlg(() => draft = double.parse(
-                  (draft + 0.1).clamp(30.0, 250.0).toStringAsFixed(1))),
+              onTap: () {
+                final v = (draft + 1).clamp(30.0, 250.0);
+                setDlg(() { draft = v; ctrl.text = v.toStringAsFixed(1); });
+              },
             ),
           ]),
           actions: [
