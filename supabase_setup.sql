@@ -925,3 +925,206 @@ CREATE POLICY "spinning_delete" ON public.spinning_bookings
 -- Nivel de intensidad calórica del usuario (1–4)
 ALTER TABLE public.user_profiles
   ADD COLUMN IF NOT EXISTS nutrition_level INTEGER NOT NULL DEFAULT 1;
+
+
+-- ─── PREMIUM ────────────────────────────────────────────────────────────────
+
+-- Tabla de códigos premium generados por administración
+CREATE TABLE IF NOT EXISTS public.premium_codes (
+  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  code          TEXT        UNIQUE NOT NULL,
+  type          TEXT        NOT NULL CHECK (type IN ('mensual', 'trimestral', 'anual')),
+  duration_days INTEGER     NOT NULL,
+  is_used       BOOLEAN     NOT NULL DEFAULT FALSE,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  used_at       TIMESTAMPTZ,
+  used_by       TEXT        REFERENCES public.user_profiles(uid) ON DELETE SET NULL
+);
+
+ALTER TABLE public.premium_codes ENABLE ROW LEVEL SECURITY;
+
+-- Los usuarios autenticados no pueden ver ni tocar esta tabla directamente;
+-- todo el acceso pasa por las RPCs con SECURITY DEFINER.
+CREATE POLICY "premium_codes_no_direct_access"
+  ON public.premium_codes FOR ALL TO authenticated USING (false);
+
+-- Tabla de suscripciones premium activas
+CREATE TABLE IF NOT EXISTS public.premium_subscriptions (
+  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    TEXT        NOT NULL REFERENCES public.user_profiles(uid) ON DELETE CASCADE,
+  type       TEXT        NOT NULL CHECK (type IN ('mensual', 'trimestral', 'anual')),
+  expires_at TIMESTAMPTZ NOT NULL,
+  is_active  BOOLEAN     NOT NULL GENERATED ALWAYS AS (expires_at > NOW()) STORED,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  code_id    UUID        REFERENCES public.premium_codes(id) ON DELETE SET NULL
+);
+
+ALTER TABLE public.premium_subscriptions ENABLE ROW LEVEL SECURITY;
+
+-- El usuario solo puede ver sus propias suscripciones
+CREATE POLICY "premium_subscriptions_select_own"
+  ON public.premium_subscriptions FOR SELECT TO authenticated
+  USING (auth.uid()::text = user_id);
+
+-- Inserción y actualización solo via RPC (SECURITY DEFINER), no directa
+CREATE POLICY "premium_subscriptions_no_direct_write"
+  ON public.premium_subscriptions FOR INSERT TO authenticated
+  WITH CHECK (false);
+
+
+-- ── RPC: get_my_premium_subscription ────────────────────────────────────────
+-- Retorna la suscripción más reciente del usuario autenticado.
+-- Devuelve found=false si no existe ninguna.
+CREATE OR REPLACE FUNCTION public.get_my_premium_subscription()
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_row public.premium_subscriptions%ROWTYPE;
+BEGIN
+  SELECT * INTO v_row
+  FROM public.premium_subscriptions
+  WHERE user_id = auth.uid()::text
+  ORDER BY created_at DESC
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RETURN json_build_object('found', false);
+  END IF;
+
+  RETURN json_build_object(
+    'found',      true,
+    'is_active',  v_row.expires_at > NOW(),
+    'expires_at', TO_CHAR(v_row.expires_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+    'type',       v_row.type
+  );
+END;
+$$;
+
+
+-- ── RPC: redeem_premium_code ─────────────────────────────────────────────────
+-- El usuario autenticado canjea un código. Valida, crea suscripción y marca
+-- el código como usado, todo en una sola transacción.
+CREATE OR REPLACE FUNCTION public.redeem_premium_code(code_text TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_code    public.premium_codes%ROWTYPE;
+  v_expires TIMESTAMPTZ;
+BEGIN
+  -- Buscar el código (case-insensitive)
+  SELECT * INTO v_code
+  FROM public.premium_codes
+  WHERE UPPER(code) = UPPER(code_text)
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN json_build_object('success', false, 'message', 'Código no válido.');
+  END IF;
+
+  IF v_code.is_used THEN
+    RETURN json_build_object('success', false, 'message', 'Este código ya fue utilizado.');
+  END IF;
+
+  -- Calcular fecha de expiración desde hoy
+  v_expires := NOW() + (v_code.duration_days || ' days')::INTERVAL;
+
+  -- Crear la suscripción
+  INSERT INTO public.premium_subscriptions (user_id, type, expires_at, code_id)
+  VALUES (auth.uid()::text, v_code.type, v_expires, v_code.id);
+
+  -- Marcar el código como usado
+  UPDATE public.premium_codes
+  SET is_used  = TRUE,
+      used_at  = NOW(),
+      used_by  = auth.uid()::text
+  WHERE id = v_code.id;
+
+  RETURN json_build_object(
+    'success',    true,
+    'expires_at', TO_CHAR(v_expires AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+    'type',       v_code.type
+  );
+END;
+$$;
+
+
+-- ── RPC: generate_premium_code ───────────────────────────────────────────────
+-- Genera un código aleatorio de 8 caracteres. Solo funciona con la clave admin.
+-- Retorna el código generado como TEXT, o NULL si la clave es incorrecta.
+CREATE OR REPLACE FUNCTION public.generate_premium_code(admin_key TEXT, code_type TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_duration INTEGER;
+  v_code     TEXT;
+BEGIN
+  IF admin_key <> 'cocodemegavital' THEN
+    RETURN NULL;
+  END IF;
+
+  v_duration := CASE code_type
+    WHEN 'mensual'     THEN 30
+    WHEN 'trimestral'  THEN 90
+    WHEN 'anual'       THEN 365
+    ELSE NULL
+  END;
+
+  IF v_duration IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  -- Generar código único de 8 caracteres alfanuméricos en mayúsculas
+  LOOP
+    v_code := UPPER(SUBSTRING(MD5(gen_random_uuid()::text) FROM 1 FOR 8));
+    EXIT WHEN NOT EXISTS (SELECT 1 FROM public.premium_codes WHERE code = v_code);
+  END LOOP;
+
+  INSERT INTO public.premium_codes (code, type, duration_days)
+  VALUES (v_code, code_type, v_duration);
+
+  RETURN v_code;
+END;
+$$;
+
+
+-- ── RPC: list_premium_codes ──────────────────────────────────────────────────
+-- Lista todos los códigos generados. Solo funciona con la clave admin.
+CREATE OR REPLACE FUNCTION public.list_premium_codes(admin_key TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF admin_key <> 'cocodemegavital' THEN
+    RETURN '[]'::JSON;
+  END IF;
+
+  RETURN (
+    SELECT JSON_AGG(
+      json_build_object(
+        'id',            id,
+        'code',          code,
+        'type',          type,
+        'duration_days', duration_days,
+        'is_used',       is_used,
+        'created_at',    TO_CHAR(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+        'used_at',       CASE WHEN used_at IS NOT NULL
+                           THEN TO_CHAR(used_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                           ELSE NULL END
+      )
+      ORDER BY created_at DESC
+    )
+    FROM public.premium_codes
+  );
+END;
+$$;
