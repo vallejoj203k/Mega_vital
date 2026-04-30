@@ -928,8 +928,9 @@ ALTER TABLE public.user_profiles
 
 
 -- ─── PREMIUM ────────────────────────────────────────────────────────────────
+-- Patrón igual que spinning_bookings: user_id UUID sin FK a user_profiles,
+-- todo el acceso a las tablas pasa por funciones SECURITY DEFINER.
 
--- Tabla de códigos premium generados por administración
 CREATE TABLE IF NOT EXISTS public.premium_codes (
   id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   code          TEXT        UNIQUE NOT NULL,
@@ -938,42 +939,35 @@ CREATE TABLE IF NOT EXISTS public.premium_codes (
   is_used       BOOLEAN     NOT NULL DEFAULT FALSE,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   used_at       TIMESTAMPTZ,
-  used_by       TEXT        REFERENCES public.user_profiles(uid) ON DELETE SET NULL
+  used_by       UUID
 );
 
 ALTER TABLE public.premium_codes ENABLE ROW LEVEL SECURITY;
 
--- Los usuarios autenticados no pueden ver ni tocar esta tabla directamente;
--- todo el acceso pasa por las RPCs con SECURITY DEFINER.
-CREATE POLICY "premium_codes_no_direct_access"
-  ON public.premium_codes FOR ALL TO authenticated USING (false);
+-- Sin políticas explícitas = RLS bloquea todo acceso directo.
+-- El acceso se hace únicamente a través de las RPCs con SECURITY DEFINER.
 
--- Tabla de suscripciones premium activas
 CREATE TABLE IF NOT EXISTS public.premium_subscriptions (
   id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id    TEXT        NOT NULL REFERENCES public.user_profiles(uid) ON DELETE CASCADE,
+  user_id    UUID        NOT NULL,
   type       TEXT        NOT NULL CHECK (type IN ('mensual', 'trimestral', 'anual')),
   expires_at TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  code_id    UUID        REFERENCES public.premium_codes(id) ON DELETE SET NULL
+  code_id    UUID
 );
 
 ALTER TABLE public.premium_subscriptions ENABLE ROW LEVEL SECURITY;
 
--- El usuario solo puede ver sus propias suscripciones
+DROP POLICY IF EXISTS "premium_subscriptions_select_own"   ON public.premium_subscriptions;
+DROP POLICY IF EXISTS "premium_subscriptions_no_direct_write" ON public.premium_subscriptions;
+
+-- El usuario puede ver solo sus propias suscripciones (uuid = uuid, sin cast)
 CREATE POLICY "premium_subscriptions_select_own"
   ON public.premium_subscriptions FOR SELECT TO authenticated
-  USING (auth.uid()::text = user_id);
-
--- Inserción y actualización solo via RPC (SECURITY DEFINER), no directa
-CREATE POLICY "premium_subscriptions_no_direct_write"
-  ON public.premium_subscriptions FOR INSERT TO authenticated
-  WITH CHECK (false);
+  USING (auth.uid() = user_id);
 
 
 -- ── RPC: get_my_premium_subscription ────────────────────────────────────────
--- Retorna la suscripción más reciente del usuario autenticado.
--- Devuelve found=false si no existe ninguna.
 CREATE OR REPLACE FUNCTION public.get_my_premium_subscription()
 RETURNS JSON
 LANGUAGE plpgsql
@@ -987,7 +981,7 @@ BEGIN
   SELECT expires_at, type
   INTO v_expires_at, v_type
   FROM public.premium_subscriptions
-  WHERE user_id = auth.uid()::text
+  WHERE user_id = auth.uid()
   ORDER BY created_at DESC
   LIMIT 1;
 
@@ -1006,8 +1000,6 @@ $$;
 
 
 -- ── RPC: redeem_premium_code ─────────────────────────────────────────────────
--- El usuario autenticado canjea un código. Valida, crea suscripción y marca
--- el código como usado, todo en una sola transacción.
 CREATE OR REPLACE FUNCTION public.redeem_premium_code(code_text TEXT)
 RETURNS JSON
 LANGUAGE plpgsql
@@ -1021,7 +1013,6 @@ DECLARE
   v_code_is_used BOOLEAN;
   v_expires      TIMESTAMPTZ;
 BEGIN
-  -- Buscar el código (case-insensitive)
   SELECT id, type, duration_days, is_used
   INTO v_code_id, v_code_type, v_duration, v_code_is_used
   FROM public.premium_codes
@@ -1036,18 +1027,15 @@ BEGIN
     RETURN json_build_object('success', false, 'message', 'Este código ya fue utilizado.');
   END IF;
 
-  -- Calcular fecha de expiración desde hoy
   v_expires := NOW() + (v_duration || ' days')::INTERVAL;
 
-  -- Crear la suscripción
   INSERT INTO public.premium_subscriptions (user_id, type, expires_at, code_id)
-  VALUES (auth.uid()::text, v_code_type, v_expires, v_code_id);
+  VALUES (auth.uid(), v_code_type, v_expires, v_code_id);
 
-  -- Marcar el código como usado
   UPDATE public.premium_codes
   SET is_used = TRUE,
       used_at = NOW(),
-      used_by = auth.uid()::text
+      used_by = auth.uid()
   WHERE id = v_code_id;
 
   RETURN json_build_object(
@@ -1060,8 +1048,6 @@ $$;
 
 
 -- ── RPC: generate_premium_code ───────────────────────────────────────────────
--- Genera un código aleatorio de 8 caracteres. Solo funciona con la clave admin.
--- Retorna el código generado como TEXT, o NULL si la clave es incorrecta.
 CREATE OR REPLACE FUNCTION public.generate_premium_code(admin_key TEXT, code_type TEXT)
 RETURNS TEXT
 LANGUAGE plpgsql
@@ -1077,9 +1063,9 @@ BEGIN
   END IF;
 
   v_duration := CASE code_type
-    WHEN 'mensual'     THEN 30
-    WHEN 'trimestral'  THEN 90
-    WHEN 'anual'       THEN 365
+    WHEN 'mensual'    THEN 30
+    WHEN 'trimestral' THEN 90
+    WHEN 'anual'      THEN 365
     ELSE NULL
   END;
 
@@ -1087,7 +1073,6 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  -- Generar código único de 8 caracteres alfanuméricos en mayúsculas
   LOOP
     v_code := UPPER(SUBSTRING(MD5(gen_random_uuid()::text) FROM 1 FOR 8));
     EXIT WHEN NOT EXISTS (SELECT 1 FROM public.premium_codes WHERE code = v_code);
@@ -1102,7 +1087,6 @@ $$;
 
 
 -- ── RPC: list_premium_codes ──────────────────────────────────────────────────
--- Lista todos los códigos generados. Solo funciona con la clave admin.
 CREATE OR REPLACE FUNCTION public.list_premium_codes(admin_key TEXT)
 RETURNS JSON
 LANGUAGE plpgsql
@@ -1114,22 +1098,25 @@ BEGIN
     RETURN '[]'::JSON;
   END IF;
 
-  RETURN (
-    SELECT JSON_AGG(
-      json_build_object(
-        'id',            id,
-        'code',          code,
-        'type',          type,
-        'duration_days', duration_days,
-        'is_used',       is_used,
-        'created_at',    TO_CHAR(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-        'used_at',       CASE WHEN used_at IS NOT NULL
-                           THEN TO_CHAR(used_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
-                           ELSE NULL END
+  RETURN COALESCE(
+    (
+      SELECT JSON_AGG(
+        json_build_object(
+          'id',            id::text,
+          'code',          code,
+          'type',          type,
+          'duration_days', duration_days,
+          'is_used',       is_used,
+          'created_at',    TO_CHAR(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+          'used_at',       CASE WHEN used_at IS NOT NULL
+                             THEN TO_CHAR(used_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                             ELSE NULL END
+        )
+        ORDER BY created_at DESC
       )
-      ORDER BY created_at DESC
-    )
-    FROM public.premium_codes
+      FROM public.premium_codes
+    ),
+    '[]'::JSON
   );
 END;
 $$;
