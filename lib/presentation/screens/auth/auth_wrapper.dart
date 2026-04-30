@@ -2,13 +2,45 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/premium_provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../main_screen.dart';
 import 'login_screen.dart';
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  String? _lastCheckedUid;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = context.watch<AuthProvider>();
+
+    // Llama checkStatus una vez por sesión cuando el perfil ya está disponible.
+    if (auth.status == AuthStatus.authenticated &&
+        !auth.profileLoading &&
+        auth.profile != null &&
+        auth.firebaseUser != null &&
+        auth.firebaseUser!.uid != _lastCheckedUid) {
+      _lastCheckedUid = auth.firebaseUser!.uid;
+      context.read<PremiumProvider>().checkStatus(
+        auth.firebaseUser!.uid,
+        auth.profile!.createdAt,
+      );
+    }
+
+    if (auth.status == AuthStatus.unauthenticated) {
+      _lastCheckedUid = null;
+      context.read<PremiumProvider>().clear();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,8 +54,8 @@ class AuthWrapper extends StatelessWidget {
 
   Widget _buildChild(AuthStatus status) {
     switch (status) {
-      case AuthStatus.initial:        return const _SplashScreen();
-      case AuthStatus.authenticated:  return const MainScreen();
+      case AuthStatus.initial:         return const _SplashScreen();
+      case AuthStatus.authenticated:   return const MainScreen();
       case AuthStatus.unauthenticated: return const LoginScreen();
     }
   }

@@ -10,6 +10,7 @@ import '../../../core/mock/mock_data.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/nav_provider.dart';
 import '../../../core/providers/nutrition_provider.dart';
+import '../../../core/providers/weight_provider.dart';
 import '../../../core/providers/workout_log_provider.dart';
 import '../../../services/fitness_calculator.dart';
 import '../../../services/workout_log_service.dart';
@@ -28,24 +29,104 @@ class _HomeScreenState extends State<HomeScreen>
   bool get wantKeepAlive => true;
 
   // ── Estado local del día ──────────────────────────────────────
-  int    _vasos       = 0;
-  double _pesoHoy     = 0;
-  bool   _pesoEditado = false;
+  int  _vasos              = 0;
+  bool _monthlyDialogShown = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final profile = context.read<AuthProvider>().profile;
-      if (profile != null && mounted) {
-        setState(() {
-          _pesoHoy = profile.weight;
-          _vasos   = 0;
-        });
-      }
-      // Cargar datos de nutrición de hoy
       context.read<NutritionProvider>().loadToday();
+      context.read<WeightProvider>().load().then((_) {
+        if (!mounted || _monthlyDialogShown) return;
+        if (context.read<WeightProvider>().needsMonthlyUpdate) {
+          _monthlyDialogShown = true;
+          _showWeightUpdateDialog();
+        }
+      });
     });
+  }
+
+  void _showWeightUpdateDialog() {
+    final profile = context.read<AuthProvider>().profile;
+    final initial = context.read<WeightProvider>().latest?.weight
+        ?? profile?.weight
+        ?? 70.0;
+    double draft = initial;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlg) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20)),
+          title: Row(children: [
+            const Icon(Icons.monitor_weight_outlined,
+                color: AppColors.accentOrange, size: 22),
+            const SizedBox(width: 10),
+            Text(
+              context.read<WeightProvider>().history.isEmpty
+                  ? 'Registra tu peso inicial'
+                  : 'Actualiza tu peso mensual',
+              style: AppTextStyles.headingSmall,
+            ),
+          ]),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text(
+              context.read<WeightProvider>().history.isEmpty
+                  ? 'Registra tu peso para comenzar a ver tu progreso.'
+                  : 'Han pasado más de 30 días. Registra tu peso actual para mantener el seguimiento.',
+              style: AppTextStyles.bodySmall
+                  .copyWith(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 20),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              _DialogAdjBtn(
+                icon: Icons.remove_rounded,
+                onTap: () => setDlg(() =>
+                    draft = double.parse(
+                        (draft - 0.1).clamp(30.0, 250.0)
+                            .toStringAsFixed(1))),
+              ),
+              const SizedBox(width: 16),
+              Column(children: [
+                Text(draft.toStringAsFixed(1),
+                    style: AppTextStyles.headingLarge
+                        .copyWith(color: AppColors.accentOrange)),
+                Text('kg', style: AppTextStyles.caption),
+              ]),
+              const SizedBox(width: 16),
+              _DialogAdjBtn(
+                icon: Icons.add_rounded,
+                onTap: () => setDlg(() =>
+                    draft = double.parse(
+                        (draft + 0.1).clamp(30.0, 250.0)
+                            .toStringAsFixed(1))),
+              ),
+            ]),
+          ]),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text('Ahora no',
+                  style: TextStyle(color: AppColors.textSecondary)),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(ctx).pop();
+                await context.read<WeightProvider>().addEntry(draft);
+              },
+              child: const Text('Guardar',
+                  style: TextStyle(
+                      color: AppColors.accentOrange,
+                      fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ── Fecha real ────────────────────────────────────────────────
@@ -89,9 +170,6 @@ class _HomeScreenState extends State<HomeScreen>
       age:    profile.age,
       goal:   profile.goal,
     );
-
-    // Peso con exactamente 1 decimal
-    final pesoDisplay = _pesoHoy.toStringAsFixed(1);
 
     final nutrition = context.watch<NutritionProvider>();
     // Macros reales del día desde NutritionProvider
@@ -191,14 +269,6 @@ class _HomeScreenState extends State<HomeScreen>
                     progress: _vasos / calc.metaVasos,
                   ),
                   const SizedBox(width: 12),
-                  _StatCard(
-                    icon: Icons.monitor_weight_outlined,
-                    color: AppColors.accentPurple,
-                    label: 'Peso hoy',
-                    value: pesoDisplay,
-                    unit: 'kg',
-                    progress: 1.0,
-                  ),
                 ],
               ),
             )),
@@ -255,43 +325,10 @@ class _HomeScreenState extends State<HomeScreen>
 
             const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
-            // ── Registro rápido de peso ──
+            // ── Gráfica de progreso de peso ──
             SliverToBoxAdapter(child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _WeightLogger(
-                peso:     _pesoHoy,
-                editado:  _pesoEditado,
-                onMinus: () => setState(() {
-                  _pesoHoy = double.parse(
-                      (_pesoHoy - 0.1).clamp(30.0, 250.0).toStringAsFixed(1));
-                  _pesoEditado = true;
-                }),
-                onPlus: () => setState(() {
-                  _pesoHoy = double.parse(
-                      (_pesoHoy + 0.1).clamp(30.0, 250.0).toStringAsFixed(1));
-                  _pesoEditado = true;
-                }),
-                onSave: () {
-                  HapticFeedback.mediumImpact();
-                  setState(() => _pesoEditado = false);
-                  ScaffoldMessenger.of(context)
-                    ..clearSnackBars()
-                    ..showSnackBar(SnackBar(
-                      content: Row(children: [
-                        const Icon(Icons.check_circle_rounded,
-                            color: AppColors.primary, size: 16),
-                        const SizedBox(width: 8),
-                        Text('Peso guardado: ${_pesoHoy.toStringAsFixed(1)} kg'),
-                      ]),
-                      backgroundColor: AppColors.surface,
-                      behavior: SnackBarBehavior.floating,
-                      margin: const EdgeInsets.all(16),
-                      duration: const Duration(seconds: 2),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ));
-                },
-              ),
+              child: _WeightChart(),
             )),
 
             const SliverToBoxAdapter(child: SizedBox(height: 20)),
@@ -1102,77 +1139,337 @@ class _ProgressItem {
       this.gradient, this.icon, this.color);
 }
 
-// ── Registro rápido de peso ────────────────────────────────────────
-class _WeightLogger extends StatelessWidget {
-  final double peso;
-  final bool editado;
-  final VoidCallback onMinus, onPlus, onSave;
-  const _WeightLogger({required this.peso, required this.editado,
-    required this.onMinus, required this.onPlus, required this.onSave});
-
+// ── Gráfica de progreso de peso ────────────────────────────────────
+class _WeightChart extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => DarkCard(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    borderColor: editado ? AppColors.accentOrange.withOpacity(0.4) : null,
-    child: Row(children: [
-      BoxedIcon(icon: Icons.monitor_weight_outlined,
-          color: AppColors.accentOrange, size: 42),
-      const SizedBox(width: 14),
-      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Peso de hoy', style: AppTextStyles.caption
-              .copyWith(color: AppColors.textMuted, fontSize: 11)),
-          const SizedBox(height: 2),
-          RichText(text: TextSpan(children: [
-            TextSpan(text: peso.toStringAsFixed(1),
-                style: AppTextStyles.headingMedium
-                    .copyWith(color: AppColors.accentOrange)),
-            TextSpan(text: ' kg', style: AppTextStyles.caption),
-          ])),
-        ],
-      )),
-      Row(children: [
-        _AdjBtn(icon: Icons.remove_rounded, onTap: onMinus),
-        const SizedBox(width: 8),
-        _AdjBtn(icon: Icons.add_rounded, onTap: onPlus),
-        const SizedBox(width: 8),
-        GestureDetector(
-          onTap: onSave,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              gradient: editado ? AppColors.primaryGradient : null,
-              color: editado ? null : AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: editado ? [BoxShadow(
-                  color: AppColors.primary.withOpacity(0.3),
-                  blurRadius: 8)] : null,
-              border: editado ? null
-                  : Border.all(color: AppColors.border, width: 0.5),
+  Widget build(BuildContext context) {
+    final prov = context.watch<WeightProvider>();
+
+    return DarkCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.monitor_weight_outlined,
+              size: 16, color: AppColors.accentOrange),
+          const SizedBox(width: 8),
+          Text('Progreso de peso', style: AppTextStyles.headingSmall),
+          const Spacer(),
+          GestureDetector(
+            onTap: () => _showAddDialog(context, prov),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.accentOrange.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: AppColors.accentOrange.withOpacity(0.35),
+                    width: 0.5),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.add_rounded,
+                    color: AppColors.accentOrange, size: 14),
+                const SizedBox(width: 4),
+                Text('Registrar',
+                    style: AppTextStyles.caption.copyWith(
+                        color: AppColors.accentOrange,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11)),
+              ]),
             ),
-            child: Text('Guardar', style: TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w700,
-                color: editado ? AppColors.background
-                    : AppColors.textSecondary)),
           ),
+        ]),
+        const SizedBox(height: 12),
+
+        if (prov.isLoading)
+          const SizedBox(height: 120,
+              child: Center(child: CircularProgressIndicator(
+                  color: AppColors.accentOrange, strokeWidth: 2)))
+        else if (prov.history.isEmpty)
+          _EmptyWeight(onAdd: () => _showAddDialog(context, prov))
+        else ...[
+          // Peso actual + tendencia
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            RichText(text: TextSpan(children: [
+              TextSpan(
+                  text: prov.latest!.weight.toStringAsFixed(1),
+                  style: AppTextStyles.headingLarge
+                      .copyWith(color: AppColors.accentOrange, fontSize: 32)),
+              TextSpan(text: ' kg', style: AppTextStyles.caption),
+            ])),
+            const SizedBox(width: 10),
+            if (prov.trend != null) ...[
+              Icon(
+                prov.trend! < 0
+                    ? Icons.trending_down_rounded
+                    : Icons.trending_up_rounded,
+                color: prov.trend! < 0
+                    ? AppColors.primary
+                    : AppColors.accentOrange,
+                size: 18,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '${prov.trend! >= 0 ? "+" : ""}${prov.trend!.toStringAsFixed(1)} kg',
+                style: AppTextStyles.caption.copyWith(
+                  color: prov.trend! < 0
+                      ? AppColors.primary
+                      : AppColors.accentOrange,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+            const Spacer(),
+            Text('Último: ${_formatDate(prov.latest!.recordedAt)}',
+                style: AppTextStyles.caption
+                    .copyWith(color: AppColors.textMuted, fontSize: 10)),
+          ]),
+          const SizedBox(height: 16),
+
+          // Línea de gráfica
+          SizedBox(
+            height: 120,
+            child: CustomPaint(
+              size: const Size(double.infinity, 120),
+              painter: _WeightLinePainter(
+                // El painter espera de menor a mayor (cronológico)
+                entries: prov.history.reversed.toList(),
+              ),
+            ),
+          ),
+        ],
+      ]),
+    );
+  }
+
+  String _formatDate(DateTime d) {
+    const meses = ['ene','feb','mar','abr','may','jun',
+                   'jul','ago','sep','oct','nov','dic'];
+    return '${d.day} ${meses[d.month - 1]}';
+  }
+
+  void _showAddDialog(BuildContext context, WeightProvider prov) {
+    double draft = prov.latest?.weight ?? 70.0;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlg) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20)),
+          title: Row(children: [
+            const Icon(Icons.monitor_weight_outlined,
+                color: AppColors.accentOrange, size: 22),
+            const SizedBox(width: 10),
+            Text('Registrar peso', style: AppTextStyles.headingSmall),
+          ]),
+          content: Row(mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+            _DialogAdjBtn(
+              icon: Icons.remove_rounded,
+              onTap: () => setDlg(() => draft = double.parse(
+                  (draft - 0.1).clamp(30.0, 250.0).toStringAsFixed(1))),
+            ),
+            const SizedBox(width: 20),
+            Column(children: [
+              Text(draft.toStringAsFixed(1),
+                  style: AppTextStyles.headingLarge
+                      .copyWith(color: AppColors.accentOrange)),
+              Text('kg', style: AppTextStyles.caption),
+            ]),
+            const SizedBox(width: 20),
+            _DialogAdjBtn(
+              icon: Icons.add_rounded,
+              onTap: () => setDlg(() => draft = double.parse(
+                  (draft + 0.1).clamp(30.0, 250.0).toStringAsFixed(1))),
+            ),
+          ]),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text('Cancelar',
+                  style: TextStyle(color: AppColors.textSecondary)),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(ctx).pop();
+                await prov.addEntry(draft);
+              },
+              child: const Text('Guardar',
+                  style: TextStyle(
+                      color: AppColors.accentOrange,
+                      fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyWeight extends StatelessWidget {
+  final VoidCallback onAdd;
+  const _EmptyWeight({required this.onAdd});
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 100,
+    child: Center(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.monitor_weight_outlined,
+            color: AppColors.textMuted, size: 32),
+        const SizedBox(height: 8),
+        Text('Sin registros aún',
+            style: AppTextStyles.bodySmall
+                .copyWith(color: AppColors.textSecondary)),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: onAdd,
+          child: Text('+ Registrar primer peso',
+              style: AppTextStyles.caption.copyWith(
+                  color: AppColors.accentOrange,
+                  fontWeight: FontWeight.w600)),
         ),
       ]),
-    ]),
+    ),
   );
 }
 
-class _AdjBtn extends StatelessWidget {
+class _DialogAdjBtn extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-  const _AdjBtn({required this.icon, required this.onTap});
+  const _DialogAdjBtn({required this.icon, required this.onTap});
   @override
-  Widget build(BuildContext context) => GestureDetector(onTap: onTap,
-      child: Container(width: 32, height: 32,
-          decoration: BoxDecoration(color: AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.border, width: 0.5)),
-          child: Icon(icon, color: AppColors.textSecondary, size: 16)));
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 36, height: 36,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border, width: 0.5),
+      ),
+      child: Icon(icon, color: AppColors.textSecondary, size: 18),
+    ),
+  );
+}
+
+class _WeightLinePainter extends CustomPainter {
+  final List<WeightEntry> entries; // cronológico: el primero es el más antiguo
+  const _WeightLinePainter({required this.entries});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (entries.length < 2) {
+      // Un solo punto — dibuja un círculo centrado
+      if (entries.isEmpty) return;
+      final paint = Paint()
+        ..color = AppColors.accentOrange
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(
+          Offset(size.width / 2, size.height / 2), 5, paint);
+      return;
+    }
+
+    final weights = entries.map((e) => e.weight).toList();
+    final minW    = weights.reduce((a, b) => a < b ? a : b) - 1.5;
+    final maxW    = weights.reduce((a, b) => a > b ? a : b) + 1.5;
+    final range   = (maxW - minW).clamp(1.0, double.infinity);
+
+    final n       = entries.length;
+    final xStep   = size.width / (n - 1);
+    const yPad    = 18.0; // espacio para etiquetas
+
+    Offset toOffset(int i) {
+      final x = i * xStep;
+      final y = yPad + (1 - (weights[i] - minW) / range) *
+          (size.height - yPad * 2);
+      return Offset(x, y);
+    }
+
+    final points = List.generate(n, toOffset);
+
+    // Relleno degradado bajo la línea
+    final fillPath = Path()..moveTo(points.first.dx, size.height);
+    for (final p in points) {
+      fillPath.lineTo(p.dx, p.dy);
+    }
+    fillPath
+      ..lineTo(points.last.dx, size.height)
+      ..close();
+
+    canvas.drawPath(
+      fillPath,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppColors.accentOrange.withOpacity(0.25),
+            AppColors.accentOrange.withOpacity(0.0),
+          ],
+        ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
+    );
+
+    // Línea
+    final linePaint = Paint()
+      ..color = AppColors.accentOrange
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final linePath = Path()..moveTo(points.first.dx, points.first.dy);
+    for (int i = 1; i < points.length; i++) {
+      linePath.lineTo(points[i].dx, points[i].dy);
+    }
+    canvas.drawPath(linePath, linePaint);
+
+    // Puntos y etiquetas de peso
+    final dotPaint  = Paint()..color = AppColors.accentOrange;
+    final bgPaint   = Paint()..color = AppColors.surface;
+    final textStyle = const TextStyle(
+        fontSize: 9, color: AppColors.textSecondary,
+        fontWeight: FontWeight.w600);
+    const meses = ['ene','feb','mar','abr','may','jun',
+                   'jul','ago','sep','oct','nov','dic'];
+
+    for (int i = 0; i < points.length; i++) {
+      final p = points[i];
+
+      // Punto con borde blanco
+      canvas.drawCircle(p, 5, bgPaint);
+      canvas.drawCircle(p, 4, dotPaint);
+
+      // Etiqueta de peso encima del punto (solo primero, último y cada 2)
+      if (i == 0 || i == points.length - 1 || (n <= 6)) {
+        final label = weights[i].toStringAsFixed(1);
+        final tp = TextPainter(
+          text: TextSpan(text: label, style: textStyle),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp.paint(canvas,
+            Offset(p.dx - tp.width / 2, p.dy - tp.height - 5));
+      }
+
+      // Etiqueta de fecha debajo del eje (solo primero, último y cada 2)
+      if (i == 0 || i == points.length - 1 || (n <= 6)) {
+        final d   = entries[i].recordedAt;
+        final lbl = '${d.day} ${meses[d.month - 1]}';
+        final tp  = TextPainter(
+          text: TextSpan(
+              text: lbl,
+              style: textStyle.copyWith(color: AppColors.textMuted)),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp.paint(canvas,
+            Offset(
+              (p.dx - tp.width / 2).clamp(0, size.width - tp.width),
+              size.height - tp.height,
+            ));
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_WeightLinePainter old) => old.entries != entries;
 }
 
 // ── Frase motivacional ─────────────────────────────────────────────
