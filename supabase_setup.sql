@@ -1120,3 +1120,28 @@ BEGIN
   );
 END;
 $$;
+
+
+-- ─── HISTORIAL DE PESO ───────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.weight_history (
+  id          UUID             PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID             NOT NULL,
+  weight      DOUBLE PRECISION NOT NULL,
+  recorded_at TIMESTAMPTZ      NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.weight_history ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "weight_select_own" ON public.weight_history;
+DROP POLICY IF EXISTS "weight_insert_own" ON public.weight_history;
+DROP POLICY IF EXISTS "weight_delete_own" ON public.weight_history;
+
+CREATE POLICY "weight_select_own" ON public.weight_history
+  FOR SELECT TO authenticated USING (auth.uid() = user_id);
+
+CREATE POLICY "weight_insert_own" ON public.weight_history
+  FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "weight_delete_own" ON public.weight_history
+  FOR DELETE TO authenticated USING (auth.uid() = user_id);
