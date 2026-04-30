@@ -1384,56 +1384,164 @@ class _WeightChartState extends State<_WeightChart> {
           else if (prov.history.isEmpty)
             _EmptyWeight(onAdd: () => _showAddDialog(prov))
           else ...[
-            // Peso actual + tendencia
-            Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              RichText(text: TextSpan(children: [
-                TextSpan(
-                    text: prov.latest!.weight.toStringAsFixed(1),
-                    style: AppTextStyles.headingLarge
-                        .copyWith(color: AppColors.accentOrange, fontSize: 32)),
-                TextSpan(text: ' kg', style: AppTextStyles.caption),
-              ])),
-              const SizedBox(width: 10),
-              if (prov.trend != null) ...[
-                Icon(
-                  prov.trend! < 0
-                      ? Icons.trending_down_rounded
-                      : Icons.trending_up_rounded,
-                  color: prov.trend! < 0
-                      ? AppColors.primary
-                      : AppColors.accentOrange,
-                  size: 18,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '${prov.trend! >= 0 ? "+" : ""}${prov.trend!.toStringAsFixed(1)} kg',
-                  style: AppTextStyles.caption.copyWith(
-                    color: prov.trend! < 0
-                        ? AppColors.primary
-                        : AppColors.accentOrange,
-                    fontWeight: FontWeight.w600,
+
+            // ── Resumen de progreso total ──────────────────────────
+            Builder(builder: (_) {
+              final first    = prov.history.last;   // más antiguo
+              final current  = prov.history.first;  // más reciente
+              final delta    = current.weight - first.weight;
+              final days     = current.recordedAt
+                  .difference(first.recordedAt).inDays;
+              final losing   = delta < 0;
+              final noChange = delta.abs() < 0.05;
+              final deltaColor = noChange
+                  ? AppColors.textSecondary
+                  : losing ? AppColors.primary : AppColors.accentOrange;
+
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: noChange
+                        ? [AppColors.surfaceVariant, AppColors.surfaceVariant]
+                        : losing
+                            ? [
+                                AppColors.primary.withOpacity(0.08),
+                                AppColors.primary.withOpacity(0.03),
+                              ]
+                            : [
+                                AppColors.accentOrange.withOpacity(0.08),
+                                AppColors.accentOrange.withOpacity(0.03),
+                              ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: noChange
+                        ? AppColors.border
+                        : deltaColor.withOpacity(0.25),
+                    width: 0.5,
                   ),
                 ),
-              ],
-              const Spacer(),
-              Text('Último: ${_formatDate(prov.latest!.recordedAt)}',
-                  style: AppTextStyles.caption
-                      .copyWith(color: AppColors.textMuted, fontSize: 10)),
-            ]),
+                child: Row(children: [
+                  // Peso inicial
+                  Column(crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text('Inicio',
+                        style: AppTextStyles.caption
+                            .copyWith(color: AppColors.textMuted,
+                                fontSize: 10)),
+                    const SizedBox(height: 2),
+                    RichText(text: TextSpan(children: [
+                      TextSpan(
+                          text: first.weight.toStringAsFixed(1),
+                          style: AppTextStyles.headingSmall
+                              .copyWith(color: AppColors.textSecondary,
+                                  fontSize: 20)),
+                      TextSpan(text: ' kg',
+                          style: AppTextStyles.caption
+                              .copyWith(color: AppColors.textMuted)),
+                    ])),
+                    const SizedBox(height: 2),
+                    Text(_formatDate(first.recordedAt),
+                        style: AppTextStyles.caption
+                            .copyWith(color: AppColors.textMuted,
+                                fontSize: 10)),
+                  ]),
+
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(children: [
+                    // Flecha central con delta total
+                    Row(mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                      const Icon(Icons.arrow_forward_rounded,
+                          color: AppColors.textMuted, size: 14),
+                    ]),
+                    const SizedBox(height: 4),
+                    // Badge delta total
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: deltaColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: deltaColor.withOpacity(0.4),
+                            width: 0.5),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min,
+                          children: [
+                        Icon(
+                          noChange
+                              ? Icons.remove_rounded
+                              : losing
+                                  ? Icons.trending_down_rounded
+                                  : Icons.trending_up_rounded,
+                          color: deltaColor, size: 13,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          noChange
+                              ? 'Sin cambio'
+                              : '${losing ? "" : "+"}${delta.toStringAsFixed(1)} kg',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: deltaColor),
+                        ),
+                      ]),
+                    ),
+                    if (days > 0) ...[
+                      const SizedBox(height: 4),
+                      Text('en $days días',
+                          style: AppTextStyles.caption
+                              .copyWith(color: AppColors.textMuted,
+                                  fontSize: 10)),
+                    ],
+                  ])),
+
+                  const SizedBox(width: 12),
+                  // Peso actual
+                  Column(crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                    Text('Ahora',
+                        style: AppTextStyles.caption
+                            .copyWith(color: AppColors.textMuted,
+                                fontSize: 10)),
+                    const SizedBox(height: 2),
+                    RichText(text: TextSpan(children: [
+                      TextSpan(
+                          text: current.weight.toStringAsFixed(1),
+                          style: AppTextStyles.headingSmall.copyWith(
+                              color: deltaColor, fontSize: 20)),
+                      TextSpan(text: ' kg',
+                          style: AppTextStyles.caption
+                              .copyWith(color: AppColors.textMuted)),
+                    ])),
+                    const SizedBox(height: 2),
+                    Text(_formatDate(current.recordedAt),
+                        style: AppTextStyles.caption
+                            .copyWith(color: AppColors.textMuted,
+                                fontSize: 10)),
+                  ]),
+                ]),
+              );
+            }),
 
             const SizedBox(height: 16),
 
-            // Gráfica de línea
+            // ── Gráfica de línea ───────────────────────────────────
             SizedBox(
-              height: 120,
+              height: 150,
               child: CustomPaint(
-                size: const Size(double.infinity, 120),
+                size: const Size(double.infinity, 150),
                 painter: _WeightLinePainter(
                     entries: prov.history.reversed.toList()),
               ),
             ),
 
-            // ── Branding para compartir ──
+            // ── Branding para compartir ────────────────────────────
             const SizedBox(height: 14),
             const Divider(color: AppColors.divider, thickness: 0.5),
             const SizedBox(height: 10),
