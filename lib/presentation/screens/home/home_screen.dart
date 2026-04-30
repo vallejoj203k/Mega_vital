@@ -1,9 +1,14 @@
 // lib/presentation/screens/home/home_screen.dart
 // Todo calculado con los datos reales del usuario logueado.
+import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/mock/mock_data.dart';
@@ -1167,113 +1172,53 @@ class _ProgressItem {
 }
 
 // ── Gráfica de progreso de peso ────────────────────────────────────
-class _WeightChart extends StatelessWidget {
+class _WeightChart extends StatefulWidget {
   @override
-  Widget build(BuildContext context) {
-    final prov = context.watch<WeightProvider>();
+  State<_WeightChart> createState() => _WeightChartState();
+}
 
-    return DarkCard(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          const Icon(Icons.monitor_weight_outlined,
-              size: 16, color: AppColors.accentOrange),
-          const SizedBox(width: 8),
-          Text('Progreso de peso', style: AppTextStyles.headingSmall),
-          const Spacer(),
-          GestureDetector(
-            onTap: () => _showAddDialog(context, prov),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: AppColors.accentOrange.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                    color: AppColors.accentOrange.withOpacity(0.35),
-                    width: 0.5),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.add_rounded,
-                    color: AppColors.accentOrange, size: 14),
-                const SizedBox(width: 4),
-                Text('Registrar',
-                    style: AppTextStyles.caption.copyWith(
-                        color: AppColors.accentOrange,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 11)),
-              ]),
-            ),
-          ),
-        ]),
-        const SizedBox(height: 12),
+class _WeightChartState extends State<_WeightChart> {
+  final _repaintKey = GlobalKey();
+  bool _sharing = false;
 
-        if (prov.isLoading)
-          const SizedBox(height: 120,
-              child: Center(child: CircularProgressIndicator(
-                  color: AppColors.accentOrange, strokeWidth: 2)))
-        else if (prov.history.isEmpty)
-          _EmptyWeight(onAdd: () => _showAddDialog(context, prov))
-        else ...[
-          // Peso actual + tendencia
-          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            RichText(text: TextSpan(children: [
-              TextSpan(
-                  text: prov.latest!.weight.toStringAsFixed(1),
-                  style: AppTextStyles.headingLarge
-                      .copyWith(color: AppColors.accentOrange, fontSize: 32)),
-              TextSpan(text: ' kg', style: AppTextStyles.caption),
-            ])),
-            const SizedBox(width: 10),
-            if (prov.trend != null) ...[
-              Icon(
-                prov.trend! < 0
-                    ? Icons.trending_down_rounded
-                    : Icons.trending_up_rounded,
-                color: prov.trend! < 0
-                    ? AppColors.primary
-                    : AppColors.accentOrange,
-                size: 18,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '${prov.trend! >= 0 ? "+" : ""}${prov.trend!.toStringAsFixed(1)} kg',
-                style: AppTextStyles.caption.copyWith(
-                  color: prov.trend! < 0
-                      ? AppColors.primary
-                      : AppColors.accentOrange,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-            const Spacer(),
-            Text('Último: ${_formatDate(prov.latest!.recordedAt)}',
-                style: AppTextStyles.caption
-                    .copyWith(color: AppColors.textMuted, fontSize: 10)),
-          ]),
-          const SizedBox(height: 16),
+  static const _meses = ['ene','feb','mar','abr','may','jun',
+                          'jul','ago','sep','oct','nov','dic'];
 
-          // Línea de gráfica
-          SizedBox(
-            height: 120,
-            child: CustomPaint(
-              size: const Size(double.infinity, 120),
-              painter: _WeightLinePainter(
-                // El painter espera de menor a mayor (cronológico)
-                entries: prov.history.reversed.toList(),
-              ),
-            ),
-          ),
-        ],
-      ]),
-    );
+  String _formatDate(DateTime d) => '${d.day} ${_meses[d.month - 1]}';
+
+  Future<void> _captureAndShare() async {
+    if (_sharing) return;
+    setState(() => _sharing = true);
+    try {
+      final boundary = _repaintKey.currentContext!.findRenderObject()
+          as RenderRepaintBoundary;
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final bytes = (await image.toByteData(
+              format: ui.ImageByteFormat.png))!
+          .buffer
+          .asUint8List();
+
+      final dir  = await getTemporaryDirectory();
+      final file = File('${dir.path}/mega_vital_peso.png');
+      await file.writeAsBytes(bytes);
+
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: '💪 ¡Mi progreso de peso con MEGA VITAL!\n#MegaVital #Fitness',
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('No se pudo compartir la imagen.'),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
   }
 
-  String _formatDate(DateTime d) {
-    const meses = ['ene','feb','mar','abr','may','jun',
-                   'jul','ago','sep','oct','nov','dic'];
-    return '${d.day} ${meses[d.month - 1]}';
-  }
-
-  void _showAddDialog(BuildContext context, WeightProvider prov) {
+  void _showAddDialog(WeightProvider prov) {
     double draft = prov.latest?.weight ?? 70.0;
     final ctrl = TextEditingController(text: draft.toStringAsFixed(1));
 
@@ -1290,8 +1235,7 @@ class _WeightChart extends StatelessWidget {
             const SizedBox(width: 10),
             Text('Registrar peso', style: AppTextStyles.headingSmall),
           ]),
-          content: Row(mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+          content: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             _DialogAdjBtn(
               icon: Icons.remove_rounded,
               onTap: () {
@@ -1359,6 +1303,156 @@ class _WeightChart extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prov = context.watch<WeightProvider>();
+
+    return RepaintBoundary(
+      key: _repaintKey,
+      child: DarkCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+          // ── Cabecera ──
+          Row(children: [
+            const Icon(Icons.monitor_weight_outlined,
+                size: 16, color: AppColors.accentOrange),
+            const SizedBox(width: 8),
+            Text('Progreso de peso', style: AppTextStyles.headingSmall),
+            const Spacer(),
+            // Compartir (solo si hay datos)
+            if (prov.history.isNotEmpty) ...[
+              GestureDetector(
+                onTap: _sharing ? null : _captureAndShare,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentBlue.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: AppColors.accentBlue.withOpacity(0.35),
+                        width: 0.5),
+                  ),
+                  child: _sharing
+                      ? const SizedBox(width: 14, height: 14,
+                          child: CircularProgressIndicator(
+                              color: AppColors.accentBlue, strokeWidth: 1.5))
+                      : const Icon(Icons.share_rounded,
+                          color: AppColors.accentBlue, size: 14),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            // Registrar
+            GestureDetector(
+              onTap: () => _showAddDialog(prov),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.accentOrange.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      color: AppColors.accentOrange.withOpacity(0.35),
+                      width: 0.5),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.add_rounded,
+                      color: AppColors.accentOrange, size: 14),
+                  const SizedBox(width: 4),
+                  Text('Registrar',
+                      style: AppTextStyles.caption.copyWith(
+                          color: AppColors.accentOrange,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11)),
+                ]),
+              ),
+            ),
+          ]),
+
+          const SizedBox(height: 12),
+
+          // ── Contenido ──
+          if (prov.isLoading)
+            const SizedBox(height: 120,
+                child: Center(child: CircularProgressIndicator(
+                    color: AppColors.accentOrange, strokeWidth: 2)))
+          else if (prov.history.isEmpty)
+            _EmptyWeight(onAdd: () => _showAddDialog(prov))
+          else ...[
+            // Peso actual + tendencia
+            Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              RichText(text: TextSpan(children: [
+                TextSpan(
+                    text: prov.latest!.weight.toStringAsFixed(1),
+                    style: AppTextStyles.headingLarge
+                        .copyWith(color: AppColors.accentOrange, fontSize: 32)),
+                TextSpan(text: ' kg', style: AppTextStyles.caption),
+              ])),
+              const SizedBox(width: 10),
+              if (prov.trend != null) ...[
+                Icon(
+                  prov.trend! < 0
+                      ? Icons.trending_down_rounded
+                      : Icons.trending_up_rounded,
+                  color: prov.trend! < 0
+                      ? AppColors.primary
+                      : AppColors.accentOrange,
+                  size: 18,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${prov.trend! >= 0 ? "+" : ""}${prov.trend!.toStringAsFixed(1)} kg',
+                  style: AppTextStyles.caption.copyWith(
+                    color: prov.trend! < 0
+                        ? AppColors.primary
+                        : AppColors.accentOrange,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+              const Spacer(),
+              Text('Último: ${_formatDate(prov.latest!.recordedAt)}',
+                  style: AppTextStyles.caption
+                      .copyWith(color: AppColors.textMuted, fontSize: 10)),
+            ]),
+
+            const SizedBox(height: 16),
+
+            // Gráfica de línea
+            SizedBox(
+              height: 120,
+              child: CustomPaint(
+                size: const Size(double.infinity, 120),
+                painter: _WeightLinePainter(
+                    entries: prov.history.reversed.toList()),
+              ),
+            ),
+
+            // ── Branding para compartir ──
+            const SizedBox(height: 14),
+            const Divider(color: AppColors.divider, thickness: 0.5),
+            const SizedBox(height: 10),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Image.asset('assets/images/app_icon.png',
+                    width: 22, height: 22),
+              ),
+              const SizedBox(width: 8),
+              Text('MEGA VITAL',
+                  style: AppTextStyles.caption.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.5,
+                      fontSize: 12)),
+            ]),
+          ],
+        ]),
       ),
     );
   }
