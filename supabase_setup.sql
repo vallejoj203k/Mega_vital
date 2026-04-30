@@ -954,7 +954,6 @@ CREATE TABLE IF NOT EXISTS public.premium_subscriptions (
   user_id    TEXT        NOT NULL REFERENCES public.user_profiles(uid) ON DELETE CASCADE,
   type       TEXT        NOT NULL CHECK (type IN ('mensual', 'trimestral', 'anual')),
   expires_at TIMESTAMPTZ NOT NULL,
-  is_active  BOOLEAN     NOT NULL GENERATED ALWAYS AS (expires_at > NOW()) STORED,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   code_id    UUID        REFERENCES public.premium_codes(id) ON DELETE SET NULL
 );
@@ -982,9 +981,11 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_row public.premium_subscriptions%ROWTYPE;
+  v_expires_at TIMESTAMPTZ;
+  v_type       TEXT;
 BEGIN
-  SELECT * INTO v_row
+  SELECT expires_at, type
+  INTO v_expires_at, v_type
   FROM public.premium_subscriptions
   WHERE user_id = auth.uid()::text
   ORDER BY created_at DESC
@@ -996,9 +997,9 @@ BEGIN
 
   RETURN json_build_object(
     'found',      true,
-    'is_active',  v_row.expires_at > NOW(),
-    'expires_at', TO_CHAR(v_row.expires_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-    'type',       v_row.type
+    'is_active',  v_expires_at > NOW(),
+    'expires_at', TO_CHAR(v_expires_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+    'type',       v_type
   );
 END;
 $$;
@@ -1014,11 +1015,15 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_code    public.premium_codes%ROWTYPE;
-  v_expires TIMESTAMPTZ;
+  v_code_id      UUID;
+  v_code_type    TEXT;
+  v_duration     INTEGER;
+  v_code_is_used BOOLEAN;
+  v_expires      TIMESTAMPTZ;
 BEGIN
   -- Buscar el código (case-insensitive)
-  SELECT * INTO v_code
+  SELECT id, type, duration_days, is_used
+  INTO v_code_id, v_code_type, v_duration, v_code_is_used
   FROM public.premium_codes
   WHERE UPPER(code) = UPPER(code_text)
   FOR UPDATE;
@@ -1027,28 +1032,28 @@ BEGIN
     RETURN json_build_object('success', false, 'message', 'Código no válido.');
   END IF;
 
-  IF v_code.is_used THEN
+  IF v_code_is_used THEN
     RETURN json_build_object('success', false, 'message', 'Este código ya fue utilizado.');
   END IF;
 
   -- Calcular fecha de expiración desde hoy
-  v_expires := NOW() + (v_code.duration_days || ' days')::INTERVAL;
+  v_expires := NOW() + (v_duration || ' days')::INTERVAL;
 
   -- Crear la suscripción
   INSERT INTO public.premium_subscriptions (user_id, type, expires_at, code_id)
-  VALUES (auth.uid()::text, v_code.type, v_expires, v_code.id);
+  VALUES (auth.uid()::text, v_code_type, v_expires, v_code_id);
 
   -- Marcar el código como usado
   UPDATE public.premium_codes
-  SET is_used  = TRUE,
-      used_at  = NOW(),
-      used_by  = auth.uid()::text
-  WHERE id = v_code.id;
+  SET is_used = TRUE,
+      used_at = NOW(),
+      used_by = auth.uid()::text
+  WHERE id = v_code_id;
 
   RETURN json_build_object(
     'success',    true,
     'expires_at', TO_CHAR(v_expires AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-    'type',       v_code.type
+    'type',       v_code_type
   );
 END;
 $$;
