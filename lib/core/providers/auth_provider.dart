@@ -45,22 +45,21 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> _init() async {
-    try {
-      final current = _service.currentUser;
-      if (current != null) {
-        _user           = current;
-        _status         = AuthStatus.authenticated;
-        _profileLoading = true;
-        notifyListeners();
-        _profile        = await _service.ensureUserProfile(current);
-        _profileLoading = false;
-        notifyListeners();
-      } else {
-        _status = AuthStatus.unauthenticated;
-        notifyListeners();
+    final current = _service.currentUser;
+    if (current != null) {
+      _user           = current;
+      _status         = AuthStatus.authenticated;
+      _profileLoading = true;
+      notifyListeners();
+      try {
+        _profile = await _service.ensureUserProfile(current);
+      } catch (_) {
+        // El perfil no cargó (red), pero el usuario SÍ está autenticado.
+        // No se cierra sesión — se mostrará el home sin datos de perfil.
       }
-    } catch (_) {
       _profileLoading = false;
+      notifyListeners();
+    } else {
       _status = AuthStatus.unauthenticated;
       notifyListeners();
     }
