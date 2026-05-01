@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ─── Models ──────────────────────────────────────────────────────────────────
@@ -77,6 +78,7 @@ class ChallengeRecord {
   final double value;
   final int? reps;
   final DateTime createdAt;
+  final String? videoUrl;
   int rank;
 
   ChallengeRecord({
@@ -88,6 +90,7 @@ class ChallengeRecord {
     required this.value,
     this.reps,
     required this.createdAt,
+    this.videoUrl,
     this.rank = 0,
   });
 
@@ -109,6 +112,7 @@ class ChallengeRecord {
         value:       (m['value'] as num).toDouble(),
         reps:        m['reps'] as int?,
         createdAt:   DateTime.parse(m['created_at'] as String),
+        videoUrl:    m['video_url'] as String?,
       );
 }
 
@@ -117,6 +121,7 @@ class ChallengeRecord {
 class ChallengesService {
   final _db = Supabase.instance.client;
   String? get _uid => _db.auth.currentUser?.id;
+  static const int _maxVideoBytes = 100 * 1024 * 1024; // 100 MB
 
   Future<List<Challenge>> fetchChallenges() async {
     final uid = _uid;
@@ -197,20 +202,49 @@ class ChallengesService {
     required String userName,
     required double value,
     int? reps,
+    File? videoFile,
   }) async {
     final uid = _uid;
     if (uid == null) return 'No hay sesión activa.';
     try {
+      String? videoUrl;
+      if (videoFile != null) {
+        final size = await videoFile.length();
+        if (size > _maxVideoBytes) return 'El video supera el límite de 100 MB.';
+        videoUrl = await _uploadChallengeVideo(
+            uid: uid, challengeId: challengeId, file: videoFile);
+      }
+
       await _db.from('challenge_records').upsert({
         'challenge_id': challengeId,
         'user_id':      uid,
         'user_name':    userName.trim(),
         'value':        value,
         if (reps != null) 'reps': reps,
+        if (videoUrl != null) 'video_url': videoUrl,
       }, onConflict: 'challenge_id,user_id');
       return null;
     } catch (e) {
       return e.toString();
+    }
+  }
+
+  Future<String?> _uploadChallengeVideo({
+    required String uid,
+    required String challengeId,
+    required File file,
+  }) async {
+    try {
+      const bucket = 'post_videos';
+      // Ruta fija por usuario+reto: al hacer upsert del record, sobreescribe el video anterior.
+      final path = '$uid/challenges/$challengeId';
+      await _db.storage.from(bucket).upload(
+        path, file,
+        fileOptions: const FileOptions(cacheControl: '86400', upsert: true),
+      );
+      return _db.storage.from(bucket).getPublicUrl(path);
+    } catch (_) {
+      return null;
     }
   }
 

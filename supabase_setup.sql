@@ -747,6 +747,47 @@ CREATE POLICY "Users can delete own records"
   ON public.challenge_records FOR DELETE
   USING (auth.uid()::text = user_id);
 
+-- Columna de video para registros de retos (idempotente)
+ALTER TABLE public.challenge_records ADD COLUMN IF NOT EXISTS video_url TEXT;
+
+
+-- ─── 20b. Storage: bucket 'post_videos' (posts + registros de retos) ─────────
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('post_videos', 'post_videos', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- Ruta: $uid/posts/$postId   o   $uid/challenges/$challengeId
+-- La carpeta raíz siempre es el uid del usuario → RLS limita a carpeta propia.
+
+DROP POLICY IF EXISTS "post_videos_select" ON storage.objects;
+DROP POLICY IF EXISTS "post_videos_insert" ON storage.objects;
+DROP POLICY IF EXISTS "post_videos_update" ON storage.objects;
+DROP POLICY IF EXISTS "post_videos_delete" ON storage.objects;
+
+CREATE POLICY "post_videos_select"
+  ON storage.objects FOR SELECT TO public
+  USING (bucket_id = 'post_videos');
+
+CREATE POLICY "post_videos_insert"
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'post_videos'
+    AND (storage.foldername(name))[1] = auth.uid()::text);
+
+CREATE POLICY "post_videos_update"
+  ON storage.objects FOR UPDATE TO authenticated
+  USING (bucket_id = 'post_videos'
+    AND (storage.foldername(name))[1] = auth.uid()::text);
+
+CREATE POLICY "post_videos_delete"
+  ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'post_videos'
+    AND (storage.foldername(name))[1] = auth.uid()::text);
+
+
+-- Columna de video para posts de comunidad (idempotente)
+ALTER TABLE public.community_posts ADD COLUMN IF NOT EXISTS video_url TEXT;
+
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- SECCIÓN 4: Nutrición en la nube y rutinas públicas

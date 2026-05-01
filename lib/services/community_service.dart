@@ -12,6 +12,7 @@ class CommunityPost {
   final String content;
   final String? achievement;
   final String? imageUrl;
+  final String? videoUrl;
   final String? avatarUrl;
   final DateTime createdAt;
   final int likesCount;
@@ -26,6 +27,7 @@ class CommunityPost {
     required this.content,
     this.achievement,
     this.imageUrl,
+    this.videoUrl,
     this.avatarUrl,
     required this.createdAt,
     required this.likesCount,
@@ -47,6 +49,7 @@ class CommunityPost {
       content: m['content'] as String,
       achievement: m['achievement'] as String?,
       imageUrl: m['image_url'] as String?,
+      videoUrl: m['video_url'] as String?,
       avatarUrl: avatarUrl,
       createdAt: DateTime.parse(m['created_at'] as String),
       likesCount: m['likes_count'] as int? ?? 0,
@@ -63,6 +66,7 @@ class CommunityPost {
     content: content,
     achievement: achievement,
     imageUrl: imageUrl,
+    videoUrl: videoUrl,
     avatarUrl: avatarUrl,
     createdAt: createdAt,
     likesCount: likesCount ?? this.likesCount,
@@ -189,23 +193,34 @@ class CommunityService {
     }
   }
 
+  static const int _maxVideoBytes = 100 * 1024 * 1024; // 100 MB
+
   /// Retorna null en éxito, o el mensaje de error en fallo.
   Future<String?> createPost({
     required String userName,
     required String content,
     String? achievement,
     File? imageFile,
+    File? videoFile,
   }) async {
     final uid = _uid;
     if (uid == null) return 'No hay sesión activa.';
     try {
-      // Generate post ID on the client so the image can be uploaded before INSERT.
+      // Generate post ID on the client so media can be uploaded before INSERT.
       final postId = _generateId();
 
       String? imageUrl;
       if (imageFile != null) {
         imageUrl = await _uploadPostImage(uid: uid, postId: postId, file: imageFile);
         if (imageUrl == null) return 'warn:image';
+      }
+
+      String? videoUrl;
+      if (videoFile != null) {
+        final size = await videoFile.length();
+        if (size > _maxVideoBytes) return 'El video supera el límite de 100 MB.';
+        videoUrl = await _uploadPostVideo(uid: uid, postId: postId, file: videoFile);
+        if (videoUrl == null) return 'warn:video';
       }
 
       await _db.from('community_posts').insert({
@@ -216,6 +231,7 @@ class CommunityService {
         if (achievement != null && achievement.trim().isNotEmpty)
           'achievement': achievement.trim(),
         if (imageUrl != null) 'image_url': imageUrl,
+        if (videoUrl != null) 'video_url': videoUrl,
       });
 
       return null;
@@ -232,6 +248,24 @@ class CommunityService {
     try {
       const bucket = 'post_images';
       final path = '$uid/$postId';
+      await _db.storage.from(bucket).upload(
+        path, file,
+        fileOptions: const FileOptions(cacheControl: '86400', upsert: true),
+      );
+      return _db.storage.from(bucket).getPublicUrl(path);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<String?> _uploadPostVideo({
+    required String uid,
+    required String postId,
+    required File file,
+  }) async {
+    try {
+      const bucket = 'post_videos';
+      final path = '$uid/posts/$postId';
       await _db.storage.from(bucket).upload(
         path, file,
         fileOptions: const FileOptions(cacheControl: '86400', upsert: true),

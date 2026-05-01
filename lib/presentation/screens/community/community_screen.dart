@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -450,6 +451,12 @@ class _PostCard extends StatelessWidget {
             ),
           ],
 
+          // Post video
+          if (post.videoUrl != null && post.videoUrl!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _VideoCard(videoUrl: post.videoUrl!),
+          ],
+
           const SizedBox(height: 14),
           Divider(color: AppColors.divider, height: 1),
           const SizedBox(height: 10),
@@ -603,6 +610,7 @@ class _PublishSheetState extends State<_PublishSheet> {
   bool _loading = false;
   bool _showAchievement = false;
   File? _pickedImage;
+  File? _pickedVideo;
 
   @override
   void dispose() {
@@ -619,7 +627,24 @@ class _PublishSheetState extends State<_PublishSheet> {
       imageQuality: 85,
     );
     if (xfile != null && mounted) {
-      setState(() => _pickedImage = File(xfile.path));
+      setState(() {
+        _pickedImage = File(xfile.path);
+        _pickedVideo = null;
+      });
+    }
+  }
+
+  Future<void> _pickVideo() async {
+    final picker = ImagePicker();
+    final xfile = await picker.pickVideo(
+      source: ImageSource.gallery,
+      maxDuration: const Duration(seconds: 90),
+    );
+    if (xfile != null && mounted) {
+      setState(() {
+        _pickedVideo = File(xfile.path);
+        _pickedImage = null;
+      });
     }
   }
 
@@ -630,24 +655,30 @@ class _PublishSheetState extends State<_PublishSheet> {
     final achievement = _showAchievement && _achievementController.text.trim().isNotEmpty
         ? _achievementController.text.trim()
         : null;
-    final error = await context
-        .read<CommunityProvider>()
-        .createPost(widget.userName, text, achievement: achievement, imageFile: _pickedImage);
+    final error = await context.read<CommunityProvider>().createPost(
+      widget.userName,
+      text,
+      achievement: achievement,
+      imageFile: _pickedImage,
+      videoFile: _pickedVideo,
+    );
     if (mounted) {
       if (error == null) {
         Navigator.pop(context);
-      } else if (error == 'warn:image') {
-        // Post creado pero imagen no pudo subirse (configura el bucket en Supabase)
+      } else if (error == 'warn:image' || error == 'warn:video') {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Publicación creada, pero la foto no se pudo subir. '
-              'Ejecuta el SQL de configuración en Supabase para habilitar imágenes.',
-              style: TextStyle(color: Colors.white),
+              error == 'warn:video'
+                  ? 'Publicación creada, pero el video no se pudo subir. '
+                    'Ejecuta el SQL de configuración en Supabase para habilitar videos.'
+                  : 'Publicación creada, pero la foto no se pudo subir. '
+                    'Ejecuta el SQL de configuración en Supabase para habilitar imágenes.',
+              style: const TextStyle(color: Colors.white),
             ),
             backgroundColor: AppColors.accentOrange,
-            duration: Duration(seconds: 6),
+            duration: const Duration(seconds: 6),
           ),
         );
       } else {
@@ -668,6 +699,7 @@ class _PublishSheetState extends State<_PublishSheet> {
 
   String _friendlyError(String raw) {
     final lower = raw.toLowerCase();
+    if (lower.contains('supera el límite')) return raw;
     if (lower.contains('relation') && lower.contains('does not exist')) {
       return 'Las tablas de comunidad no existen aún. Ejecuta el SQL en Supabase primero.';
     }
@@ -761,7 +793,7 @@ class _PublishSheetState extends State<_PublishSheet> {
                   child: GestureDetector(
                     onTap: () => setState(() => _pickedImage = null),
                     child: Container(
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         color: Colors.black54,
                         shape: BoxShape.circle,
                       ),
@@ -771,6 +803,15 @@ class _PublishSheetState extends State<_PublishSheet> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 10),
+          ],
+
+          // Video preview
+          if (_pickedVideo != null) ...[
+            _VideoPreviewTile(
+              file: _pickedVideo!,
+              onRemove: () => setState(() => _pickedVideo = null),
             ),
             const SizedBox(height: 10),
           ],
@@ -795,7 +836,26 @@ class _PublishSheetState extends State<_PublishSheet> {
                   ],
                 ),
               ),
-              const SizedBox(width: 20),
+              const SizedBox(width: 16),
+              GestureDetector(
+                onTap: _pickVideo,
+                child: Row(
+                  children: [
+                    Icon(
+                      _pickedVideo != null
+                          ? Icons.videocam_rounded
+                          : Icons.videocam_outlined,
+                      color: AppColors.primary, size: 18,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _pickedVideo != null ? 'Cambiar video' : 'Añadir video',
+                      style: AppTextStyles.caption.copyWith(color: AppColors.primary),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
               GestureDetector(
                 onTap: () => setState(() => _showAchievement = !_showAchievement),
                 child: Row(
@@ -808,7 +868,7 @@ class _PublishSheetState extends State<_PublishSheet> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'Añadir logro',
+                      'Logro',
                       style: AppTextStyles.caption.copyWith(color: AppColors.primary),
                     ),
                   ],
@@ -816,6 +876,13 @@ class _PublishSheetState extends State<_PublishSheet> {
               ),
             ],
           ),
+          if (_pickedVideo != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Máx. 90 seg · 100 MB  —  foto y video no pueden combinarse',
+              style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+            ),
+          ],
           if (_showAchievement) ...[
             const SizedBox(height: 10),
             TextField(
@@ -2160,6 +2227,20 @@ class _RecordRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          if (record.videoUrl != null && record.videoUrl!.isNotEmpty)
+            GestureDetector(
+              onTap: () async {
+                final uri = Uri.parse(record.videoUrl!);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Icon(Icons.play_circle_outline_rounded,
+                    size: 20, color: AppColors.primary),
+              ),
+            ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -2211,6 +2292,7 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
   final _weightCtrl = TextEditingController();
   final _repsCtrl   = TextEditingController();
   bool _loading = false;
+  File? _pickedVideo;
 
   bool get _isWeightReps => widget.challenge.unit == 'kg×reps';
 
@@ -2219,6 +2301,17 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
     _weightCtrl.dispose();
     _repsCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickVideo() async {
+    final picker = ImagePicker();
+    final xfile = await picker.pickVideo(
+      source: ImageSource.gallery,
+      maxDuration: const Duration(seconds: 60),
+    );
+    if (xfile != null && mounted) {
+      setState(() => _pickedVideo = File(xfile.path));
+    }
   }
 
   Future<void> _submit() async {
@@ -2248,6 +2341,7 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
       userName:    widget.currentUserName,
       value:       value,
       reps:        reps,
+      videoFile:   _pickedVideo,
     );
     if (mounted) {
       if (err == null) {
@@ -2322,6 +2416,36 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
                 const SizedBox(width: 12),
                 _unitLabel(ch.unit),
               ],
+          ),
+          const SizedBox(height: 16),
+
+          // Video section
+          if (_pickedVideo != null) ...[
+            _VideoPreviewTile(
+              file: _pickedVideo!,
+              onRemove: () => setState(() => _pickedVideo = null),
+            ),
+            const SizedBox(height: 8),
+          ],
+          GestureDetector(
+            onTap: _pickVideo,
+            child: Row(
+              children: [
+                Icon(
+                  _pickedVideo != null
+                      ? Icons.videocam_rounded
+                      : Icons.videocam_outlined,
+                  color: AppColors.primary, size: 18,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _pickedVideo != null
+                      ? 'Cambiar video (máx. 60 seg)'
+                      : 'Adjuntar video (opcional · máx. 60 seg)',
+                  style: AppTextStyles.caption.copyWith(color: AppColors.primary),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -2680,6 +2804,111 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
           borderRadius: BorderRadius.circular(12),
           borderSide:
               const BorderSide(color: AppColors.primary, width: 1),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Video preview tile (picker) ──────────────────────────────────────────────
+
+class _VideoPreviewTile extends StatelessWidget {
+  final File file;
+  final VoidCallback onRemove;
+  const _VideoPreviewTile({required this.file, required this.onRemove});
+
+  String _fileName() {
+    final name = file.path.split('/').last;
+    return name.length > 30 ? '…${name.substring(name.length - 27)}' : name;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withOpacity(0.4), width: 1),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.play_circle_outline_rounded,
+                color: AppColors.primary, size: 28),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_fileName(),
+                    style: AppTextStyles.caption
+                        .copyWith(color: AppColors.textPrimary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 2),
+                Text('Video listo para subir',
+                    style: AppTextStyles.caption
+                        .copyWith(color: AppColors.textMuted)),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: onRemove,
+            child: const Icon(Icons.close_rounded,
+                color: AppColors.textMuted, size: 18),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Video card (feed / leaderboard) ─────────────────────────────────────────
+
+class _VideoCard extends StatelessWidget {
+  final String videoUrl;
+  const _VideoCard({required this.videoUrl});
+
+  Future<void> _open() async {
+    final uri = Uri.parse(videoUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _open,
+      child: Container(
+        height: 160,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceVariant,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border, width: 0.5),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            const Icon(Icons.play_circle_fill_rounded,
+                size: 56, color: AppColors.primary),
+            Positioned(
+              bottom: 8, left: 0, right: 0,
+              child: Text(
+                'Toca para reproducir',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.caption
+                    .copyWith(color: AppColors.textSecondary),
+              ),
+            ),
+          ],
         ),
       ),
     );
