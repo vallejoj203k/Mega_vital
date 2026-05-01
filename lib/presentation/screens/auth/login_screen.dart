@@ -521,10 +521,10 @@ class _LoginSheetState extends State<_LoginSheet> {
               children: [
                 AuthField(
                   controller: _usernameCtrl,
-                  label: 'Nombre de usuario',
-                  hint: 'Tu nombre de usuario',
+                  label: 'Usuario o correo',
+                  hint: 'Tu usuario o correo electrónico',
                   icon: Icons.person_outline_rounded,
-                  keyboardType: TextInputType.text,
+                  keyboardType: TextInputType.emailAddress,
                   onChanged: (_) {
                     if (!_usernameTouched)
                       setState(() => _usernameTouched = true);
@@ -533,7 +533,7 @@ class _LoginSheetState extends State<_LoginSheet> {
                   validator: (v) {
                     if (!_usernameTouched) return null;
                     if (v == null || v.trim().isEmpty)
-                      return 'Ingresa tu nombre de usuario';
+                      return 'Ingresa tu usuario o correo';
                     return null;
                   },
                 ),
