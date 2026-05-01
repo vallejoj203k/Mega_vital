@@ -150,10 +150,12 @@ class UserProfile {
 class AuthService {
   final _supabase = Supabase.instance.client;
 
+  // Si el usuario ingresó un email real (ej. @gmail.com), lo usa directamente.
+  // Los usuarios nuevos con username reciben un email ficticio @megavital.app.
   String _usernameToEmail(String username) {
-    // Solo letras, números y guiones bajos son seguros en el local part del email.
-    // Los puntos pueden causar rechazo en Supabase si van al inicio, final o consecutivos.
-    final clean = username.toLowerCase().trim().replaceAll('.', '_');
+    final trimmed = username.toLowerCase().trim();
+    if (trimmed.contains('@')) return trimmed;
+    final clean = trimmed.replaceAll('.', '_');
     return '$clean@megavital.app';
   }
 
