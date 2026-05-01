@@ -32,6 +32,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   @override
   void initState() {
     super.initState();
+    // Continuar desde el tiempo ya transcurrido (por si el usuario volvió a esta pantalla)
+    _elapsedSeconds =
+        context.read<WorkoutLogProvider>().currentDurationSeconds;
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _elapsedSeconds++);
     });
@@ -177,6 +180,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             formatTime    : _formatTime,
             onFinish      : () => _confirmFinish(context),
             onCancel      : () => _confirmCancel(context),
+            onMinimize    : () => Navigator.of(context).pop(),
           ),
 
           // ── Lista de ejercicios ───────────────────────────────
@@ -249,6 +253,7 @@ class _WorkoutHeader extends StatelessWidget {
   final String Function(int) formatTime;
   final VoidCallback     onFinish;
   final VoidCallback     onCancel;
+  final VoidCallback     onMinimize;
 
   const _WorkoutHeader({
     required this.sessionName,
@@ -256,6 +261,7 @@ class _WorkoutHeader extends StatelessWidget {
     required this.formatTime,
     required this.onFinish,
     required this.onCancel,
+    required this.onMinimize,
   });
 
   @override
@@ -267,17 +273,17 @@ class _WorkoutHeader extends StatelessWidget {
           bottom: BorderSide(color: AppColors.border, width: 0.5)),
     ),
     child: Row(children: [
-      // Botón cancelar
+      // Botón minimizar (volver sin cancelar)
       GestureDetector(
-        onTap: onCancel,
+        onTap: onMinimize,
         child: Container(
           width: 38, height: 38,
           decoration: BoxDecoration(
               color: AppColors.surfaceVariant,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: AppColors.border, width: 0.5)),
-          child: const Icon(Icons.close_rounded,
-              color: AppColors.textSecondary, size: 18),
+          child: const Icon(Icons.keyboard_arrow_down_rounded,
+              color: AppColors.textSecondary, size: 22),
         ),
       ),
       const SizedBox(width: 12),
@@ -317,6 +323,23 @@ class _WorkoutHeader extends StatelessWidget {
                   color: AppColors.primary,
                   letterSpacing: 0.5)),
         ]),
+      ),
+
+      const SizedBox(width: 8),
+
+      // Botón cancelar sesión
+      GestureDetector(
+        onTap: onCancel,
+        child: Container(
+          width: 32, height: 32,
+          decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                  color: AppColors.error.withOpacity(0.3), width: 0.5)),
+          child: Icon(Icons.close_rounded,
+              color: AppColors.error.withOpacity(0.7), size: 16),
+        ),
       ),
     ]),
   );
