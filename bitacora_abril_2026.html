@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bitácora de Trabajo — Mega Vital · Abril 2026</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f4f6f9;
+      color: #1a1a2e;
+      padding: 40px 20px;
+    }
+
+    /* ── Header ── */
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .header h1 {
+      font-size: 2rem;
+      color: #0d47a1;
+      letter-spacing: 1px;
+    }
+    .header .subtitle {
+      margin-top: 6px;
+      font-size: 1rem;
+      color: #555;
+    }
+    .header .badge {
+      display: inline-block;
+      margin-top: 12px;
+      background: #0d47a1;
+      color: #fff;
+      padding: 5px 18px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Summary cards ── */
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+      margin-bottom: 40px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px 28px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+      min-width: 140px;
+    }
+    .card .num {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #0d47a1;
+    }
+    .card .label {
+      font-size: 0.82rem;
+      color: #777;
+      margin-top: 4px;
+    }
+
+    /* ── Section headers ── */
+    .section-title {
+      background: #0d47a1;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px 8px 0 0;
+      font-size: 1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title .icon { font-size: 1.1rem; }
+
+    /* ── Table ── */
+    .table-wrap {
+      overflow-x: auto;
+      margin-bottom: 30px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.09);
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+    }
+    thead th {
+      background: #1565c0;
+      color: #fff;
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 0.85rem;
+      letter-spacing: 0.4px;
+    }
+    tbody tr {
+      border-bottom: 1px solid #e8ecf0;
+      transition: background .15s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f0f4ff; }
+    td {
+      padding: 12px 16px;
+      font-size: 0.88rem;
+      vertical-align: top;
+    }
+    td.date { white-space: nowrap; color: #555; font-weight: 600; }
+    td.area  { white-space: nowrap; }
+    td.hours {
+      text-align: center;
+      font-weight: 700;
+      color: #0d47a1;
+      white-space: nowrap;
+    }
+
+    /* ── Badges ── */
+    .badge-tag {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+    .tag-new      { background: #e3f2fd; color: #0d47a1; }
+    .tag-fix      { background: #fff3e0; color: #e65100; }
+    .tag-improve  { background: #e8f5e9; color: #2e7d32; }
+    .tag-db       { background: #f3e5f5; color: #6a1b9a; }
+    .tag-deploy   { background: #fce4ec; color: #880e4f; }
+
+    /* ── Footer total row ── */
+    .total-row td {
+      background: #e3f2fd;
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: #0d47a1;
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 0.8rem;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════ HEADER ══════════════════ -->
+<div class="header">
+  <h1>📋 Bitácora de Trabajo — Mega Vital</h1>
+  <p class="subtitle">Aplicación móvil Flutter · Período: Abril 2026</p>
+  <span class="badge">Informe mensual para el cliente</span>
+</div>
+
+<!-- ══════════════════ RESUMEN EJECUTIVO ══════════════════ -->
+<div class="summary">
+  <div class="card"><div class="num">8</div><div class="label">Funcionalidades<br>nuevas</div></div>
+  <div class="card"><div class="num">5</div><div class="label">Módulos<br>desarrollados</div></div>
+  <div class="card"><div class="num">~67</div><div class="label">Horas<br>estimadas</div></div>
+  <div class="card"><div class="num">49</div><div class="label">Pull Requests<br>integrados</div></div>
+  <div class="card"><div class="num">6</div><div class="label">Días de<br>desarrollo activo</div></div>
+</div>
+
+
+<!-- ══════════════════ SECCIÓN 1: APP STORE ══════════════════ -->
+<div class="section-title"><span class="icon">🍎</span> Módulo 1 — Publicación en App Store (Apple)</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Área</th>
+        <th>Descripción del trabajo</th>
+        <th>Tipo</th>
+        <th>Horas est.</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="date">23 Abr</td>
+        <td class="area">App Store</td>
+        <td>Configuración inicial del build número 2 para subir la app a la App Store de Apple.</td>
+        <td><span class="badge-tag tag-deploy">Despliegue</span></td>
+        <td class="hours">1h</td>
+      </tr>
+      <tr>
+        <td class="date">23 Abr</td>
+        <td class="area">App Store</td>
+        <td>Corrección de cumplimiento de exportación y nombre de pantalla de la app requerido por Apple.</td>
+        <td><span class="badge-tag tag-fix">Corrección</span></td>
+        <td class="hours">1.5h</td>
+      </tr>
+      <tr>
+        <td class="date">24 Abr</td>
+        <td class="area">App Store</td>
+        <td>Integración de permisos de cámara y flujo de eliminación de cuenta exigidos por Apple para aprobar la app.</td>
+        <td><span class="badge-tag tag-fix">Corrección</span></td>
+        <td class="hours">2h</td>
+      </tr>
+      <tr>
+        <td class="date">25 Abr</td>
+        <td class="area">App Store</td>
+        <td>Corrección del nombre de la app (CFBundleName) para que aparezca correctamente en la tienda de Apple.</td>
+        <td><span class="badge-tag tag-fix">Corrección</span></td>
+        <td class="hours">0.5h</td>
+      </tr>
+      <tr>
+        <td class="date">25 Abr</td>
+        <td class="area">App Store</td>
+        <td>Bump de versión a 1.0.0+6 y reenvío de la app para revisión de Apple tras correcciones.</td>
+        <td><span class="badge-tag tag-deploy">Despliegue</span></td>
+        <td class="hours">0.5h</td>
+      </tr>
+      <tr>
+        <td class="date">25 Abr</td>
+        <td class="area">App Store</td>
+        <td>Automatización del flujo de carga del video de previsualización (App Preview) hacia App Store Connect mediante workflow de CI/CD.</td>
+        <td><span class="badge-tag tag-new">Nuevo</span></td>
+        <td class="hours">2h</td>
+      </tr>
+      <tr class="total-row">
+        <td colspan="4">Subtotal — Publicación en App Store</td>
+        <td class="hours">7.5h</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ══════════════════ SECCIÓN 2: SPINNING ══════════════════ -->
+<div class="section-title"><span class="icon">🚴</span> Módulo 2 — Sistema de Clases de Spinning</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Área</th>
+        <th>Descripción del trabajo</th>
+        <th>Tipo</th>
+        <th>Horas est.</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="date">23 Abr</td>
+        <td class="area">Spinning</td>
+        <td>Creación de la pantalla de clases de spinning con mapa interactivo de selección de asientos.</td>
+        <td><span class="badge-tag tag-new">Nuevo</span></td>
+        <td class="hours">3h</td>
+      </tr>
+      <tr>
+        <td class="date">24 Abr</td>
+        <td class="area">Spinning</td>
+        <td>Actualización del horario con instructores reales y cuadrícula de clases correcta. Mejora visual de la calidad profesional de las tarjetas de clase.</td>
+        <td><span class="badge-tag tag-improve">Mejora</span></td>
+        <td class="hours">2h</td>
+      </tr>
+      <tr>
+        <td class="date">24 Abr</td>
+        <td class="area">Spinning</td>
+        <td>Corrección de bug en disponibilidad de asientos y limpieza de campos en las tarjetas de clase.</td>
+        <td><span class="badge-tag tag-fix">Corrección</span></td>
+        <td class="hours">1h</td>
+      </tr>
+      <tr>
+        <td class="date">28 Abr</td>
+        <td class="area">Spinning</td>
+        <td>Ampliación del selector de asientos de 12 a 18 cupos (grilla 3×6). Visualización del contador de cupos disponibles en cada tarjeta de clase.</td>
+        <td><span class="badge-tag tag-improve">Mejora</span></td>
+        <td class="hours">1.5h</td>
+      </tr>
+      <tr>
+        <td class="date">28 Abr</td>
+        <td class="area">Spinning</td>
+        <td>Implementación de reservas persistentes en Supabase con sincronización en tiempo real. El usuario puede ver su asiento reservado, cambiarlo o cancelarlo desde la app.</td>
+        <td><span class="badge-tag tag-new">Nuevo</span></td>
+        <td class="hours">4h</td>
+      </tr>
+      <tr>
+        <td class="date">28 Abr</td>
+        <td class="area">Spinning</td>
+        <td>Corrección de esquema SQL de la tabla de reservas (tipo UUID para user_id) y mejora de mensajes de error visibles al usuario.</td>
+        <td><span class="badge-tag tag-fix">Corrección</span></td>
+        <td class="hours">1.5h</td>
+      </tr>
+      <tr>
+        <td class="date">29 Abr</td>
+        <td class="area">Spinning</td>
+        <td>Incorporación de la clase del sábado 9 AM (Saturday Ride) al calendario de clases.</td>
+        <td><span class="badge-tag tag-new">Nuevo</span></td>
+        <td class="hours">0.5h</td>
+      </tr>
+      <tr class="total-row">
+        <td colspan="4">Subtotal — Sistema de Spinning</td>
+        <td class="hours">13.5h</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ══════════════════ SECCIÓN 3: ANIMACIONES / EJERCICIOS ══════════════════ -->
+<div class="section-title"><span class="icon">🏋️</span> Módulo 3 — Animaciones de Ejercicios</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Área</th>
+        <th>Descripción del trabajo</th>
+        <th>Tipo</th>
+        <th>Horas est.</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="date">26 Abr</td>
+        <td class="area">Ejercicios</td>
+        <td>Organización de la estructura de carpetas de animaciones de ejercicios dentro del proyecto Flutter.</td>
+        <td><span class="badge-tag tag-new">Nuevo</span></td>
+        <td class="hours">1h</td>
+      </tr>
+      <tr>
+        <td class="date">27 Abr</td>
+        <td class="area">Ejercicios</td>
+        <td>Implementación de reproductor de video MP4 en bucle infinito para mostrar la animación de cada ejercicio en su tarjeta.</td>
+        <td><span class="badge-tag tag-new">Nuevo</span></td>
+        <td class="hours">2h</td>
+      </tr>
+      <tr>
+        <td class="date">27 Abr</td>
+        <td class="area">Ejercicios</td>
+        <td>Migración de los archivos de video desde la app local a Supabase Storage para reducir el tamaño del instalador.</td>
+        <td><span class="badge-tag tag-improve">Mejora</span></td>
+        <td class="hours">2h</td>
+      </tr>
+      <tr>
+        <td class="date">27 Abr</td>
+        <td class="area">Ejercicios</td>
+        <td>Controles manuales de reproducción (play/pause) en tarjetas de ejercicio. Carga diferida del video (solo se descarga al presionar play para ahorrar datos).</td>
+        <td><span class="badge-tag tag-improve">Mejora</span></td>
+        <td class="hours">1.5h</td>
+      </tr>
+      <tr>
+        <td class="date">27 Abr</td>
+        <td class="area">Ejercicios</td>
+        <td>Correcciones de bugs: orden de inicialización del video, ID incorrecto del ejercicio pectoral, y estructura de carpetas en pubspec.yaml.</td>
+        <td><span class="badge-tag tag-fix">Corrección</span></td>
+        <td class="hours">1.5h</td>
+      </tr>
+      <tr>
+        <td class="date">27 Abr</td>
+        <td class="area">Ejercicios</td>
+        <td>Imagen de miniatura (thumbnail) como fallback cuando el video no carga, en lugar de mostrar un stickman genérico.</td>
+        <td><span class="badge-tag tag-improve">Mejora</span></td>
+        <td class="hours">1h</td>
+      </tr>
+      <tr>
+        <td class="date">27 Abr</td>
+        <td class="area">Ejercicios</td>
+        <td>Migración definitiva de video_player a GIFs animados vía Image.network para mayor compatibilidad y rendimiento.</td>
+        <td><span class="badge-tag tag-improve">Mejora</span></td>
+        <td class="hours">1.5h</td>
+      </tr>
+      <tr class="total-row">
+        <td colspan="4">Subtotal — Animaciones de Ejercicios</td>
+        <td class="hours">10.5h</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ══════════════════ SECCIÓN 4: PERFIL / INSTRUCTORES / NUTRICIÓN ══════════════════ -->
+<div class="section-title"><span class="icon">👤</span> Módulo 4 — Perfil, Instructores y Nutrición</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Área</th>
+        <th>Descripción del trabajo</th>
+        <th>Tipo</th>
+        <th>Horas est.</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="date">25 Abr</td>
+        <td class="area">Instructores</td>
+        <td>Rediseño completo de los perfiles de instructores con fotos reales y datos actualizados (nombre, especialidad, bio).</td>
+        <td><span class="badge-tag tag-improve">Mejora</span></td>
+        <td class="hours">2.5h</td>
+      </tr>
+      <tr>
+        <td class="date">28 Abr</td>
+        <td class="area">Perfil</td>
+        <td>Integración de foto de perfil del usuario en la pantalla de inicio. Visualización de datos reales del perfil (nombre, peso, altura) desde Supabase.</td>
+        <td><span class="badge-tag tag-improve">Mejora</span></td>
+        <td class="hours">2h</td>
+      </tr>
+      <tr>
+        <td class="date">28 Abr</td>
+        <td class="area">Nutrición</td>
+        <td>Incorporación de niveles de intensidad calórica (1, 2, 3 y Flash) en la pantalla de nutrición para personalizar el plan del usuario.</td>
+        <td><span class="badge-tag tag-new">Nuevo</span></td>
+        <td class="hours">2h</td>
+      </tr>
+      <tr>
+        <td class="date">30 Abr</td>
+        <td class="area">Home</td>
+        <td>Gráfica de progreso de peso en la pantalla de inicio con recordatorio mensual para motivar al usuario a registrar su peso.</td>
+        <td><span class="badge-tag tag-new">Nuevo</span></td>
+        <td class="hours">2.5h</td>
+      </tr>
+      <tr class="total-row">
+        <td colspan="4">Subtotal — Perfil, Instructores y Nutrición</td>
+        <td class="hours">9h</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ══════════════════ SECCIÓN 5: PANEL ADMIN + PREMIUM + SEGURIDAD ══════════════════ -->
+<div class="section-title"><span class="icon">⭐</span> Módulo 5 — Panel Admin, Sistema Premium y Seguridad</div>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Área</th>
+        <th>Descripción del trabajo</th>
+        <th>Tipo</th>
+        <th>Horas est.</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="date">24 Abr</td>
+        <td class="area">Seguridad</td>
+        <td>Protección de la pantalla de registro de nuevos miembros con contraseña de administrador para evitar registros no autorizados.</td>
+        <td><span class="badge-tag tag-new">Nuevo</span></td>
+        <td class="hours">1.5h</td>
+      </tr>
+      <tr>
+        <td class="date">25 Abr</td>
+        <td class="area">Registro</td>
+        <td>El correo electrónico se vuelve campo opcional al crear un nuevo miembro desde el panel de administración.</td>
+        <td><span class="badge-tag tag-improve">Mejora</span></td>
+        <td class="hours">1h</td>
+      </tr>
+      <tr>
+        <td class="date">29 Abr</td>
+        <td class="area">Admin</td>
+        <td>Desarrollo del panel de administración completo: generador de códigos premium, notificación automática por WhatsApp al crear un código, y visualización de accesos.</td>
+        <td><span class="badge-tag tag-new">Nuevo</span></td>
+        <td class="hours">4h</td>
+      </tr>
+      <tr>
+        <td class="date">29 Abr</td>
+        <td class="area">Seguridad</td>
+        <td>Restricción del acceso al panel de administración únicamente a correos electrónicos autorizados.</td>
+        <td><span class="badge-tag tag-fix">Corrección</span></td>
+        <td class="hours">1h</td>
+      </tr>
+      <tr>
+        <td class="date">29 Abr</td>
+        <td class="area">Auth</td>
+        <td>Corrección del flujo de registro: inicio de sesión automático después de crear una cuenta, incluso cuando Supabase requiere confirmación de email. Redireccionamiento correcto a la pantalla principal.</td>
+        <td><span class="badge-tag tag-fix">Corrección</span></td>
+        <td class="hours">1.5h</td>
+      </tr>
+      <tr>
+        <td class="date">29 Abr</td>
+        <td class="area">Premium</td>
+        <td>Implementación del servicio y proveedor premium: lógica para validar, activar y gestionar suscripciones premium de usuarios desde la app.</td>
+        <td><span class="badge-tag tag-new">Nuevo</span></td>
+        <td class="hours">3h</td>
+      </tr>
+      <tr>
+        <td class="date">29 Abr</td>
+        <td class="area">Progreso</td>
+        <td>Creación de la pantalla de progreso de ejercicios con gráficas de línea por ejercicio para que el usuario visualice su evolución.</td>
+        <td><span class="badge-tag tag-new">Nuevo</span></td>
+        <td class="hours">3h</td>
+      </tr>
+      <tr>
+        <td class="date">30 Abr</td>
+        <td class="area">Base de datos</td>
+        <td>Creación de las tablas SQL y funciones (RPCs) del sistema premium en Supabase: premium_codes, user_premium_subscriptions y lógica de activación.</td>
+        <td><span class="badge-tag tag-db">Base de datos</span></td>
+        <td class="hours">3h</td>
+      </tr>
+      <tr>
+        <td class="date">30 Abr</td>
+        <td class="area">Premium</td>
+        <td>Correcciones en el esquema de la base de datos premium: tipo UUID correcto para user_id/used_by y ajuste de columna GENERATED ALWAYS AS en los procedimientos almacenados.</td>
+        <td><span class="badge-tag tag-fix">Corrección</span></td>
+        <td class="hours">1.5h</td>
+      </tr>
+      <tr>
+        <td class="date">30 Abr</td>
+        <td class="area">Auth</td>
+        <td>Corrección del mantenimiento de sesión entre aperturas de la app. El usuario premium queda correctamente vinculado al sistema de login.</td>
+        <td><span class="badge-tag tag-fix">Corrección</span></td>
+        <td class="hours">1.5h</td>
+      </tr>
+      <tr class="total-row">
+        <td colspan="4">Subtotal — Panel Admin, Premium y Seguridad</td>
+        <td class="hours">21h</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ══════════════════ TOTAL GENERAL ══════════════════ -->
+<div class="table-wrap">
+  <table>
+    <tbody>
+      <tr style="background:#0d47a1; color:#fff;">
+        <td style="padding:16px 20px; font-size:1rem; font-weight:700; border-radius:0 0 0 8px;">
+          🕐 TOTAL GENERAL — Abril 2026
+        </td>
+        <td style="padding:16px 20px; font-size:1.3rem; font-weight:900; text-align:right; border-radius:0 0 8px 0;">
+          ~61.5 horas
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<br/>
+
+<!-- ══════════════════ LEYENDA ══════════════════ -->
+<div style="background:#fff; border-radius:10px; padding:16px 24px; box-shadow:0 1px 6px rgba(0,0,0,.07); max-width:500px;">
+  <p style="font-weight:700; margin-bottom:10px; color:#333;">Leyenda de tipos de tarea</p>
+  <div style="display:flex; flex-wrap:wrap; gap:10px;">
+    <span class="badge-tag tag-new">⬤ Nuevo — funcionalidad nueva</span>
+    <span class="badge-tag tag-fix">⬤ Corrección — bug fix</span>
+    <span class="badge-tag tag-improve">⬤ Mejora — optimización / rediseño</span>
+    <span class="badge-tag tag-db">⬤ Base de datos — SQL / Supabase</span>
+    <span class="badge-tag tag-deploy">⬤ Despliegue — build / release</span>
+  </div>
+</div>
+
+<footer>
+  <p>Generado el 1 de mayo de 2026 · Mega Vital App · Desarrollo Flutter + Supabase</p>
+</footer>
+
+</body>
+</html>
