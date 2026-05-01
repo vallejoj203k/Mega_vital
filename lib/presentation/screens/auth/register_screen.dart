@@ -1,7 +1,7 @@
 // lib/presentation/screens/auth/register_screen.dart
 // ─────────────────────────────────────────────────────────────────
 // Registro en 3 pasos con barra de progreso animada:
-//   Paso 1 → Datos personales (nombre, email, contraseña)
+//   Paso 1 → Datos personales (nombre, usuario, contraseña)
 //   Paso 2 → Medidas corporales (peso, altura, edad)
 //   Paso 3 → Objetivo de entrenamiento
 //
@@ -37,7 +37,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   // ── Controladores paso 1 ──
   final _nameCtrl = TextEditingController();
-  final _emailCtrl = TextEditingController();
+  final _usernameCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _passConfirmCtrl = TextEditingController();
   final _referredByCtrl = TextEditingController();
@@ -76,7 +76,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void dispose() {
     _adminPassCtrl.dispose();
     _nameCtrl.dispose();
-    _emailCtrl.dispose();
+    _usernameCtrl.dispose();
     _passCtrl.dispose();
     _passConfirmCtrl.dispose();
     _referredByCtrl.dispose();
@@ -201,7 +201,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       case 1:
         return _Step1(
           nameCtrl: _nameCtrl,
-          emailCtrl: _emailCtrl,
+          usernameCtrl: _usernameCtrl,
           passCtrl: _passCtrl,
           passConfirmCtrl: _passConfirmCtrl,
           referredByCtrl: _referredByCtrl,
@@ -260,91 +260,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (_step > 0) setState(() => _step--);
   }
 
-  String _generatePlaceholderEmail(String name) {
-    final slug = name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
-    final suffix = (DateTime.now().millisecondsSinceEpoch % 10000)
-        .toString()
-        .padLeft(4, '0');
-    return 'noemail_${slug.isNotEmpty ? slug : 'miembro'}$suffix@megavital.app';
-  }
-
   // ── Enviar registro ──
   Future<void> _handleRegister() async {
     FocusScope.of(context).unfocus();
     final auth = context.read<AuthProvider>();
 
-    final rawEmail = _emailCtrl.text.trim();
-    String emailForAuth = rawEmail;
-    String realEmail = rawEmail;
-
-    if (rawEmail.isEmpty) {
-      emailForAuth = _generatePlaceholderEmail(_nameCtrl.text.trim());
-      realEmail = '';
-
-      if (!mounted) return;
-      final proceed = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('Sin correo electrónico', style: AppTextStyles.headingMedium),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Se asignará el siguiente usuario de acceso. Anótalo para dárselo al miembro:',
-                style: AppTextStyles.bodyMedium,
-              ),
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: AppColors.primary.withOpacity(0.4), width: 1),
-                ),
-                child: SelectableText(
-                  emailForAuth,
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'El miembro usará este usuario junto con su contraseña para iniciar sesión.',
-                style: AppTextStyles.bodySmall,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar',
-                  style: TextStyle(color: AppColors.textSecondary)),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Lo anoté, continuar',
-                  style: TextStyle(
-                      color: AppColors.primary, fontWeight: FontWeight.w700)),
-            ),
-          ],
-        ),
-      );
-      if (!(proceed ?? false) || !mounted) return;
-    }
-
     final ok = await auth.register(
+      username: _usernameCtrl.text.trim().toLowerCase(),
       name: _nameCtrl.text.trim(),
-      email: emailForAuth,
-      realEmail: realEmail,
       password: _passCtrl.text,
       goal: _selectedGoal,
       weight: _weight,
@@ -516,7 +439,7 @@ class _Step0 extends StatelessWidget {
 // PASO 1 — Datos de cuenta
 // ─────────────────────────────────────────────────────────────────
 class _Step1 extends StatelessWidget {
-  final TextEditingController nameCtrl, emailCtrl, passCtrl, passConfirmCtrl,
+  final TextEditingController nameCtrl, usernameCtrl, passCtrl, passConfirmCtrl,
       referredByCtrl;
   final bool obscurePass, obscureConfirm;
   final String selectedGender;
@@ -526,7 +449,7 @@ class _Step1 extends StatelessWidget {
 
   const _Step1({
     required this.nameCtrl,
-    required this.emailCtrl,
+    required this.usernameCtrl,
     required this.passCtrl,
     required this.passConfirmCtrl,
     required this.referredByCtrl,
@@ -556,8 +479,26 @@ class _Step1 extends StatelessWidget {
               hint: 'Juan García',
               icon: Icons.person_outline_rounded,
               validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Ingresa tu nombre';
+                if (v == null || v.trim().isEmpty) return 'Ingresa el nombre';
                 if (v.trim().length < 3) return 'Mínimo 3 caracteres';
+                return null;
+              },
+            ),
+            const SizedBox(height: 14),
+
+            AuthField(
+              controller: usernameCtrl,
+              label: 'Nombre de usuario',
+              hint: 'juan_garcia123',
+              icon: Icons.alternate_email_rounded,
+              keyboardType: TextInputType.text,
+              validator: (v) {
+                if (v == null || v.trim().isEmpty)
+                  return 'Ingresa un nombre de usuario';
+                if (v.trim().length < 3) return 'Mínimo 3 caracteres';
+                if (v.trim().length > 20) return 'Máximo 20 caracteres';
+                if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(v.trim()))
+                  return 'Solo letras, números y guiones bajos (_)';
                 return null;
               },
             ),
@@ -572,21 +513,6 @@ class _Step1 extends StatelessWidget {
             ),
             const SizedBox(height: 14),
 
-            AuthField(
-              controller: emailCtrl,
-              label: 'Correo electrónico (opcional)',
-              hint: 'tu@correo.com',
-              icon: Icons.email_outlined,
-              keyboardType: TextInputType.emailAddress,
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return null;
-                if (!RegExp(r'^[\w.]+@[\w]+\.\w+$').hasMatch(v.trim())) {
-                  return 'Formato inválido';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 14),
             AuthField(
               controller: passCtrl,
               label: 'Contraseña',

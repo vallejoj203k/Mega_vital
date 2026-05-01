@@ -6,7 +6,6 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/auth_provider.dart';
 import 'register_screen.dart';
-import 'forgot_password_screen.dart';
 
 // ─── Landing / Welcome screen ────────────────────────────────────────────────
 
@@ -443,29 +442,31 @@ class _LoginSheet extends StatefulWidget {
 
 class _LoginSheetState extends State<_LoginSheet> {
   final _formKey = GlobalKey<FormState>();
-  final _emailCtrl = TextEditingController();
+  final _usernameCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _obscure = true;
-  bool _emailTouched = false;
+  bool _usernameTouched = false;
   bool _passTouched = false;
 
   @override
   void dispose() {
-    _emailCtrl.dispose();
+    _usernameCtrl.dispose();
     _passCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _handleLogin() async {
     setState(() {
-      _emailTouched = true;
+      _usernameTouched = true;
       _passTouched = true;
     });
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
     final auth = context.read<AuthProvider>();
-    final ok =
-    await auth.login(email: _emailCtrl.text, password: _passCtrl.text);
+    final ok = await auth.login(
+      username: _usernameCtrl.text.trim(),
+      password: _passCtrl.text,
+    );
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Row(children: [
@@ -519,20 +520,20 @@ class _LoginSheetState extends State<_LoginSheet> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 AuthField(
-                  controller: _emailCtrl,
-                  label: 'Nombre de usuario o correo',
-                  hint: 'Tu nombre o tu@correo.com',
+                  controller: _usernameCtrl,
+                  label: 'Nombre de usuario',
+                  hint: 'Tu nombre de usuario',
                   icon: Icons.person_outline_rounded,
                   keyboardType: TextInputType.text,
                   onChanged: (_) {
-                    if (!_emailTouched)
-                      setState(() => _emailTouched = true);
+                    if (!_usernameTouched)
+                      setState(() => _usernameTouched = true);
                     context.read<AuthProvider>().clearError();
                   },
                   validator: (v) {
-                    if (!_emailTouched) return null;
+                    if (!_usernameTouched) return null;
                     if (v == null || v.trim().isEmpty)
-                      return 'Ingresa tu nombre de usuario o correo';
+                      return 'Ingresa tu nombre de usuario';
                     return null;
                   },
                 ),
@@ -565,19 +566,6 @@ class _LoginSheetState extends State<_LoginSheet> {
                     ),
                     onPressed: () =>
                         setState(() => _obscure = !_obscure),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const ForgotPasswordScreen()),
-                  ),
-                  child: Text(
-                    '¿Olvidaste tu contraseña?',
-                    style: AppTextStyles.neonLabel
-                        .copyWith(fontSize: 13),
                   ),
                 ),
                 const SizedBox(height: 24),

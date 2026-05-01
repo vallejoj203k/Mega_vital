@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
 -- Si la tabla ya existe, añadir columnas nuevas (idempotente)
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS gender      TEXT NOT NULL DEFAULT 'mujer';
 ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS referred_by TEXT;
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS username    TEXT;
 
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 
