@@ -17,7 +17,6 @@ class AuthResult {
   factory AuthResult.ok(AppUser user) =>
       AuthResult._(success: true, user: user);
 
-  // signUp exitoso pero Supabase requiere confirmar el correo antes de dar sesión.
   factory AuthResult.emailPending(AppUser user) =>
       AuthResult._(success: false, requiresEmailConfirmation: true, user: user);
 
@@ -48,20 +47,22 @@ typedef MockUser = AppUser;
 class UserProfile {
   final String uid;
   final String name;
+  final String username;
   final String email;
   final String goal;
   final double weight;
   final double height;
   final int age;
   final DateTime createdAt;
-  final String gender;       // 'hombre' | 'mujer'
+  final String gender;
   final String? referredBy;
   final String? avatarUrl;
-  final int nutritionLevel;  // 1–4 (4 = Flash)
+  final int nutritionLevel;
 
   const UserProfile({
     required this.uid,
     required this.name,
+    required this.username,
     required this.email,
     required this.goal,
     required this.weight,
@@ -79,6 +80,7 @@ class UserProfile {
   UserProfile copyWith({
     String? uid,
     String? name,
+    String? username,
     String? email,
     String? goal,
     double? weight,
@@ -92,6 +94,7 @@ class UserProfile {
   }) => UserProfile(
     uid:            uid            ?? this.uid,
     name:           name           ?? this.name,
+    username:       username       ?? this.username,
     email:          email          ?? this.email,
     goal:           goal           ?? this.goal,
     weight:         weight         ?? this.weight,
@@ -107,6 +110,7 @@ class UserProfile {
   Map<String, dynamic> toMap() => {
     'uid': uid,
     'name': name,
+    'username': username,
     'email': email,
     'goal': goal,
     'weight': weight,
@@ -120,26 +124,34 @@ class UserProfile {
     if (avatarUrl != null) 'avatar_url': avatarUrl,
   };
 
-  factory UserProfile.fromMap(Map<String, dynamic> m) => UserProfile(
-    uid:            m['uid']    ?? '',
-    name:           m['name']   ?? '',
-    email:          m['email']  ?? '',
-    goal:           m['goal']   ?? 'Ganar músculo',
-    weight:         (m['weight'] ?? 70.0).toDouble(),
-    height:         (m['height'] ?? 170.0).toDouble(),
-    age:            m['age']    ?? 25,
-    createdAt: m['created_at'] != null
-        ? DateTime.tryParse(m['created_at']) ?? DateTime.now()
-        : DateTime.now(),
-    gender:         m['gender']       ?? 'mujer',
-    referredBy:     m['referred_by'],
-    avatarUrl:      m['avatar_url']   as String?,
-    nutritionLevel: (m['nutrition_level'] as int?) ?? 1,
-  );
+  factory UserProfile.fromMap(Map<String, dynamic> m) {
+    final rawEmail = m['email'] as String? ?? '';
+    final derivedUsername = rawEmail.replaceAll('@megavital.app', '');
+    return UserProfile(
+      uid:            m['uid']      ?? '',
+      name:           m['name']     ?? '',
+      username:       m['username'] as String? ?? derivedUsername,
+      email:          rawEmail,
+      goal:           m['goal']     ?? 'Ganar músculo',
+      weight:         (m['weight']  ?? 70.0).toDouble(),
+      height:         (m['height']  ?? 170.0).toDouble(),
+      age:            m['age']      ?? 25,
+      createdAt: m['created_at'] != null
+          ? DateTime.tryParse(m['created_at']) ?? DateTime.now()
+          : DateTime.now(),
+      gender:         m['gender']        ?? 'mujer',
+      referredBy:     m['referred_by'],
+      avatarUrl:      m['avatar_url']    as String?,
+      nutritionLevel: (m['nutrition_level'] as int?) ?? 1,
+    );
+  }
 }
 
 class AuthService {
   final _supabase = Supabase.instance.client;
+
+  String _usernameToEmail(String username) =>
+      '${username.toLowerCase().trim()}@megavital.app';
 
   Stream<AppUser?> get authStateChanges =>
       _supabase.auth.onAuthStateChange.map((event) {
@@ -155,8 +167,8 @@ class AuthService {
   }
 
   Future<AuthResult> register({
+    required String username,
     required String name,
-    required String email,
     required String password,
     required String goal,
     required double weight,
@@ -164,22 +176,20 @@ class AuthService {
     required int age,
     String gender = 'mujer',
     String? referredBy,
-    String realEmail = '',
   }) async {
     try {
-      // Guardamos todos los datos del perfil en metadata para poder recuperarlos
-      // si Supabase requiere confirmación de correo y la sesión no se activa ahora.
+      final email = _usernameToEmail(username);
       final response = await _supabase.auth.signUp(
-        email: email.trim(),
+        email: email,
         password: password,
         data: {
           'name': name.trim(),
+          'username': username.trim(),
           'goal': goal,
           'weight': weight,
           'height': height,
           'age': age,
           'gender': gender,
-          'real_email': realEmail,
           if (referredBy != null && referredBy.isNotEmpty)
             'referred_by': referredBy,
         },
@@ -190,7 +200,6 @@ class AuthService {
         return AuthResult.fail('No se pudo crear la cuenta. Intenta de nuevo.');
       }
 
-      // Si no hay sesión, Supabase requiere confirmación de correo electrónico.
       if (response.session == null) {
         return AuthResult.emailPending(AppUser.fromSupabase(supaUser));
       }
@@ -204,12 +213,13 @@ class AuthService {
   }
 
   Future<AuthResult> login({
-    required String email,
+    required String username,
     required String password,
   }) async {
     try {
+      final email = _usernameToEmail(username);
       final response = await _supabase.auth.signInWithPassword(
-        email: email.trim(),
+        email: email,
         password: password,
       );
 
@@ -223,17 +233,6 @@ class AuthService {
       return AuthResult.fail(_translateError(e.message));
     } catch (e) {
       return AuthResult.fail('Error inesperado. Verifica tu conexión.');
-    }
-  }
-
-  Future<AuthResult> sendPasswordReset(String email) async {
-    try {
-      await _supabase.auth.resetPasswordForEmail(email.trim());
-      return const AuthResult._(success: true);
-    } on AuthException catch (e) {
-      return AuthResult.fail(_translateError(e.message));
-    } catch (_) {
-      return AuthResult.fail('No se pudo enviar el correo. Intenta de nuevo.');
     }
   }
 
@@ -255,10 +254,9 @@ class AuthService {
     }
   }
 
-  // Crea o sobreescribe el perfil con los datos reales del registro.
-  // realEmail: correo real del usuario, o '' si no tiene correo.
   Future<UserProfile?> createProfileWithData({
     required AppUser user,
+    required String username,
     required String name,
     required String goal,
     required double weight,
@@ -266,18 +264,18 @@ class AuthService {
     required int age,
     String gender = 'mujer',
     String? referredBy,
-    String realEmail = '',
   }) async {
-    final emailToStore = realEmail;
-    // Construye el perfil local como fallback si la lectura post-upsert falla.
+    final email = _usernameToEmail(username);
+
     UserProfile buildLocal(UserProfile? saved) => UserProfile(
-      uid:        saved?.uid ?? user.uid,
-      name:       saved?.name ?? name.trim(),
-      email:      saved?.email ?? emailToStore,
-      goal:       saved?.goal ?? goal,
-      weight:     saved?.weight ?? weight,
-      height:     saved?.height ?? height,
-      age:        saved?.age ?? age,
+      uid:        saved?.uid      ?? user.uid,
+      name:       saved?.name     ?? name.trim(),
+      username:   saved?.username ?? username.trim(),
+      email:      saved?.email    ?? email,
+      goal:       saved?.goal     ?? goal,
+      weight:     saved?.weight   ?? weight,
+      height:     saved?.height   ?? height,
+      age:        saved?.age      ?? age,
       createdAt:  saved?.createdAt ?? DateTime.now(),
       gender:     gender,
       referredBy: referredBy,
@@ -287,7 +285,8 @@ class AuthService {
       await _supabase.from('user_profiles').upsert({
         'uid':            user.uid,
         'name':           name.trim(),
-        'email':          emailToStore,
+        'username':       username.trim(),
+        'email':          email,
         'goal':           goal,
         'weight':         weight,
         'height':         height,
@@ -298,16 +297,14 @@ class AuthService {
         if (referredBy != null && referredBy.isNotEmpty)
           'referred_by': referredBy,
       });
-      // El upsert guardó los datos reales; construimos local si la lectura falla.
       final saved = await getUserProfile(user.uid);
       return buildLocal(saved);
     } catch (_) {
-      // Si falla (ej. columna gender faltante), reintentamos sin campos opcionales.
       try {
         await _supabase.from('user_profiles').upsert({
           'uid':            user.uid,
           'name':           name.trim(),
-          'email':          emailToStore,
+          'email':          email,
           'goal':           goal,
           'weight':         weight,
           'height':         height,
@@ -323,39 +320,37 @@ class AuthService {
     }
   }
 
-  // Carga el perfil del usuario. Si no existe y hay metadatos del registro,
-  // crea el perfil desde esos datos (útil al confirmar correo y hacer login).
   Future<UserProfile?> ensureUserProfile(AppUser user) async {
     final existing = await getUserProfile(user.uid);
     if (existing != null) return existing;
 
-    // Sin sesión activa no podemos escribir en la DB (RLS requiere auth.uid()).
     final session = _supabase.auth.currentSession;
     if (session == null) return null;
 
-    // Intentar crear el perfil desde los metadatos guardados durante el registro.
     final meta = _supabase.auth.currentUser?.userMetadata;
     if (meta == null) return null;
 
-    final metaName      = (meta['name'] as String?)?.trim() ?? '';
-    final metaGoal      = meta['goal'] as String?;
-    final metaWeight    = (meta['weight'] as num?)?.toDouble();
-    final metaHeight    = (meta['height'] as num?)?.toDouble();
-    final metaAge       = (meta['age'] as num?)?.toInt();
-    final metaGender    = meta['gender'] as String?;
-    final metaReferred  = meta['referred_by'] as String?;
-    final metaRealEmail = meta['real_email'] as String? ?? '';
+    final metaName     = (meta['name'] as String?)?.trim() ?? '';
+    final metaUsername = (meta['username'] as String?)?.trim() ?? '';
+    final metaGoal     = meta['goal'] as String?;
+    final metaWeight   = (meta['weight'] as num?)?.toDouble();
+    final metaHeight   = (meta['height'] as num?)?.toDouble();
+    final metaAge      = (meta['age'] as num?)?.toInt();
+    final metaGender   = meta['gender'] as String?;
+    final metaReferred = meta['referred_by'] as String?;
 
-    // Solo crear si hay datos reales del formulario de registro.
     if (metaGoal == null || metaWeight == null || metaHeight == null || metaAge == null) {
       return null;
     }
 
-    final name = metaName.isNotEmpty ? metaName
+    final name     = metaName.isNotEmpty ? metaName
         : (user.displayName.isNotEmpty ? user.displayName : 'Usuario');
+    final username = metaUsername.isNotEmpty ? metaUsername
+        : user.email.replaceAll('@megavital.app', '');
 
     return await createProfileWithData(
       user:       user,
+      username:   username,
       name:       name,
       goal:       metaGoal,
       weight:     metaWeight,
@@ -363,12 +358,9 @@ class AuthService {
       age:        metaAge,
       gender:     metaGender ?? 'mujer',
       referredBy: metaReferred,
-      realEmail:  metaRealEmail,
     );
   }
 
-  /// Elimina la cuenta del usuario y todos sus datos permanentemente.
-  /// Llama a la función SQL delete_user_account() con SECURITY DEFINER.
   Future<bool> deleteAccount() async {
     try {
       await _supabase.rpc('delete_user_account');
@@ -387,8 +379,6 @@ class AuthService {
     }
   }
 
-  /// Sube la imagen al bucket 'avatars' y actualiza avatar_url en el perfil.
-  /// Retorna la URL pública o null si falla.
   Future<String?> uploadAvatar(String uid, File file) async {
     try {
       const bucket = 'avatars';
@@ -398,7 +388,6 @@ class AuthService {
         fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
       );
       final url = _supabase.storage.from(bucket).getPublicUrl(path);
-      // Añadir timestamp para forzar recarga tras actualización
       final cacheBusted = '$url?t=${DateTime.now().millisecondsSinceEpoch}';
       await updateUserProfile(uid, {'avatar_url': cacheBusted});
       return cacheBusted;
@@ -411,20 +400,14 @@ class AuthService {
     final lower = message.toLowerCase();
     if (lower.contains('invalid login credentials') ||
         lower.contains('invalid credentials')) {
-      return 'Correo o contraseña incorrectos.';
+      return 'Nombre de usuario o contraseña incorrectos.';
     }
     if (lower.contains('user already registered') ||
         lower.contains('already registered')) {
-      return 'Ese correo ya está registrado.';
+      return 'Ese nombre de usuario ya está en uso.';
     }
     if (lower.contains('password should be at least')) {
       return 'La contraseña debe tener al menos 6 caracteres.';
-    }
-    if (lower.contains('unable to validate email')) {
-      return 'Correo electrónico no válido.';
-    }
-    if (lower.contains('email not confirmed')) {
-      return 'Debes confirmar tu correo antes de iniciar sesión.';
     }
     if (lower.contains('network') || lower.contains('connection')) {
       return 'Sin conexión. Verifica tu internet.';

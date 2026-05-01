@@ -55,7 +55,6 @@ class AuthProvider extends ChangeNotifier {
         _profile = await _service.ensureUserProfile(current);
       } catch (_) {
         // El perfil no cargó (red), pero el usuario SÍ está autenticado.
-        // No se cierra sesión — se mostrará el home sin datos de perfil.
       }
       _profileLoading = false;
       notifyListeners();
@@ -67,7 +66,6 @@ class AuthProvider extends ChangeNotifier {
     _authSub = _service.authStateChanges.listen((user) async {
       _user = user;
       if (user != null) {
-        // Skip reload during register() — it sets _profile itself with gender data.
         if (_isRegistering) return;
         _status         = AuthStatus.authenticated;
         _profileLoading = true;
@@ -83,10 +81,10 @@ class AuthProvider extends ChangeNotifier {
     });
   }
 
-  Future<bool> login({required String email, required String password}) async {
+  Future<bool> login({required String username, required String password}) async {
     _setLoading(true);
     _clearError();
-    final result = await _service.login(email: email, password: password);
+    final result = await _service.login(username: username, password: password);
     if (!result.success) {
       _errorMessage = result.errorMessage;
       _setLoading(false);
@@ -101,8 +99,8 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<bool> register({
+    required String username,
     required String name,
-    required String email,
     required String password,
     required String goal,
     required double weight,
@@ -110,21 +108,18 @@ class AuthProvider extends ChangeNotifier {
     required int    age,
     String gender = 'mujer',
     String? referredBy,
-    String realEmail = '',
   }) async {
     _isRegistering = true;
     _setLoading(true);
     _clearError();
     final result = await _service.register(
-      name: name, email: email, password: password,
+      username: username, name: name, password: password,
       goal: goal, weight: weight, height: height, age: age,
-      gender: gender, referredBy: referredBy, realEmail: realEmail,
+      gender: gender, referredBy: referredBy,
     );
 
-    // Supabase requiere confirmar el correo — intentamos login inmediato
-    // para cuentas creadas por admin (incluyendo correos placeholder).
     if (result.requiresEmailConfirmation) {
-      final loginResult = await _service.login(email: email, password: password);
+      final loginResult = await _service.login(username: username, password: password);
       if (loginResult.success && loginResult.user != null) {
         _user           = loginResult.user;
         _status         = AuthStatus.authenticated;
@@ -132,6 +127,7 @@ class AuthProvider extends ChangeNotifier {
         _setLoading(false);
         _profile = await _service.createProfileWithData(
           user:       loginResult.user!,
+          username:   username,
           name:       name,
           goal:       goal,
           weight:     weight,
@@ -139,14 +135,13 @@ class AuthProvider extends ChangeNotifier {
           age:        age,
           gender:     gender,
           referredBy: referredBy,
-          realEmail:  realEmail,
         );
         _profileLoading = false;
         _isRegistering  = false;
         notifyListeners();
         return true;
       }
-      _errorMessage  = 'Cuenta creada. El miembro puede iniciar sesión con sus credenciales.';
+      _errorMessage  = 'Cuenta creada. El miembro puede iniciar sesión con su usuario y contraseña.';
       _isRegistering = false;
       _setLoading(false);
       return false;
@@ -161,11 +156,12 @@ class AuthProvider extends ChangeNotifier {
 
     _user           = result.user;
     _status         = AuthStatus.authenticated;
-    _profileLoading = true;   // El home mostrará spinner en lugar de error.
-    _setLoading(false);       // notifyListeners() — AuthWrapper navega a MainScreen.
+    _profileLoading = true;
+    _setLoading(false);
 
     _profile = await _service.createProfileWithData(
       user:       result.user!,
+      username:   username,
       name:       name,
       goal:       goal,
       weight:     weight,
@@ -173,21 +169,11 @@ class AuthProvider extends ChangeNotifier {
       age:        age,
       gender:     gender,
       referredBy: referredBy,
-      realEmail:  realEmail,
     );
 
     _profileLoading = false;
     _isRegistering  = false;
     notifyListeners();
-    return true;
-  }
-
-  Future<bool> sendPasswordReset(String email) async {
-    _setLoading(true);
-    _clearError();
-    final result = await _service.sendPasswordReset(email);
-    _setLoading(false);
-    if (!result.success) { _errorMessage = result.errorMessage; return false; }
     return true;
   }
 
@@ -199,7 +185,6 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Elimina la cuenta permanentemente y cierra sesión.
   Future<bool> deleteAccount() async {
     final ok = await _service.deleteAccount();
     if (ok) {
@@ -233,8 +218,6 @@ class AuthProvider extends ChangeNotifier {
     return url;
   }
 
-  /// Cambia el nivel de intensidad calórica del usuario (1–4).
-  /// Actualiza el perfil local de forma optimista y persiste en Supabase.
   Future<void> updateNutritionLevel(int level) async {
     if (_profile == null || _user == null) return;
     _profile = _profile!.copyWith(nutritionLevel: level.clamp(1, 4));
