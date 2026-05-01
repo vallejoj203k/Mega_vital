@@ -1,5 +1,6 @@
 // lib/presentation/screens/home/home_screen.dart
 // Todo calculado con los datos reales del usuario logueado.
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,6 +17,7 @@ import '../../../services/fitness_calculator.dart';
 import '../../../services/workout_log_service.dart';
 import '../../widgets/shared_widgets.dart';
 import '../progress/progress_screen.dart';
+import '../workout_log/active_workout_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -184,6 +186,10 @@ class _HomeScreenState extends State<HomeScreen>
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
+
+            // ── Banner rutina activa ──
+            if (context.watch<WorkoutLogProvider>().hasActiveSession)
+              SliverToBoxAdapter(child: _ActiveWorkoutBanner()),
 
             // ── Top bar ──
             SliverToBoxAdapter(child: Padding(
@@ -1671,4 +1677,123 @@ class _Pill extends StatelessWidget {
           fontSize: 11, fontWeight: FontWeight.w600, color: color)),
     ]),
   );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// BANNER RUTINA ACTIVA
+// ─────────────────────────────────────────────────────────────────
+class _ActiveWorkoutBanner extends StatefulWidget {
+  const _ActiveWorkoutBanner();
+
+  @override
+  State<_ActiveWorkoutBanner> createState() => _ActiveWorkoutBannerState();
+}
+
+class _ActiveWorkoutBannerState extends State<_ActiveWorkoutBanner> {
+  late final Timer _bannerTimer;
+  int _seconds = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _seconds = context.read<WorkoutLogProvider>().currentDurationSeconds;
+    _bannerTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _seconds++);
+    });
+  }
+
+  @override
+  void dispose() {
+    _bannerTimer.cancel();
+    super.dispose();
+  }
+
+  String _fmt(int s) {
+    final h = s ~/ 3600;
+    final m = (s % 3600) ~/ 60;
+    final sec = s % 60;
+    if (h > 0) {
+      return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
+    }
+    return '${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final session = context.watch<WorkoutLogProvider>().activeSession;
+    if (session == null) return const SizedBox.shrink();
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const ActiveWorkoutScreen()));
+      },
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.primary.withOpacity(0.18),
+              AppColors.primary.withOpacity(0.08),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.primary.withOpacity(0.4), width: 1),
+        ),
+        child: Row(children: [
+          // Indicador pulsante
+          Container(
+            width: 10, height: 10,
+            decoration: BoxDecoration(
+                color: AppColors.primary, shape: BoxShape.circle,
+                boxShadow: [BoxShadow(
+                    color: AppColors.primary.withOpacity(0.5),
+                    blurRadius: 6, spreadRadius: 1)]),
+          ),
+          const SizedBox(width: 10),
+
+          // Info sesión
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Rutina en curso',
+                  style: AppTextStyles.caption
+                      .copyWith(color: AppColors.primary, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 2),
+              Text(session.name,
+                  style: AppTextStyles.bodyMedium
+                      .copyWith(fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis),
+            ],
+          )),
+
+          // Cronómetro
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.timer_rounded, size: 14, color: AppColors.primary),
+            const SizedBox(width: 4),
+            Text(_fmt(_seconds),
+                style: TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w800,
+                    color: AppColors.primary, letterSpacing: 0.5)),
+          ]),
+
+          const SizedBox(width: 12),
+
+          // Botón continuar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(10)),
+            child: Text('Continuar',
+                style: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w700,
+                    color: Colors.black)),
+          ),
+        ]),
+      ),
+    );
+  }
 }
