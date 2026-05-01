@@ -150,8 +150,12 @@ class UserProfile {
 class AuthService {
   final _supabase = Supabase.instance.client;
 
-  String _usernameToEmail(String username) =>
-      '${username.toLowerCase().trim()}@megavital.app';
+  String _usernameToEmail(String username) {
+    // Solo letras, números y guiones bajos son seguros en el local part del email.
+    // Los puntos pueden causar rechazo en Supabase si van al inicio, final o consecutivos.
+    final clean = username.toLowerCase().trim().replaceAll('.', '_');
+    return '$clean@megavital.app';
+  }
 
   Stream<AppUser?> get authStateChanges =>
       _supabase.auth.onAuthStateChange.map((event) {
@@ -408,6 +412,11 @@ class AuthService {
     }
     if (lower.contains('password should be at least')) {
       return 'La contraseña debe tener al menos 6 caracteres.';
+    }
+    if (lower.contains('unable to validate email') ||
+        lower.contains('invalid format') ||
+        lower.contains('valid email')) {
+      return 'Nombre de usuario no válido. Usa solo letras, números y guiones bajos.';
     }
     if (lower.contains('network') || lower.contains('connection')) {
       return 'Sin conexión. Verifica tu internet.';

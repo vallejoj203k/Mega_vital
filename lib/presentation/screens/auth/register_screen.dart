@@ -489,7 +489,7 @@ class _Step1 extends StatelessWidget {
             AuthField(
               controller: usernameCtrl,
               label: 'Nombre de usuario',
-              hint: 'juangarcia',
+              hint: 'juan_garcia123',
               icon: Icons.alternate_email_rounded,
               keyboardType: TextInputType.text,
               validator: (v) {
@@ -497,8 +497,8 @@ class _Step1 extends StatelessWidget {
                   return 'Ingresa un nombre de usuario';
                 if (v.trim().length < 3) return 'Mínimo 3 caracteres';
                 if (v.trim().length > 20) return 'Máximo 20 caracteres';
-                if (!RegExp(r'^[a-zA-Z0-9._]+$').hasMatch(v.trim()))
-                  return 'Solo letras, números, puntos y guiones bajos';
+                if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(v.trim()))
+                  return 'Solo letras, números y guiones bajos (_)';
                 return null;
               },
             ),
