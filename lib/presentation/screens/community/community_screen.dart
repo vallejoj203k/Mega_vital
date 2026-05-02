@@ -2,8 +2,11 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
@@ -485,13 +488,56 @@ class _PostCard extends StatelessWidget {
                 icon: Icons.share_outlined,
                 label: 'Compartir',
                 color: AppColors.textMuted,
-                onTap: () {},
+                onTap: () => _sharePost(context),
               ),
             ],
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _sharePost(BuildContext context) async {
+    final lines = <String>[
+      '💪 MEGA VITAL',
+      if (post.achievement != null) '🏆 ${post.achievement}',
+      '',
+      post.content,
+      '',
+      '— ${post.userName}',
+    ];
+    if (post.videoUrl != null) lines.add('🎥 ${post.videoUrl}');
+    final shareText = lines.join('\n');
+
+    final files = <XFile>[];
+
+    // Icono de Mega Vital desde assets
+    try {
+      final data = await rootBundle.load('assets/images/app_icon.png');
+      final iconFile =
+          File('${Directory.systemTemp.path}/mv_icon_share.png');
+      await iconFile.writeAsBytes(data.buffer.asUint8List());
+      files.add(XFile(iconFile.path, mimeType: 'image/png'));
+    } catch (_) {}
+
+    // Imagen del post si existe
+    if (post.imageUrl != null && post.imageUrl!.isNotEmpty) {
+      try {
+        final res = await http.get(Uri.parse(post.imageUrl!))
+            .timeout(const Duration(seconds: 10));
+        final imgFile =
+            File('${Directory.systemTemp.path}/mv_post_${post.id}.jpg');
+        await imgFile.writeAsBytes(res.bodyBytes);
+        files.add(XFile(imgFile.path, mimeType: 'image/jpeg'));
+      } catch (_) {}
+    }
+
+    if (files.isNotEmpty) {
+      await Share.shareXFiles(files,
+          text: shareText, subject: 'Mega Vital');
+    } else {
+      await Share.share(shareText, subject: 'Mega Vital');
+    }
   }
 
   Future<void> _confirmDelete(
@@ -2889,45 +2935,203 @@ class _VideoPreviewTile extends StatelessWidget {
 
 // ─── Video card (feed de posts) ───────────────────────────────────────────────
 
-class _VideoCard extends StatelessWidget {
+class _VideoCard extends StatefulWidget {
   final String videoUrl;
   const _VideoCard({required this.videoUrl});
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => showModalBottomSheet(
+  State<_VideoCard> createState() => _VideoCardState();
+}
+
+class _VideoCardState extends State<_VideoCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulse;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+    _scale = Tween<double>(begin: 1.0, end: 1.12).animate(
+      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  void _open() => showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (_) => _VideoPlayerSheet(videoUrl: videoUrl),
-      ),
-      child: Container(
-        height: 160,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceVariant,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border, width: 0.5),
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            const Icon(Icons.play_circle_fill_rounded,
-                size: 56, color: AppColors.primary),
-            Positioned(
-              bottom: 8, left: 0, right: 0,
-              child: Text(
-                'Toca para ver el video',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.caption
-                    .copyWith(color: AppColors.textSecondary),
+        builder: (_) => _VideoPlayerSheet(videoUrl: widget.videoUrl),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _open,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: SizedBox(
+          height: 190,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Fondo con gradiente cinematográfico
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFF0d1f0d),
+                      AppColors.primary.withOpacity(0.25),
+                      const Color(0xFF0a1a0a),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ],
+
+              // Patrón de líneas sutiles
+              Opacity(
+                opacity: 0.06,
+                child: CustomPaint(painter: _GridPainter()),
+              ),
+
+              // Degradado inferior
+              Positioned(
+                bottom: 0, left: 0, right: 0,
+                child: Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.7),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Botón play con glow animado
+              Center(
+                child: AnimatedBuilder(
+                  animation: _scale,
+                  builder: (_, child) => Transform.scale(
+                    scale: _scale.value,
+                    child: child,
+                  ),
+                  child: Container(
+                    width: 64, height: 64,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: AppColors.primaryGradient,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.55),
+                          blurRadius: 24,
+                          spreadRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 36,
+                    ),
+                  ),
+                ),
+              ),
+
+              // Badge "VIDEO" arriba a la izquierda
+              Positioned(
+                top: 10, left: 10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.55),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                        color: AppColors.primary.withOpacity(0.6),
+                        width: 0.8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.videocam_rounded,
+                          size: 11, color: AppColors.primary),
+                      const SizedBox(width: 4),
+                      const Text(
+                        'VIDEO',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Texto inferior
+              Positioned(
+                bottom: 10, left: 0, right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.touch_app_rounded,
+                        size: 12,
+                        color: Colors.white.withOpacity(0.6)),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Toca para reproducir',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.white.withOpacity(0.7),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+class _GridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppColors.primary
+      ..strokeWidth = 0.5;
+    const step = 20.0;
+    for (double x = 0; x < size.width; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (double y = 0; y < size.height; y += step) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_) => false;
 }
 
 // ─── Video player sheet ───────────────────────────────────────────────────────
