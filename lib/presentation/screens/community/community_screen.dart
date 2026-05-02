@@ -2935,14 +2935,15 @@ class _VideoPlayerSheetState extends State<_VideoPlayerSheet> {
   @override
   void initState() {
     super.initState();
-    _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
-      ..initialize().then((_) {
-        if (mounted) setState(() => _initialized = true);
-        _ctrl.play();
-      }).catchError((_) {
-        if (mounted) setState(() => _error = true);
-      });
-    _ctrl.setLooping(false);
+    _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+    _ctrl.initialize().then((_) {
+      if (!mounted) return;
+      _ctrl.setLooping(false);
+      setState(() => _initialized = true);
+      _ctrl.play();
+    }).catchError((_) {
+      if (mounted) setState(() => _error = true);
+    });
   }
 
   @override
@@ -2953,156 +2954,185 @@ class _VideoPlayerSheetState extends State<_VideoPlayerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Handle + header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 16, 10),
-            child: Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Calculamos el ancho real del sheet para fijar el alto del video.
+        final screenW = MediaQuery.of(context).size.width;
+        final videoH  = screenW * 9 / 16; // ratio 16:9 por defecto
+
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 40, height: 4,
-                  margin: const EdgeInsets.only(right: 14),
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                if (widget.title != null)
-                  Expanded(
-                    child: Text(
-                      widget.title!,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                // Handle + header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 8, 6),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40, height: 4,
+                        margin: const EdgeInsets.only(right: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                      if (widget.title != null)
+                        Expanded(
+                          child: Text(
+                            widget.title!,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded,
+                            color: Colors.white70, size: 22),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
                   ),
-                IconButton(
-                  icon: const Icon(Icons.close_rounded,
-                      color: Colors.white70, size: 22),
-                  onPressed: () => Navigator.pop(context),
                 ),
+
+                // Video area — alto fijo basado en el ancho de pantalla
+                SizedBox(
+                  width: screenW,
+                  height: _initialized
+                      ? screenW / _ctrl.value.aspectRatio
+                      : videoH,
+                  child: _error
+                      ? const Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.videocam_off_rounded,
+                                  color: Colors.white38, size: 48),
+                              SizedBox(height: 8),
+                              Text('No se pudo cargar el video',
+                                  style: TextStyle(
+                                      color: Colors.white38, fontSize: 12)),
+                            ],
+                          ),
+                        )
+                      : !_initialized
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                  color: AppColors.primary, strokeWidth: 2),
+                            )
+                          : VideoPlayer(_ctrl),
+                ),
+
+                // Controles — solo cuando el video está listo
+                if (_initialized)
+                  ValueListenableBuilder(
+                    valueListenable: _ctrl,
+                    builder: (_, VideoPlayerValue v, __) {
+                      final total = v.duration.inMilliseconds;
+                      final pos   = v.position.inMilliseconds;
+                      return Column(
+                        children: [
+                          Slider(
+                            value: total > 0
+                                ? (pos / total).clamp(0.0, 1.0)
+                                : 0.0,
+                            onChanged: (val) => _ctrl.seekTo(
+                                Duration(
+                                    milliseconds: (val * total).toInt())),
+                            activeColor: AppColors.primary,
+                            inactiveColor: Colors.white24,
+                          ),
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 20),
+                            child: Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(_fmt(v.position),
+                                    style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.white54)),
+                                Text(_fmt(v.duration),
+                                    style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.white54)),
+                              ],
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(
+                                top: 8, bottom: 20),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.replay_10_rounded,
+                                      color: Colors.white70, size: 28),
+                                  onPressed: () async {
+                                    final cur =
+                                        (await _ctrl.position) ??
+                                            Duration.zero;
+                                    _ctrl.seekTo(
+                                        cur - const Duration(seconds: 10));
+                                  },
+                                ),
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: () => v.isPlaying
+                                      ? _ctrl.pause()
+                                      : _ctrl.play(),
+                                  child: Container(
+                                    width: 56, height: 56,
+                                    decoration: const BoxDecoration(
+                                      gradient: AppColors.primaryGradient,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      v.isPlaying
+                                          ? Icons.pause_rounded
+                                          : Icons.play_arrow_rounded,
+                                      color: AppColors.background,
+                                      size: 30,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: const Icon(Icons.forward_10_rounded,
+                                      color: Colors.white70, size: 28),
+                                  onPressed: () async {
+                                    final cur =
+                                        (await _ctrl.position) ??
+                                            Duration.zero;
+                                    _ctrl.seekTo(
+                                        cur + const Duration(seconds: 10));
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  )
+                else
+                  const SizedBox(height: 80),
               ],
             ),
           ),
-
-          // Video area
-          AspectRatio(
-            aspectRatio: _initialized ? _ctrl.value.aspectRatio : 16 / 9,
-            child: _error
-                ? const Center(
-                    child: Icon(Icons.videocam_off_rounded,
-                        color: Colors.white38, size: 48),
-                  )
-                : !_initialized
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                            color: AppColors.primary, strokeWidth: 2),
-                      )
-                    : VideoPlayer(_ctrl),
-          ),
-
-          // Controls
-          if (_initialized) ...[
-            // Progress bar
-            ValueListenableBuilder(
-              valueListenable: _ctrl,
-              builder: (_, VideoPlayerValue v, __) {
-                final total = v.duration.inMilliseconds;
-                final pos   = v.position.inMilliseconds;
-                return Column(
-                  children: [
-                    Slider(
-                      value: total > 0 ? (pos / total).clamp(0.0, 1.0) : 0,
-                      onChanged: (val) => _ctrl.seekTo(
-                          Duration(milliseconds: (val * total).toInt())),
-                      activeColor: AppColors.primary,
-                      inactiveColor: Colors.white24,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(_fmt(v.position),
-                              style: const TextStyle(
-                                  fontSize: 11, color: Colors.white54)),
-                          Text(_fmt(v.duration),
-                              style: const TextStyle(
-                                  fontSize: 11, color: Colors.white54)),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-
-            // Play / pause
-            Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: ValueListenableBuilder(
-                valueListenable: _ctrl,
-                builder: (_, VideoPlayerValue v, __) => Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Retroceder 10 s
-                    IconButton(
-                      icon: const Icon(Icons.replay_10_rounded,
-                          color: Colors.white70, size: 28),
-                      onPressed: () async {
-                        final pos = (await _ctrl.position) ?? Duration.zero;
-                        _ctrl.seekTo(pos - const Duration(seconds: 10));
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    // Play / pause
-                    GestureDetector(
-                      onTap: () =>
-                          v.isPlaying ? _ctrl.pause() : _ctrl.play(),
-                      child: Container(
-                        width: 56, height: 56,
-                        decoration: const BoxDecoration(
-                          gradient: AppColors.primaryGradient,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          v.isPlaying
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
-                          color: AppColors.background,
-                          size: 30,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Adelantar 10 s
-                    IconButton(
-                      icon: const Icon(Icons.forward_10_rounded,
-                          color: Colors.white70, size: 28),
-                      onPressed: () async {
-                        final pos = (await _ctrl.position) ?? Duration.zero;
-                        _ctrl.seekTo(pos + const Duration(seconds: 10));
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ] else if (!_error)
-            const SizedBox(height: 60),
-        ],
-      ),
+        );
+      },
     );
   }
 
