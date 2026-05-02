@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -2229,16 +2229,19 @@ class _RecordRow extends StatelessWidget {
           ),
           if (record.videoUrl != null && record.videoUrl!.isNotEmpty)
             GestureDetector(
-              onTap: () async {
-                final uri = Uri.parse(record.videoUrl!);
-                if (await canLaunchUrl(uri)) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                }
-              },
+              onTap: () => showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => _VideoPlayerSheet(
+                  videoUrl: record.videoUrl!,
+                  title: record.userName,
+                ),
+              ),
               child: Padding(
                 padding: const EdgeInsets.only(right: 8),
-                child: Icon(Icons.play_circle_outline_rounded,
-                    size: 20, color: AppColors.primary),
+                child: Icon(Icons.play_circle_fill_rounded,
+                    size: 22, color: AppColors.primary),
               ),
             ),
           Column(
@@ -2870,23 +2873,21 @@ class _VideoPreviewTile extends StatelessWidget {
   }
 }
 
-// ─── Video card (feed / leaderboard) ─────────────────────────────────────────
+// ─── Video card (feed de posts) ───────────────────────────────────────────────
 
 class _VideoCard extends StatelessWidget {
   final String videoUrl;
   const _VideoCard({required this.videoUrl});
 
-  Future<void> _open() async {
-    final uri = Uri.parse(videoUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: _open,
+      onTap: () => showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => _VideoPlayerSheet(videoUrl: videoUrl),
+      ),
       child: Container(
         height: 160,
         decoration: BoxDecoration(
@@ -2902,7 +2903,7 @@ class _VideoCard extends StatelessWidget {
             Positioned(
               bottom: 8, left: 0, right: 0,
               child: Text(
-                'Toca para reproducir',
+                'Toca para ver el video',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.caption
                     .copyWith(color: AppColors.textSecondary),
@@ -2912,6 +2913,203 @@ class _VideoCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ─── Video player sheet ───────────────────────────────────────────────────────
+
+class _VideoPlayerSheet extends StatefulWidget {
+  final String videoUrl;
+  final String? title;
+  const _VideoPlayerSheet({required this.videoUrl, this.title});
+
+  @override
+  State<_VideoPlayerSheet> createState() => _VideoPlayerSheetState();
+}
+
+class _VideoPlayerSheetState extends State<_VideoPlayerSheet> {
+  late VideoPlayerController _ctrl;
+  bool _initialized = false;
+  bool _error = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
+      ..initialize().then((_) {
+        if (mounted) setState(() => _initialized = true);
+        _ctrl.play();
+      }).catchError((_) {
+        if (mounted) setState(() => _error = true);
+      });
+    _ctrl.setLooping(false);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle + header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 16, 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 40, height: 4,
+                  margin: const EdgeInsets.only(right: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                if (widget.title != null)
+                  Expanded(
+                    child: Text(
+                      widget.title!,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded,
+                      color: Colors.white70, size: 22),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+
+          // Video area
+          AspectRatio(
+            aspectRatio: _initialized ? _ctrl.value.aspectRatio : 16 / 9,
+            child: _error
+                ? const Center(
+                    child: Icon(Icons.videocam_off_rounded,
+                        color: Colors.white38, size: 48),
+                  )
+                : !_initialized
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                            color: AppColors.primary, strokeWidth: 2),
+                      )
+                    : VideoPlayer(_ctrl),
+          ),
+
+          // Controls
+          if (_initialized) ...[
+            // Progress bar
+            ValueListenableBuilder(
+              valueListenable: _ctrl,
+              builder: (_, VideoPlayerValue v, __) {
+                final total = v.duration.inMilliseconds;
+                final pos   = v.position.inMilliseconds;
+                return Column(
+                  children: [
+                    Slider(
+                      value: total > 0 ? (pos / total).clamp(0.0, 1.0) : 0,
+                      onChanged: (val) => _ctrl.seekTo(
+                          Duration(milliseconds: (val * total).toInt())),
+                      activeColor: AppColors.primary,
+                      inactiveColor: Colors.white24,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(_fmt(v.position),
+                              style: const TextStyle(
+                                  fontSize: 11, color: Colors.white54)),
+                          Text(_fmt(v.duration),
+                              style: const TextStyle(
+                                  fontSize: 11, color: Colors.white54)),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+
+            // Play / pause
+            Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: ValueListenableBuilder(
+                valueListenable: _ctrl,
+                builder: (_, VideoPlayerValue v, __) => Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Retroceder 10 s
+                    IconButton(
+                      icon: const Icon(Icons.replay_10_rounded,
+                          color: Colors.white70, size: 28),
+                      onPressed: () async {
+                        final pos = (await _ctrl.position) ?? Duration.zero;
+                        _ctrl.seekTo(pos - const Duration(seconds: 10));
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    // Play / pause
+                    GestureDetector(
+                      onTap: () =>
+                          v.isPlaying ? _ctrl.pause() : _ctrl.play(),
+                      child: Container(
+                        width: 56, height: 56,
+                        decoration: const BoxDecoration(
+                          gradient: AppColors.primaryGradient,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          v.isPlaying
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
+                          color: AppColors.background,
+                          size: 30,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Adelantar 10 s
+                    IconButton(
+                      icon: const Icon(Icons.forward_10_rounded,
+                          color: Colors.white70, size: 28),
+                      onPressed: () async {
+                        final pos = (await _ctrl.position) ?? Duration.zero;
+                        _ctrl.seekTo(pos + const Duration(seconds: 10));
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ] else if (!_error)
+            const SizedBox(height: 60),
+        ],
+      ),
+    );
+  }
+
+  String _fmt(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
   }
 }
 
