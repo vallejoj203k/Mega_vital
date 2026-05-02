@@ -215,12 +215,13 @@ class CommunityService {
         if (imageUrl == null) return 'warn:image';
       }
 
+      bool videoFailed = false;
       String? videoUrl;
       if (videoFile != null) {
         final size = await videoFile.length();
         if (size > _maxVideoBytes) return 'El video supera el límite de 100 MB.';
         videoUrl = await _uploadPostVideo(uid: uid, postId: postId, file: videoFile);
-        if (videoUrl == null) return 'warn:video';
+        if (videoUrl == null) videoFailed = true;
       }
 
       await _db.from('community_posts').insert({
@@ -234,7 +235,8 @@ class CommunityService {
         if (videoUrl != null) 'video_url': videoUrl,
       });
 
-      return null;
+      // La publicación se creó; si el video falló avisamos con warn:video.
+      return videoFailed ? 'warn:video' : null;
     } catch (e) {
       return e.toString();
     }

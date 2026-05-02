@@ -207,12 +207,14 @@ class ChallengesService {
     final uid = _uid;
     if (uid == null) return 'No hay sesión activa.';
     try {
+      bool videoFailed = false;
       String? videoUrl;
       if (videoFile != null) {
         final size = await videoFile.length();
         if (size > _maxVideoBytes) return 'El video supera el límite de 100 MB.';
         videoUrl = await _uploadChallengeVideo(
             uid: uid, challengeId: challengeId, file: videoFile);
+        if (videoUrl == null) videoFailed = true;
       }
 
       await _db.from('challenge_records').upsert({
@@ -223,7 +225,9 @@ class ChallengesService {
         if (reps != null) 'reps': reps,
         if (videoUrl != null) 'video_url': videoUrl,
       }, onConflict: 'challenge_id,user_id');
-      return null;
+
+      // El record se guardó; si el video falló avisamos con warn:video.
+      return videoFailed ? 'warn:video' : null;
     } catch (e) {
       return e.toString();
     }

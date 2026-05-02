@@ -63,7 +63,7 @@ class ChallengesProvider extends ChangeNotifier {
       reps:        reps,
       videoFile:   videoFile,
     );
-    if (err == null) await load();
+    if (err == null || err == 'warn:video') await load();
     return err;
   }
 

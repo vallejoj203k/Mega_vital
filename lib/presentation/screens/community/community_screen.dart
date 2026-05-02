@@ -663,18 +663,20 @@ class _PublishSheetState extends State<_PublishSheet> {
       videoFile: _pickedVideo,
     );
     if (mounted) {
+      // Capturar messenger ANTES del pop para que el contexto siga siendo válido.
+      final messenger = ScaffoldMessenger.of(context);
       if (error == null) {
         Navigator.pop(context);
       } else if (error == 'warn:image' || error == 'warn:video') {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text(
               error == 'warn:video'
-                  ? 'Publicación creada, pero el video no se pudo subir. '
-                    'Ejecuta el SQL de configuración en Supabase para habilitar videos.'
-                  : 'Publicación creada, pero la foto no se pudo subir. '
-                    'Ejecuta el SQL de configuración en Supabase para habilitar imágenes.',
+                  ? 'Publicado, pero el video no se pudo subir. '
+                    'Asegúrate de haber ejecutado el SQL del bucket post_videos en Supabase.'
+                  : 'Publicado, pero la foto no se pudo subir. '
+                    'Ejecuta el SQL de configuración en Supabase.',
               style: const TextStyle(color: Colors.white),
             ),
             backgroundColor: AppColors.accentOrange,
@@ -683,7 +685,7 @@ class _PublishSheetState extends State<_PublishSheet> {
         );
       } else {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text(
               _friendlyError(error),
@@ -2347,11 +2349,23 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
       videoFile:   _pickedVideo,
     );
     if (mounted) {
+      final messenger = ScaffoldMessenger.of(context);
       if (err == null) {
         Navigator.pop(context);
+      } else if (err == 'warn:video') {
+        Navigator.pop(context);
+        messenger.showSnackBar(const SnackBar(
+          content: Text(
+            'Marca guardada, pero el video no se pudo subir. '
+            'Asegúrate de haber ejecutado el SQL del bucket post_videos en Supabase.',
+            style: TextStyle(color: Colors.white),
+          ),
+          backgroundColor: AppColors.accentOrange,
+          duration: Duration(seconds: 6),
+        ));
       } else {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text('Error: $err'),
               backgroundColor: AppColors.error),
         );
