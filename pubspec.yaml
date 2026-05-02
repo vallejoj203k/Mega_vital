@@ -30,6 +30,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/images/app_icon.png
     - assets/images/body_front.png
     - assets/images/body_back.png
     - assets/images/frontal_masculino.png

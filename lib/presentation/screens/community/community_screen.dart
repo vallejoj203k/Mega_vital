@@ -498,43 +498,59 @@ class _PostCard extends StatelessWidget {
   }
 
   Future<void> _sharePost(BuildContext context) async {
-    final lines = <String>[
-      '💪 MEGA VITAL',
-      if (post.achievement != null) '🏆 ${post.achievement}',
-      '',
-      post.content,
-      '',
-      '— ${post.userName}',
-    ];
-    if (post.videoUrl != null) lines.add('🎥 ${post.videoUrl}');
-    final shareText = lines.join('\n');
+    // Texto de compartir
+    final buf = StringBuffer();
+    buf.writeln('💪 MEGA VITAL');
+    if (post.achievement != null) buf.writeln('🏆 ${post.achievement}');
+    buf.writeln();
+    buf.writeln(post.content);
+    buf.writeln();
+    buf.write('— ${post.userName}');
+    if (post.videoUrl != null && post.videoUrl!.isNotEmpty) {
+      buf.writeln();
+      buf.write('🎥 ${post.videoUrl}');
+    }
+    final shareText = buf.toString();
 
     final files = <XFile>[];
 
-    // Icono de Mega Vital desde assets
-    try {
-      final data = await rootBundle.load('assets/images/app_icon.png');
-      final iconFile =
-          File('${Directory.systemTemp.path}/mv_icon_share.png');
-      await iconFile.writeAsBytes(data.buffer.asUint8List());
-      files.add(XFile(iconFile.path, mimeType: 'image/png'));
-    } catch (_) {}
-
-    // Imagen del post si existe
+    // 1. Imagen del post (prioridad) — si existe se usa en lugar del ícono
+    //    para que la previsualización en redes sociales sea más impactante.
+    bool hasPostImage = false;
     if (post.imageUrl != null && post.imageUrl!.isNotEmpty) {
       try {
-        final res = await http.get(Uri.parse(post.imageUrl!))
-            .timeout(const Duration(seconds: 10));
-        final imgFile =
-            File('${Directory.systemTemp.path}/mv_post_${post.id}.jpg');
-        await imgFile.writeAsBytes(res.bodyBytes);
-        files.add(XFile(imgFile.path, mimeType: 'image/jpeg'));
+        final res = await http
+            .get(Uri.parse(post.imageUrl!))
+            .timeout(const Duration(seconds: 12));
+        if (res.statusCode == 200) {
+          final imgFile =
+              File('${Directory.systemTemp.path}/mv_share_post_${post.id}.jpg');
+          await imgFile.writeAsBytes(res.bodyBytes);
+          files.add(XFile(imgFile.path, mimeType: 'image/jpeg'));
+          hasPostImage = true;
+        }
+      } catch (_) {}
+    }
+
+    // 2. Ícono de Mega Vital — se adjunta siempre; cuando no hay foto del post
+    //    es la única imagen, por lo que aparece como miniatura en WhatsApp,
+    //    Instagram, etc.
+    if (!hasPostImage) {
+      try {
+        final data = await rootBundle.load('assets/images/app_icon.png');
+        final iconFile =
+            File('${Directory.systemTemp.path}/mv_share_icon.png');
+        await iconFile.writeAsBytes(data.buffer.asUint8List());
+        files.add(XFile(iconFile.path, mimeType: 'image/png'));
       } catch (_) {}
     }
 
     if (files.isNotEmpty) {
-      await Share.shareXFiles(files,
-          text: shareText, subject: 'Mega Vital');
+      await Share.shareXFiles(
+        files,
+        text: shareText,
+        subject: 'Mega Vital',
+      );
     } else {
       await Share.share(shareText, subject: 'Mega Vital');
     }
