@@ -75,6 +75,9 @@ CREATE TABLE IF NOT EXISTS public.community_posts (
 ALTER TABLE public.community_posts
   DROP CONSTRAINT IF EXISTS community_posts_user_id_fkey;
 
+-- Columna de video (se agrega si no existía en instalaciones previas)
+ALTER TABLE public.community_posts ADD COLUMN IF NOT EXISTS video_url TEXT;
+
 ALTER TABLE public.community_posts ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Authenticated can view posts"  ON public.community_posts;

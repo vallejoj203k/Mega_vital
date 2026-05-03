@@ -52,15 +52,18 @@ class CommunityProvider extends ChangeNotifier {
     String content, {
     String? achievement,
     File? imageFile,
+    File? videoFile,
   }) async {
     final result = await _service.createPost(
       userName: userName,
       content: content,
       achievement: achievement,
       imageFile: imageFile,
+      videoFile: videoFile,
     );
-    // Recargar aunque sea sólo advertencia de imagen
-    if (result == null || result == 'warn:image') await loadPosts();
+    if (result == null || result == 'warn:image' || result == 'warn:video') {
+      await loadPosts();
+    }
     return result;
   }
 

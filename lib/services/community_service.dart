@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:video_compress/video_compress.dart';
 
 // ─── Models ─────────────────────────────────────────────────────────────────
 
@@ -12,6 +13,7 @@ class CommunityPost {
   final String content;
   final String? achievement;
   final String? imageUrl;
+  final String? videoUrl;
   final String? avatarUrl;
   final DateTime createdAt;
   final int likesCount;
@@ -26,6 +28,7 @@ class CommunityPost {
     required this.content,
     this.achievement,
     this.imageUrl,
+    this.videoUrl,
     this.avatarUrl,
     required this.createdAt,
     required this.likesCount,
@@ -47,6 +50,7 @@ class CommunityPost {
       content: m['content'] as String,
       achievement: m['achievement'] as String?,
       imageUrl: m['image_url'] as String?,
+      videoUrl: m['video_url'] as String?,
       avatarUrl: avatarUrl,
       createdAt: DateTime.parse(m['created_at'] as String),
       likesCount: m['likes_count'] as int? ?? 0,
@@ -63,6 +67,7 @@ class CommunityPost {
     content: content,
     achievement: achievement,
     imageUrl: imageUrl,
+    videoUrl: videoUrl,
     avatarUrl: avatarUrl,
     createdAt: createdAt,
     likesCount: likesCount ?? this.likesCount,
@@ -189,23 +194,34 @@ class CommunityService {
     }
   }
 
+  static const int _maxVideoBytes = 30 * 1024 * 1024; // 30 MB post-compresión
+
   /// Retorna null en éxito, o el mensaje de error en fallo.
   Future<String?> createPost({
     required String userName,
     required String content,
     String? achievement,
     File? imageFile,
+    File? videoFile,
   }) async {
     final uid = _uid;
     if (uid == null) return 'No hay sesión activa.';
     try {
-      // Generate post ID on the client so the image can be uploaded before INSERT.
       final postId = _generateId();
 
       String? imageUrl;
+      String? videoUrl;
+
       if (imageFile != null) {
         imageUrl = await _uploadPostImage(uid: uid, postId: postId, file: imageFile);
         if (imageUrl == null) return 'warn:image';
+      }
+
+      if (videoFile != null) {
+        final result = await _compressAndUploadVideo(uid: uid, postId: postId, file: videoFile);
+        if (result == null) return 'warn:video';
+        if (result.startsWith('err:')) return result.substring(4);
+        videoUrl = result;
       }
 
       await _db.from('community_posts').insert({
@@ -216,11 +232,53 @@ class CommunityService {
         if (achievement != null && achievement.trim().isNotEmpty)
           'achievement': achievement.trim(),
         if (imageUrl != null) 'image_url': imageUrl,
+        if (videoUrl != null) 'video_url': videoUrl,
       });
 
       return null;
     } catch (e) {
       return e.toString();
+    }
+  }
+
+  // Comprime el video con VideoCompress antes de subir.
+  // Retorna la URL pública, 'err:<mensaje>' si hay error de tamaño, o null si falla el upload.
+  Future<String?> _compressAndUploadVideo({
+    required String uid,
+    required String postId,
+    required File file,
+  }) async {
+    try {
+      final info = await VideoCompress.compressVideo(
+        file.path,
+        quality: VideoQuality.MediumQuality, // ~720p, ~80% reducción de peso
+        deleteOrigin: false,
+        includeAudio: true,
+      );
+
+      if (info == null || info.file == null) return null;
+
+      final sizeBytes = await info.file!.length();
+      if (sizeBytes > _maxVideoBytes) {
+        return 'err:El video es demasiado pesado incluso comprimido. Graba uno más corto (máx. 60 segundos).';
+      }
+
+      const bucket = 'post_videos';
+      final path = '$uid/$postId.mp4';
+      await _db.storage.from(bucket).upload(
+        path,
+        info.file!,
+        fileOptions: const FileOptions(
+          contentType: 'video/mp4',
+          cacheControl: '604800', // 7 días de caché
+          upsert: true,
+        ),
+      );
+      return _db.storage.from(bucket).getPublicUrl(path);
+    } catch (_) {
+      return null;
+    } finally {
+      VideoCompress.cancelCompression();
     }
   }
 

@@ -1,9 +1,12 @@
 // lib/presentation/screens/community/community_screen.dart
 
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:video_compress/video_compress.dart';
+import 'package:video_player/video_player.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -450,6 +453,12 @@ class _PostCard extends StatelessWidget {
             ),
           ],
 
+          // Post video
+          if (post.videoUrl != null && post.videoUrl!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _VideoPostPlayer(url: post.videoUrl!),
+          ],
+
           const SizedBox(height: 14),
           Divider(color: AppColors.divider, height: 1),
           const SizedBox(height: 10),
@@ -601,8 +610,11 @@ class _PublishSheetState extends State<_PublishSheet> {
   final _controller = TextEditingController();
   final _achievementController = TextEditingController();
   bool _loading = false;
+  bool _compressing = false;
   bool _showAchievement = false;
   File? _pickedImage;
+  File? _pickedVideo;
+  Uint8List? _videoThumbnail;
 
   @override
   void dispose() {
@@ -619,8 +631,33 @@ class _PublishSheetState extends State<_PublishSheet> {
       imageQuality: 85,
     );
     if (xfile != null && mounted) {
-      setState(() => _pickedImage = File(xfile.path));
+      setState(() { _pickedImage = File(xfile.path); _pickedVideo = null; _videoThumbnail = null; });
     }
+  }
+
+  Future<void> _pickVideo() async {
+    final picker = ImagePicker();
+    final xfile = await picker.pickVideo(
+      source: ImageSource.gallery,
+      maxDuration: const Duration(seconds: 90),
+    );
+    if (xfile == null || !mounted) return;
+
+    setState(() { _compressing = true; _pickedImage = null; });
+
+    // Genera thumbnail para previsualización
+    final thumb = await VideoCompress.getByteThumbnail(
+      xfile.path,
+      quality: 70,
+      position: -1,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _pickedVideo    = File(xfile.path);
+      _videoThumbnail = thumb;
+      _compressing    = false;
+    });
   }
 
   Future<void> _submit() async {
@@ -632,7 +669,7 @@ class _PublishSheetState extends State<_PublishSheet> {
         : null;
     final error = await context
         .read<CommunityProvider>()
-        .createPost(widget.userName, text, achievement: achievement, imageFile: _pickedImage);
+        .createPost(widget.userName, text, achievement: achievement, imageFile: _pickedImage, videoFile: _pickedVideo);
     if (mounted) {
       if (error == null) {
         Navigator.pop(context);
@@ -743,28 +780,20 @@ class _PublishSheetState extends State<_PublishSheet> {
           ),
           const SizedBox(height: 10),
 
-          // Image preview
+          // Preview de imagen
           if (_pickedImage != null) ...[
             Stack(
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    _pickedImage!,
-                    width: double.infinity,
-                    height: 180,
-                    fit: BoxFit.cover,
-                  ),
+                  child: Image.file(_pickedImage!, width: double.infinity, height: 180, fit: BoxFit.cover),
                 ),
                 Positioned(
                   top: 6, right: 6,
                   child: GestureDetector(
                     onTap: () => setState(() => _pickedImage = null),
                     child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        shape: BoxShape.circle,
-                      ),
+                      decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
                       padding: const EdgeInsets.all(4),
                       child: const Icon(Icons.close, color: Colors.white, size: 16),
                     ),
@@ -775,44 +804,86 @@ class _PublishSheetState extends State<_PublishSheet> {
             const SizedBox(height: 10),
           ],
 
+          // Preview de video (thumbnail con icono play)
+          if (_compressing) ...[
+            Container(
+              height: 100,
+              decoration: BoxDecoration(color: AppColors.surfaceVariant, borderRadius: BorderRadius.circular(12)),
+              child: const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2),
+                SizedBox(height: 8),
+                Text('Preparando video…', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              ])),
+            ),
+            const SizedBox(height: 10),
+          ] else if (_pickedVideo != null) ...[
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: _videoThumbnail != null
+                      ? Image.memory(_videoThumbnail!, width: double.infinity, height: 180, fit: BoxFit.cover)
+                      : Container(height: 180, color: AppColors.surfaceVariant),
+                ),
+                Container(
+                  width: 48, height: 48,
+                  decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 30),
+                ),
+                Positioned(
+                  top: 6, right: 6,
+                  child: GestureDetector(
+                    onTap: () => setState(() { _pickedVideo = null; _videoThumbnail = null; }),
+                    child: Container(
+                      decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                      padding: const EdgeInsets.all(4),
+                      child: const Icon(Icons.close, color: Colors.white, size: 16),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 8, left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(6)),
+                    child: const Text('VIDEO · se comprimirá al publicar', style: TextStyle(color: Colors.white, fontSize: 10)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
+
           Row(
             children: [
               GestureDetector(
-                onTap: _pickImage,
-                child: Row(
-                  children: [
-                    Icon(
-                      _pickedImage != null
-                          ? Icons.image_rounded
-                          : Icons.image_outlined,
-                      color: AppColors.primary, size: 18,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _pickedImage != null ? 'Cambiar foto' : 'Añadir foto',
-                      style: AppTextStyles.caption.copyWith(color: AppColors.primary),
-                    ),
-                  ],
-                ),
+                onTap: (_loading || _compressing) ? null : _pickImage,
+                child: Row(children: [
+                  Icon(_pickedImage != null ? Icons.image_rounded : Icons.image_outlined, color: AppColors.primary, size: 18),
+                  const SizedBox(width: 6),
+                  Text(_pickedImage != null ? 'Cambiar foto' : 'Añadir foto',
+                      style: AppTextStyles.caption.copyWith(color: AppColors.primary)),
+                ]),
               ),
-              const SizedBox(width: 20),
+              const SizedBox(width: 16),
+              GestureDetector(
+                onTap: (_loading || _compressing) ? null : _pickVideo,
+                child: Row(children: [
+                  Icon(_pickedVideo != null ? Icons.videocam_rounded : Icons.videocam_outlined, color: AppColors.accentBlue, size: 18),
+                  const SizedBox(width: 6),
+                  Text(_pickedVideo != null ? 'Cambiar video' : 'Añadir video',
+                      style: AppTextStyles.caption.copyWith(color: AppColors.accentBlue)),
+                ]),
+              ),
+              const SizedBox(width: 16),
               GestureDetector(
                 onTap: () => setState(() => _showAchievement = !_showAchievement),
-                child: Row(
-                  children: [
-                    Icon(
-                      _showAchievement
-                          ? Icons.emoji_events_rounded
-                          : Icons.emoji_events_outlined,
-                      color: AppColors.primary, size: 18,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Añadir logro',
-                      style: AppTextStyles.caption.copyWith(color: AppColors.primary),
-                    ),
-                  ],
-                ),
+                child: Row(children: [
+                  Icon(_showAchievement ? Icons.emoji_events_rounded : Icons.emoji_events_outlined, color: AppColors.primary, size: 18),
+                  const SizedBox(width: 6),
+                  Text('Logro', style: AppTextStyles.caption.copyWith(color: AppColors.primary)),
+                ]),
               ),
             ],
           ),
@@ -2762,4 +2833,109 @@ String _formatRecord(double v, String unit, int? reps) {
   if (unit != 'kg×reps') return _formatValue(v, unit);
   final kgStr = v == v.truncateToDouble() ? '${v.toInt()} kg' : '${v.toStringAsFixed(1)} kg';
   return reps != null && reps > 0 ? '$kgStr × $reps reps' : kgStr;
+}
+
+// ─── Reproductor de video en el feed ─────────────────────────────────────────
+
+class _VideoPostPlayer extends StatefulWidget {
+  final String url;
+  const _VideoPostPlayer({required this.url});
+
+  @override
+  State<_VideoPostPlayer> createState() => _VideoPostPlayerState();
+}
+
+class _VideoPostPlayerState extends State<_VideoPostPlayer> {
+  late VideoPlayerController _ctrl;
+  bool _initialized = false;
+  bool _playing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.url))
+      ..initialize().then((_) {
+        if (mounted) setState(() => _initialized = true);
+      });
+    _ctrl.addListener(_onUpdate);
+  }
+
+  void _onUpdate() {
+    if (_ctrl.value.isCompleted && _playing) {
+      setState(() { _playing = false; });
+      _ctrl.seekTo(Duration.zero);
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.removeListener(_onUpdate);
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _togglePlay() {
+    if (_ctrl.value.isPlaying) {
+      _ctrl.pause();
+      setState(() => _playing = false);
+    } else {
+      _ctrl.play();
+      setState(() => _playing = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        color: Colors.black,
+        constraints: const BoxConstraints(maxHeight: 320),
+        child: AspectRatio(
+          aspectRatio: _initialized ? _ctrl.value.aspectRatio : 16 / 9,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              if (_initialized)
+                VideoPlayer(_ctrl)
+              else
+                Container(
+                  color: AppColors.surfaceVariant,
+                  child: const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)),
+                ),
+              // Botón play/pause
+              if (!_playing)
+                GestureDetector(
+                  onTap: _initialized ? _togglePlay : null,
+                  child: Container(
+                    width: 52, height: 52,
+                    decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 34),
+                  ),
+                )
+              else
+                GestureDetector(
+                  onTap: _togglePlay,
+                  child: Container(color: Colors.transparent, width: double.infinity, height: double.infinity),
+                ),
+              // Barra de progreso
+              if (_initialized)
+                Positioned(
+                  bottom: 0, left: 0, right: 0,
+                  child: VideoProgressIndicator(
+                    _ctrl,
+                    allowScrubbing: true,
+                    colors: const VideoProgressColors(
+                      playedColor: AppColors.primary,
+                      bufferedColor: Colors.white30,
+                      backgroundColor: Colors.black26,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
