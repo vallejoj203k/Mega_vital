@@ -1103,21 +1103,58 @@ BEGIN
     (
       SELECT JSON_AGG(
         json_build_object(
-          'id',            id::text,
-          'code',          code,
-          'type',          type,
-          'duration_days', duration_days,
-          'is_used',       is_used,
-          'created_at',    TO_CHAR(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-          'used_at',       CASE WHEN used_at IS NOT NULL
-                             THEN TO_CHAR(used_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
-                             ELSE NULL END
+          'id',                pc.id::text,
+          'code',              pc.code,
+          'type',              pc.type,
+          'duration_days',     pc.duration_days,
+          'is_used',           pc.is_used,
+          'created_at',        TO_CHAR(pc.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+          'used_at',           CASE WHEN pc.used_at IS NOT NULL
+                                 THEN TO_CHAR(pc.used_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                                 ELSE NULL END,
+          'used_by_username',  up.username,
+          'expires_at',        CASE WHEN ps.expires_at IS NOT NULL
+                                 THEN TO_CHAR(ps.expires_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                                 ELSE NULL END
         )
-        ORDER BY created_at DESC
+        ORDER BY pc.created_at DESC
       )
-      FROM public.premium_codes
+      FROM public.premium_codes pc
+      LEFT JOIN public.user_profiles up ON up.uid = pc.used_by
+      LEFT JOIN public.premium_subscriptions ps ON ps.code_id = pc.id
     ),
     '[]'::JSON
+  );
+END;
+$$;
+
+
+-- ── RPC: get_premium_stats ────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.get_premium_stats(admin_key TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF admin_key <> 'cocodemegavital' THEN
+    RETURN NULL;
+  END IF;
+
+  RETURN (
+    SELECT json_build_object(
+      'total_codes',           (SELECT COUNT(*)::int FROM public.premium_codes),
+      'used_codes',            (SELECT COUNT(*)::int FROM public.premium_codes WHERE is_used = TRUE),
+      'unused_codes',          (SELECT COUNT(*)::int FROM public.premium_codes WHERE is_used = FALSE),
+      'active_subscriptions',  (SELECT COUNT(*)::int FROM public.premium_subscriptions WHERE expires_at > NOW()),
+      'expired_subscriptions', (SELECT COUNT(*)::int FROM public.premium_subscriptions WHERE expires_at <= NOW()),
+      'mensual_total',         (SELECT COUNT(*)::int FROM public.premium_codes WHERE type = 'mensual'),
+      'trimestral_total',      (SELECT COUNT(*)::int FROM public.premium_codes WHERE type = 'trimestral'),
+      'anual_total',           (SELECT COUNT(*)::int FROM public.premium_codes WHERE type = 'anual'),
+      'mensual_used',          (SELECT COUNT(*)::int FROM public.premium_codes WHERE type = 'mensual'    AND is_used = TRUE),
+      'trimestral_used',       (SELECT COUNT(*)::int FROM public.premium_codes WHERE type = 'trimestral' AND is_used = TRUE),
+      'anual_used',            (SELECT COUNT(*)::int FROM public.premium_codes WHERE type = 'anual'      AND is_used = TRUE)
+    )
   );
 END;
 $$;

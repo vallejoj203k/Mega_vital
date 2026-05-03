@@ -8,6 +8,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/providers/nav_provider.dart';
+import '../core/providers/auth_provider.dart';
+import '../core/providers/premium_provider.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/workouts/workouts_screen.dart';
 import 'screens/nutrition/nutrition_screen.dart';
@@ -23,7 +25,7 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   static const List<Widget> _screens = [
     HomeScreen(),
     WorkoutsScreen(),
@@ -32,6 +34,34 @@ class _MainScreenState extends State<MainScreen> {
     CommunityScreen(),
     ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Re-verifica el estado premium cada vez que la app vuelve al primer plano.
+  // Si la suscripción venció mientras la app estaba en background, el provider
+  // actualizará el estado a expired y los widgets bloqueados se reactivarán.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final auth = context.read<AuthProvider>();
+      if (auth.firebaseUser != null && auth.profile != null) {
+        context.read<PremiumProvider>().checkStatus(
+          auth.firebaseUser!.uid,
+          auth.profile!.createdAt,
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

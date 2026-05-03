@@ -56,6 +56,8 @@ class PremiumCodeInfo {
   final bool      isUsed;
   final DateTime  createdAt;
   final DateTime? usedAt;
+  final String?   usedByUsername;
+  final DateTime? expiresAt;
 
   const PremiumCodeInfo({
     required this.id,
@@ -65,16 +67,71 @@ class PremiumCodeInfo {
     required this.isUsed,
     required this.createdAt,
     this.usedAt,
+    this.usedByUsername,
+    this.expiresAt,
   });
 
   factory PremiumCodeInfo.fromMap(Map<String, dynamic> m) => PremiumCodeInfo(
-    id:           m['id'] as String,
-    code:         m['code'] as String,
-    type:         m['type'] as String,
-    durationDays: (m['duration_days'] as num).toInt(),
-    isUsed:       m['is_used'] as bool,
-    createdAt:    DateTime.parse(m['created_at'] as String),
-    usedAt:       m['used_at'] != null ? DateTime.parse(m['used_at'] as String) : null,
+    id:             m['id'] as String,
+    code:           m['code'] as String,
+    type:           m['type'] as String,
+    durationDays:   (m['duration_days'] as num).toInt(),
+    isUsed:         m['is_used'] as bool,
+    createdAt:      DateTime.parse(m['created_at'] as String),
+    usedAt:         m['used_at'] != null ? DateTime.parse(m['used_at'] as String) : null,
+    usedByUsername: m['used_by_username'] as String?,
+    expiresAt:      m['expires_at'] != null ? DateTime.parse(m['expires_at'] as String) : null,
+  );
+
+  bool get isExpired => expiresAt != null && expiresAt!.isBefore(DateTime.now());
+}
+
+class PremiumStats {
+  final int totalCodes;
+  final int usedCodes;
+  final int unusedCodes;
+  final int activeSubscriptions;
+  final int expiredSubscriptions;
+  final int mensualTotal;
+  final int trimestralTotal;
+  final int anualTotal;
+  final int mensualUsed;
+  final int trimestralUsed;
+  final int anualUsed;
+
+  const PremiumStats({
+    required this.totalCodes,
+    required this.usedCodes,
+    required this.unusedCodes,
+    required this.activeSubscriptions,
+    required this.expiredSubscriptions,
+    required this.mensualTotal,
+    required this.trimestralTotal,
+    required this.anualTotal,
+    required this.mensualUsed,
+    required this.trimestralUsed,
+    required this.anualUsed,
+  });
+
+  factory PremiumStats.fromMap(Map<String, dynamic> m) => PremiumStats(
+    totalCodes:           (m['total_codes'] as num).toInt(),
+    usedCodes:            (m['used_codes'] as num).toInt(),
+    unusedCodes:          (m['unused_codes'] as num).toInt(),
+    activeSubscriptions:  (m['active_subscriptions'] as num).toInt(),
+    expiredSubscriptions: (m['expired_subscriptions'] as num).toInt(),
+    mensualTotal:         (m['mensual_total'] as num).toInt(),
+    trimestralTotal:      (m['trimestral_total'] as num).toInt(),
+    anualTotal:           (m['anual_total'] as num).toInt(),
+    mensualUsed:          (m['mensual_used'] as num).toInt(),
+    trimestralUsed:       (m['trimestral_used'] as num).toInt(),
+    anualUsed:            (m['anual_used'] as num).toInt(),
+  );
+
+  factory PremiumStats.empty() => const PremiumStats(
+    totalCodes: 0, usedCodes: 0, unusedCodes: 0,
+    activeSubscriptions: 0, expiredSubscriptions: 0,
+    mensualTotal: 0, trimestralTotal: 0, anualTotal: 0,
+    mensualUsed: 0, trimestralUsed: 0, anualUsed: 0,
   );
 }
 
@@ -146,6 +203,17 @@ class PremiumService {
       return list.map((e) => PremiumCodeInfo.fromMap(e as Map<String, dynamic>)).toList();
     } catch (_) {
       return [];
+    }
+  }
+
+  // ── Estadísticas del sistema premium (solo administración) ────
+  Future<PremiumStats> getStats() async {
+    try {
+      final result = await _db.rpc('get_premium_stats', params: {'admin_key': 'cocodemegavital'});
+      if (result == null) return PremiumStats.empty();
+      return PremiumStats.fromMap(result as Map<String, dynamic>);
+    } catch (_) {
+      return PremiumStats.empty();
     }
   }
 }

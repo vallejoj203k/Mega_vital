@@ -1,5 +1,5 @@
 // lib/presentation/screens/admin/admin_panel_screen.dart
-// Panel de administración: generar y listar códigos premium.
+// Panel de administración: estadísticas, generar y listar códigos premium.
 // Acceso protegido por contraseña de administración.
 
 import 'package:flutter/material.dart';
@@ -129,41 +129,49 @@ class AdminPanelScreen extends StatefulWidget {
 }
 
 class _AdminPanelScreenState extends State<AdminPanelScreen> {
-  bool _generating = false;
+  bool _generating  = false;
   bool _loadingCodes = true;
+  bool _loadingStats = true;
   List<PremiumCodeInfo> _codes = [];
-  String? _lastGenerated;
+  PremiumStats _stats = PremiumStats.empty();
 
   @override
   void initState() {
     super.initState();
-    _loadCodes();
+    _refresh();
   }
 
-  Future<void> _loadCodes() async {
-    setState(() => _loadingCodes = true);
-    _codes = await context.read<PremiumProvider>().listCodes();
-    if (mounted) setState(() => _loadingCodes = false);
+  Future<void> _refresh() async {
+    setState(() { _loadingCodes = true; _loadingStats = true; });
+    final provider = context.read<PremiumProvider>();
+    final results = await Future.wait([
+      provider.listCodes(),
+      provider.getStats(),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _codes        = results[0] as List<PremiumCodeInfo>;
+      _stats        = results[1] as PremiumStats;
+      _loadingCodes = false;
+      _loadingStats = false;
+    });
   }
 
   Future<void> _generateCode(String type) async {
-    setState(() { _generating = true; _lastGenerated = null; });
+    setState(() { _generating = true; });
     final code = await context.read<PremiumProvider>().generateCode(type);
     if (!mounted) return;
+    setState(() => _generating = false);
     if (code != null) {
-      setState(() { _lastGenerated = code; _generating = false; });
-      await _loadCodes();
+      await _refresh();
       _showCodeDialog(code, type);
     } else {
-      setState(() => _generating = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error al generar el código. Verifica la conexión.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error al generar el código. Verifica la conexión.'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -245,17 +253,40 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppColors.textSecondary),
-            onPressed: _loadCodes,
+            onPressed: _refresh,
           ),
         ],
       ),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // ── Generar código ──────────────────────────────────────
+
+          // ── Estadísticas ────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Estadísticas', style: AppTextStyles.headingSmall),
+                  const SizedBox(height: 12),
+                  _loadingStats
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 20),
+                            child: CircularProgressIndicator(color: AppColors.primary),
+                          ),
+                        )
+                      : _StatsPanel(stats: _stats),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Generar código ──────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -298,7 +329,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             ),
           ),
 
-          // ── Códigos generados ───────────────────────────────────
+          // ── Encabezado lista de códigos ─────────────────────────
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 10),
@@ -339,7 +370,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           else
             SliverList(
               delegate: SliverChildBuilderDelegate(
-                    (_, i) => _CodeTile(info: _codes[i]),
+                (_, i) => _CodeTile(info: _codes[i]),
                 childCount: _codes.length,
               ),
             ),
@@ -347,6 +378,167 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
       ),
+    );
+  }
+}
+
+// ── Panel de estadísticas ─────────────────────────────────────────
+class _StatsPanel extends StatelessWidget {
+  final PremiumStats stats;
+  const _StatsPanel({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Fila superior: resumen general
+        Row(
+          children: [
+            _StatCard(
+              label: 'Activos',
+              value: '${stats.activeSubscriptions}',
+              icon: Icons.verified_rounded,
+              color: AppColors.primary,
+            ),
+            const SizedBox(width: 10),
+            _StatCard(
+              label: 'Usados',
+              value: '${stats.usedCodes}/${stats.totalCodes}',
+              icon: Icons.confirmation_num_rounded,
+              color: AppColors.accentOrange,
+            ),
+            const SizedBox(width: 10),
+            _StatCard(
+              label: 'Disponibles',
+              value: '${stats.unusedCodes}',
+              icon: Icons.local_offer_rounded,
+              color: AppColors.accentBlue,
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        // Fila inferior: desglose por plan
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border, width: 0.5),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _PlanStat(
+                label: 'Mensual',
+                used: stats.mensualUsed,
+                total: stats.mensualTotal,
+                color: AppColors.accentBlue,
+              ),
+              _Divider(),
+              _PlanStat(
+                label: 'Trimestral',
+                used: stats.trimestralUsed,
+                total: stats.trimestralTotal,
+                color: AppColors.primary,
+              ),
+              _Divider(),
+              _PlanStat(
+                label: 'Anual',
+                used: stats.anualUsed,
+                total: stats.anualTotal,
+                color: AppColors.accentOrange,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Divider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) =>
+      Container(width: 0.5, height: 36, color: AppColors.border);
+}
+
+class _StatCard extends StatelessWidget {
+  final String label, value;
+  final IconData icon;
+  final Color color;
+
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.25)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
+            ),
+            Text(
+              label,
+              style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PlanStat extends StatelessWidget {
+  final String label;
+  final int used, total;
+  final Color color;
+
+  const _PlanStat({
+    required this.label,
+    required this.used,
+    required this.total,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          '$used/$total',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+        ),
+      ],
     );
   }
 }
@@ -380,30 +572,30 @@ class _PlanButton extends StatelessWidget {
           ),
           child: loading
               ? Center(
-            child: SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2, color: color),
-            ),
-          )
+                  child: SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: color),
+                  ),
+                )
               : Column(
-            children: [
-              Icon(Icons.add_circle_rounded, color: color, size: 22),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: color,
+                  children: [
+                    Icon(Icons.add_circle_rounded, color: color, size: 22),
+                    const SizedBox(height: 6),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: color,
+                      ),
+                    ),
+                    Text(
+                      days,
+                      style: TextStyle(fontSize: 10, color: color.withOpacity(0.7)),
+                    ),
+                  ],
                 ),
-              ),
-              Text(
-                days,
-                style: TextStyle(fontSize: 10, color: color.withOpacity(0.7)),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -429,7 +621,14 @@ class _CodeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _typeColor();
+    final color      = _typeColor();
+    final isExpired  = info.isExpired;
+    final dotColor   = !info.isUsed
+        ? color
+        : isExpired
+            ? AppColors.error
+            : AppColors.primary;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       child: Container(
@@ -439,7 +638,7 @@ class _CodeTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: info.isUsed
-                ? AppColors.border
+                ? (isExpired ? AppColors.error.withOpacity(0.3) : AppColors.border)
                 : color.withOpacity(0.3),
           ),
         ),
@@ -448,10 +647,7 @@ class _CodeTile extends StatelessWidget {
             Container(
               width: 8,
               height: 8,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: info.isUsed ? AppColors.textMuted : color,
-              ),
+              decoration: BoxDecoration(shape: BoxShape.circle, color: dotColor),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -481,15 +677,48 @@ class _CodeTile extends StatelessWidget {
                           style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: color),
                         ),
                       ),
+                      if (info.isUsed && isExpired) ...[
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'VENCIDO',
+                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppColors.error),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 3),
-                  Text(
-                    info.isUsed
-                        ? 'Usado el ${_formatDate(info.usedAt!)}'
-                        : 'Generado el ${_formatDate(info.createdAt)}',
-                    style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
-                  ),
+                  if (!info.isUsed)
+                    Text(
+                      'Generado el ${_formatDate(info.createdAt)}',
+                      style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                    )
+                  else ...[
+                    if (info.usedByUsername != null)
+                      Text(
+                        'Usuario: @${info.usedByUsername}',
+                        style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                      ),
+                    Text(
+                      'Usado el ${_formatDate(info.usedAt!)}',
+                      style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                    ),
+                    if (info.expiresAt != null)
+                      Text(
+                        isExpired
+                            ? 'Venció el ${_formatDate(info.expiresAt!)}'
+                            : 'Vence el ${_formatDate(info.expiresAt!)}',
+                        style: AppTextStyles.caption.copyWith(
+                          color: isExpired ? AppColors.error : AppColors.primary,
+                        ),
+                      ),
+                  ],
                 ],
               ),
             ),

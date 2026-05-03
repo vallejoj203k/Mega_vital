@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../../services/premium_service.dart';
 
 export '../../services/premium_service.dart'
-    show PremiumStatus, PremiumTier, RedeemResult, PremiumCodeInfo, kPremiumTrialDays;
+    show PremiumStatus, PremiumTier, RedeemResult, PremiumCodeInfo, PremiumStats, kPremiumTrialDays;
 
 class PremiumProvider extends ChangeNotifier {
   final PremiumService _service;
@@ -59,6 +59,8 @@ class PremiumProvider extends ChangeNotifier {
   Future<String?> generateCode(String type) => _service.generateCode(type);
 
   Future<List<PremiumCodeInfo>> listCodes() => _service.listCodes();
+
+  Future<PremiumStats> getStats() => _service.getStats();
 
   // ── Limpiar al cerrar sesión ──────────────────────────────────
   void clear() {
