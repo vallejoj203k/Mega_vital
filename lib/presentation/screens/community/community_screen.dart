@@ -2247,6 +2247,31 @@ class _RecordRow extends StatelessWidget {
                 ),
             ],
           ),
+          if (record.videoUrl != null) ...[
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () => showDialog(
+                context: context,
+                builder: (_) => Dialog(
+                  backgroundColor: Colors.black,
+                  insetPadding: const EdgeInsets.all(16),
+                  child: AspectRatio(
+                    aspectRatio: 9 / 16,
+                    child: _VideoPostPlayer(url: record.videoUrl!),
+                  ),
+                ),
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.play_circle_rounded,
+                    size: 20, color: AppColors.primary),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -2281,7 +2306,10 @@ class _SubmitRecordSheet extends StatefulWidget {
 class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
   final _weightCtrl = TextEditingController();
   final _repsCtrl   = TextEditingController();
-  bool _loading = false;
+  bool _loading      = false;
+  bool _compressing  = false;
+  File? _pickedVideo;
+  Uint8List? _videoThumbnail;
 
   bool get _isWeightReps => widget.challenge.unit == 'kg×reps';
 
@@ -2290,6 +2318,25 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
     _weightCtrl.dispose();
     _repsCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickVideo() async {
+    final picker = ImagePicker();
+    final xfile = await picker.pickVideo(
+      source: ImageSource.gallery,
+      maxDuration: const Duration(seconds: 90),
+    );
+    if (xfile == null) return;
+    setState(() => _compressing = true);
+    try {
+      final thumb = await VideoCompress.getByteThumbnail(xfile.path, quality: 60);
+      setState(() {
+        _pickedVideo    = File(xfile.path);
+        _videoThumbnail = thumb;
+      });
+    } finally {
+      setState(() => _compressing = false);
+    }
   }
 
   Future<void> _submit() async {
@@ -2319,6 +2366,7 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
       userName:    widget.currentUserName,
       value:       value,
       reps:        reps,
+      videoFile:   _pickedVideo,
     );
     if (mounted) {
       if (err == null) {
@@ -2394,11 +2442,85 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
                 _unitLabel(ch.unit),
               ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          // Video picker
+          GestureDetector(
+            onTap: _compressing || _loading ? null : _pickVideo,
+            child: Container(
+              height: 56,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _pickedVideo != null
+                      ? AppColors.primary.withOpacity(0.5)
+                      : AppColors.border,
+                ),
+              ),
+              child: _compressing
+                  ? const Center(
+                      child: SizedBox(
+                        width: 20, height: 20,
+                        child: CircularProgressIndicator(
+                            color: AppColors.primary, strokeWidth: 2),
+                      ),
+                    )
+                  : Row(
+                      children: [
+                        if (_videoThumbnail != null)
+                          ClipRRect(
+                            borderRadius: const BorderRadius.horizontal(
+                                left: Radius.circular(11)),
+                            child: Image.memory(
+                              _videoThumbnail!,
+                              width: 56, height: 56,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        const SizedBox(width: 12),
+                        Icon(
+                          _pickedVideo != null
+                              ? Icons.videocam_rounded
+                              : Icons.videocam_off_rounded,
+                          color: _pickedVideo != null
+                              ? AppColors.primary
+                              : AppColors.textMuted,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _pickedVideo != null
+                              ? 'Video adjunto (se comprimirá al guardar)'
+                              : 'Adjuntar video (opcional)',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: _pickedVideo != null
+                                ? AppColors.primary
+                                : AppColors.textMuted,
+                          ),
+                        ),
+                        if (_pickedVideo != null) ...[
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: () => setState(() {
+                              _pickedVideo    = null;
+                              _videoThumbnail = null;
+                            }),
+                            child: const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Icon(Icons.close_rounded,
+                                  size: 18, color: AppColors.textMuted),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+            ),
+          ),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: GestureDetector(
-              onTap: _loading ? null : _submit,
+              onTap: _loading || _compressing ? null : _submit,
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(

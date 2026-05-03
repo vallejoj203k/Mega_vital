@@ -1219,3 +1219,46 @@ CREATE POLICY "weight_insert_own" ON public.weight_history
 
 CREATE POLICY "weight_delete_own" ON public.weight_history
   FOR DELETE TO authenticated USING (auth.uid() = user_id);
+
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- SECCIÓN FINAL: Columnas adicionales y tareas programadas (pg_cron)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- ─── Video en registros de retos ────────────────────────────────────────────
+-- Ejecutar si la tabla challenge_records ya existe sin esta columna:
+ALTER TABLE public.challenge_records ADD COLUMN IF NOT EXISTS video_url TEXT;
+
+
+-- ─── pg_cron: borrar retos cerrados tras 1 día ───────────────────────────────
+-- Los challenge_records se eliminan en cascada (ON DELETE CASCADE).
+-- Requiere que pg_cron esté habilitado en Extensions → pg_cron en Supabase.
+SELECT cron.schedule(
+  'delete-expired-challenges',
+  '0 4 * * *',   -- cada día a las 4:00 AM UTC
+  $$
+    DELETE FROM public.challenges
+    WHERE deadline < (NOW() - INTERVAL '1 day')::date;
+  $$
+);
+
+
+-- ─── pg_cron: limpiar posts del feed cada semana ─────────────────────────────
+-- Elimina posts (y sus likes/comentarios por CASCADE) con más de 7 días.
+-- Los videos en Storage se deben limpiar manualmente o con una Edge Function.
+SELECT cron.schedule(
+  'delete-old-community-posts',
+  '0 3 * * 1',   -- cada lunes a las 3:00 AM UTC
+  $$
+    DELETE FROM public.community_posts
+    WHERE created_at < NOW() - INTERVAL '7 days';
+  $$
+);
+
+
+-- Para ver los jobs activos:
+-- SELECT * FROM cron.job;
+
+-- Para eliminar un job (si necesitas actualizarlo):
+-- SELECT cron.unschedule('delete-expired-challenges');
+-- SELECT cron.unschedule('delete-old-community-posts');

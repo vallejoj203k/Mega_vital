@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:video_compress/video_compress.dart';
 
 // ─── Models ──────────────────────────────────────────────────────────────────
 
@@ -76,6 +78,7 @@ class ChallengeRecord {
   final String? avatarUrl;
   final double value;
   final int? reps;
+  final String? videoUrl;
   final DateTime createdAt;
   int rank;
 
@@ -87,6 +90,7 @@ class ChallengeRecord {
     this.avatarUrl,
     required this.value,
     this.reps,
+    this.videoUrl,
     required this.createdAt,
     this.rank = 0,
   });
@@ -108,6 +112,7 @@ class ChallengeRecord {
         avatarUrl:   avatarUrl,
         value:       (m['value'] as num).toDouble(),
         reps:        m['reps'] as int?,
+        videoUrl:    m['video_url'] as String?,
         createdAt:   DateTime.parse(m['created_at'] as String),
       );
 }
@@ -197,20 +202,72 @@ class ChallengesService {
     required String userName,
     required double value,
     int? reps,
+    File? videoFile,
   }) async {
     final uid = _uid;
     if (uid == null) return 'No hay sesión activa.';
     try {
+      String? videoUrl;
+      if (videoFile != null) {
+        final result = await _compressAndUploadVideo(
+          uid: uid,
+          challengeId: challengeId,
+          file: videoFile,
+        );
+        if (result != null && result.startsWith('err:')) return result.substring(4);
+        videoUrl = result;
+      }
       await _db.from('challenge_records').upsert({
         'challenge_id': challengeId,
         'user_id':      uid,
         'user_name':    userName.trim(),
         'value':        value,
         if (reps != null) 'reps': reps,
+        if (videoUrl != null) 'video_url': videoUrl,
       }, onConflict: 'challenge_id,user_id');
       return null;
     } catch (e) {
       return e.toString();
+    }
+  }
+
+  static const _maxVideoBytes = 30 * 1024 * 1024; // 30 MB post-compresión
+
+  Future<String?> _compressAndUploadVideo({
+    required String uid,
+    required String challengeId,
+    required File file,
+  }) async {
+    try {
+      final info = await VideoCompress.compressVideo(
+        file.path,
+        quality: VideoQuality.MediumQuality,
+        deleteOrigin: false,
+        includeAudio: true,
+      );
+      if (info == null || info.file == null) return null;
+
+      final sizeBytes = await info.file!.length();
+      if (sizeBytes > _maxVideoBytes) {
+        return 'err:El video es demasiado pesado incluso comprimido. Graba uno más corto (máx. 60 segundos).';
+      }
+
+      const bucket = 'post_videos';
+      final path = 'challenges/$uid/$challengeId.mp4';
+      await _db.storage.from(bucket).upload(
+        path,
+        info.file!,
+        fileOptions: const FileOptions(
+          contentType: 'video/mp4',
+          cacheControl: '604800',
+          upsert: true,
+        ),
+      );
+      return _db.storage.from(bucket).getPublicUrl(path);
+    } catch (_) {
+      return null;
+    } finally {
+      VideoCompress.cancelCompression();
     }
   }
 
