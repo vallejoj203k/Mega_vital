@@ -1163,6 +1163,39 @@ END;
 $$;
 
 
+-- ─── PROGRESO DE EJERCICIOS (backup cloud) ──────────────────────────────────
+-- Una fila por (usuario, ejercicio, fecha). El único constraint evita duplicados
+-- cuando se sincroniza la misma sesión más de una vez.
+
+CREATE TABLE IF NOT EXISTS public.exercise_progress (
+  id            UUID             PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID             NOT NULL,
+  exercise_name TEXT             NOT NULL,
+  muscle_id     TEXT             NOT NULL DEFAULT '',
+  session_date  DATE             NOT NULL,
+  max_weight    DOUBLE PRECISION NOT NULL DEFAULT 0,
+  total_volume  DOUBLE PRECISION NOT NULL DEFAULT 0,
+  created_at    TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, exercise_name, session_date)
+);
+
+ALTER TABLE public.exercise_progress ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "ep_select_own" ON public.exercise_progress;
+DROP POLICY IF EXISTS "ep_upsert_own" ON public.exercise_progress;
+
+CREATE POLICY "ep_select_own"
+  ON public.exercise_progress FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "ep_upsert_own"
+  ON public.exercise_progress FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS exercise_progress_user_ex_idx
+  ON public.exercise_progress (user_id, exercise_name);
+
+
 -- ─── HISTORIAL DE PESO ───────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS public.weight_history (
