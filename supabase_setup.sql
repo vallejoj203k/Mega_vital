@@ -1169,7 +1169,7 @@ $$;
 
 CREATE TABLE IF NOT EXISTS public.exercise_progress (
   id            UUID             PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id       UUID             NOT NULL,
+  user_id       TEXT             NOT NULL,
   exercise_name TEXT             NOT NULL,
   muscle_id     TEXT             NOT NULL DEFAULT '',
   session_date  DATE             NOT NULL,
@@ -1186,11 +1186,11 @@ DROP POLICY IF EXISTS "ep_upsert_own" ON public.exercise_progress;
 
 CREATE POLICY "ep_select_own"
   ON public.exercise_progress FOR SELECT TO authenticated
-  USING (auth.uid() = user_id);
+  USING (auth.uid()::text = user_id);
 
 CREATE POLICY "ep_upsert_own"
   ON public.exercise_progress FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (auth.uid()::text = user_id);
 
 CREATE INDEX IF NOT EXISTS exercise_progress_user_ex_idx
   ON public.exercise_progress (user_id, exercise_name);
