@@ -13,6 +13,8 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/nutrition_provider.dart';
+import '../../../core/providers/premium_provider.dart';
+import '../premium/premium_locked_widget.dart';
 import '../../../services/fitness_calculator.dart';
 import '../../../services/food_log_service.dart';
 import 'dart:io';
@@ -38,6 +40,13 @@ class _NutritionScreenState extends State<NutritionScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
+    if (!context.watch<PremiumProvider>().hasAccess) {
+      return const PremiumLockedWidget(
+        sectionName: 'Nutrición',
+        sectionIcon: Icons.restaurant_menu_rounded,
+      );
+    }
 
     final nutrition = context.watch<NutritionProvider>();
     final auth      = context.watch<AuthProvider>();

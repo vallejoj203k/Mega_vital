@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/providers/premium_provider.dart';
+import '../premium/premium_locked_widget.dart';
 import 'seat_selection_screen.dart';
 
 // ── Models ─────────────────────────────────────────────
@@ -475,6 +478,14 @@ class _SpinningScreenState extends State<SpinningScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
+    if (!context.watch<PremiumProvider>().hasAccess) {
+      return const PremiumLockedWidget(
+        sectionName: 'Clases de Spinning',
+        sectionIcon: Icons.pedal_bike_rounded,
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(

@@ -15,8 +15,10 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/data/muscle_data.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/premium_provider.dart';
 import '../../../core/providers/workout_log_provider.dart';
 import '../../../services/routine_service.dart';
+import '../premium/premium_locked_widget.dart';
 import '../../../services/workout_log_service.dart';
 import '../../widgets/shared_widgets.dart';
 import '../workout_log/active_workout_screen.dart';
@@ -245,6 +247,14 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
+    if (!context.watch<PremiumProvider>().hasAccess) {
+      return const PremiumLockedWidget(
+        sectionName: 'Entrenamientos',
+        sectionIcon: Icons.fitness_center_rounded,
+      );
+    }
+
     final muscle    = _selectedMuscleId != null ? getMuscleById(_selectedMuscleId!) : null;
     final exercises = _selectedMuscleId != null
         ? exercisesForMuscle(_selectedMuscleId!) : <ExerciseItem>[];
