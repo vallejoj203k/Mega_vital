@@ -634,6 +634,7 @@ class AuthField extends StatelessWidget {
   final IconData icon;
   final bool obscureText;
   final TextInputType? keyboardType;
+  final TextCapitalization textCapitalization;
   final String? Function(String?)? validator;
   final ValueChanged<String>? onChanged;
   final Widget? suffixIcon;
@@ -646,6 +647,7 @@ class AuthField extends StatelessWidget {
     required this.icon,
     this.obscureText = false,
     this.keyboardType,
+    this.textCapitalization = TextCapitalization.none,
     this.validator,
     this.onChanged,
     this.suffixIcon,
@@ -657,6 +659,7 @@ class AuthField extends StatelessWidget {
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
+      textCapitalization: textCapitalization,
       validator: validator,
       onChanged: onChanged,
       style: AppTextStyles.bodyLarge,
