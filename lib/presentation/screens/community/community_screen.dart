@@ -647,9 +647,7 @@ class _PublishSheetState extends State<_PublishSheet> {
       source: ImageSource.gallery,
       maxDuration: const Duration(seconds: 60),
     );
-    if (xfile != null && mounted) {
-      setState(() { _pickedVideo = File(xfile.path); _pickedImage = null; });
-    }
+    if (xfile != null && mounted) setState(() { _pickedVideo = File(xfile.path); _pickedImage = null; });
   }
 
   Future<void> _submit() async {
@@ -674,13 +672,23 @@ class _PublishSheetState extends State<_PublishSheet> {
           SnackBar(
             content: Text(
               error == 'warn:video'
-                  ? 'Publicación creada, pero el video no se pudo subir. '
-                    'Crea el bucket post_videos en Supabase Storage.'
-                  : 'Publicación creada, pero la foto no se pudo subir. '
-                    'Ejecuta el SQL de configuración en Supabase.',
+                  ? 'Publicación creada, pero el video no se pudo subir.'
+                  : 'Publicación creada, pero la foto no se pudo subir.',
               style: const TextStyle(color: Colors.white),
             ),
             backgroundColor: AppColors.accentOrange,
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      } else if (error != null && error.startsWith('error:video_size:')) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error.substring('error:video_size:'.length),
+              style: const TextStyle(color: Colors.white),
+            ),
+            backgroundColor: AppColors.error,
             duration: const Duration(seconds: 6),
           ),
         );
@@ -2232,13 +2240,7 @@ class _RecordRow extends StatelessWidget {
                 style: AppTextStyles.caption
                     .copyWith(color: AppColors.textSecondary)),
             const SizedBox(height: 14),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: _VideoPostPlayer(videoUrl: record.videoUrl!),
-              ),
-            ),
+            _VideoPostPlayer(videoUrl: record.videoUrl!),
             const SizedBox(height: 8),
           ],
         ),
@@ -2293,9 +2295,7 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
       source: ImageSource.gallery,
       maxDuration: const Duration(seconds: 60),
     );
-    if (xfile != null && mounted) {
-      setState(() => _proofVideo = File(xfile.path));
-    }
+    if (xfile != null && mounted) setState(() => _proofVideo = File(xfile.path));
   }
 
   Future<void> _submit() async {

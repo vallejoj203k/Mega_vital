@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'video_compress_service.dart';
 
 // ─── Models ─────────────────────────────────────────────────────────────────
 
@@ -217,7 +218,14 @@ class CommunityService {
       }
 
       if (videoFile != null) {
-        videoUrl = await _uploadPostVideo(uid: uid, postId: postId, file: videoFile);
+        final File compressed;
+        try {
+          compressed = await VideoCompressService.compress(videoFile);
+        } on VideoTooLargeException catch (e) {
+          return 'error:video_size:${e.message}';
+        }
+        videoUrl = await _uploadPostVideo(uid: uid, postId: postId, file: compressed);
+        await VideoCompressService.clearCache();
         if (videoUrl == null) return 'warn:video';
       }
 
