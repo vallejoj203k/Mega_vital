@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ─── Models ──────────────────────────────────────────────────────────────────
@@ -74,6 +75,7 @@ class ChallengeRecord {
   final String userId;
   final String userName;
   final String? avatarUrl;
+  final String? videoUrl;
   final double value;
   final int? reps;
   final DateTime createdAt;
@@ -85,6 +87,7 @@ class ChallengeRecord {
     required this.userId,
     required this.userName,
     this.avatarUrl,
+    this.videoUrl,
     required this.value,
     this.reps,
     required this.createdAt,
@@ -106,6 +109,7 @@ class ChallengeRecord {
         userId:      m['user_id'] as String,
         userName:    m['user_name'] as String,
         avatarUrl:   avatarUrl,
+        videoUrl:    m['video_url'] as String?,
         value:       (m['value'] as num).toDouble(),
         reps:        m['reps'] as int?,
         createdAt:   DateTime.parse(m['created_at'] as String),
@@ -197,20 +201,49 @@ class ChallengesService {
     required String userName,
     required double value,
     int? reps,
+    File? videoFile,
   }) async {
     final uid = _uid;
     if (uid == null) return 'No hay sesión activa.';
     try {
+      String? videoUrl;
+      if (videoFile != null) {
+        videoUrl = await _uploadProofVideo(
+            uid: uid, challengeId: challengeId, file: videoFile);
+      }
       await _db.from('challenge_records').upsert({
         'challenge_id': challengeId,
         'user_id':      uid,
         'user_name':    userName.trim(),
         'value':        value,
         if (reps != null) 'reps': reps,
+        if (videoUrl != null) 'video_url': videoUrl,
       }, onConflict: 'challenge_id,user_id');
       return null;
     } catch (e) {
       return e.toString();
+    }
+  }
+
+  Future<String?> _uploadProofVideo({
+    required String uid,
+    required String challengeId,
+    required File file,
+  }) async {
+    try {
+      const bucket = 'post_videos';
+      final path = 'challenges/$uid/$challengeId.mp4';
+      await _db.storage.from(bucket).upload(
+        path, file,
+        fileOptions: const FileOptions(
+          cacheControl: '86400',
+          upsert: true,
+          contentType: 'video/mp4',
+        ),
+      );
+      return _db.storage.from(bucket).getPublicUrl(path);
+    } catch (_) {
+      return null;
     }
   }
 

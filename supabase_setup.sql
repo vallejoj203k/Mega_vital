@@ -723,8 +723,9 @@ CREATE TABLE IF NOT EXISTS public.challenge_records (
   UNIQUE(challenge_id, user_id)
 );
 
--- Si la tabla ya existía sin la columna reps, añadirla (idempotente):
-ALTER TABLE public.challenge_records ADD COLUMN IF NOT EXISTS reps INTEGER;
+-- Columnas opcionales (idempotente):
+ALTER TABLE public.challenge_records ADD COLUMN IF NOT EXISTS reps      INTEGER;
+ALTER TABLE public.challenge_records ADD COLUMN IF NOT EXISTS video_url TEXT;
 
 ALTER TABLE public.challenge_records ENABLE ROW LEVEL SECURITY;
 

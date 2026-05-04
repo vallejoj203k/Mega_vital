@@ -2225,7 +2225,8 @@ class _SubmitRecordSheet extends StatefulWidget {
 class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
   final _weightCtrl = TextEditingController();
   final _repsCtrl   = TextEditingController();
-  bool _loading = false;
+  bool  _loading    = false;
+  File? _proofVideo;
 
   bool get _isWeightReps => widget.challenge.unit == 'kg×reps';
 
@@ -2234,6 +2235,17 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
     _weightCtrl.dispose();
     _repsCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickProofVideo() async {
+    final picker = ImagePicker();
+    final xfile = await picker.pickVideo(
+      source: ImageSource.gallery,
+      maxDuration: const Duration(seconds: 60),
+    );
+    if (xfile != null && mounted) {
+      setState(() => _proofVideo = File(xfile.path));
+    }
   }
 
   Future<void> _submit() async {
@@ -2263,6 +2275,7 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
       userName:    widget.currentUserName,
       value:       value,
       reps:        reps,
+      videoFile:   _proofVideo,
     );
     if (mounted) {
       if (err == null) {
@@ -2337,6 +2350,19 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
                 const SizedBox(width: 12),
                 _unitLabel(ch.unit),
               ],
+          ),
+          const SizedBox(height: 16),
+          if (_proofVideo != null) ...[
+            _MediaPreview(
+              child: _LocalVideoPreview(file: _proofVideo!),
+              onRemove: () => setState(() => _proofVideo = null),
+            ),
+            const SizedBox(height: 12),
+          ],
+          _MediaButton(
+            icon: Icons.videocam_rounded,
+            label: _proofVideo != null ? 'Cambiar video prueba' : 'Adjuntar video prueba',
+            onTap: _loading ? null : _pickProofVideo,
           ),
           const SizedBox(height: 20),
           SizedBox(
