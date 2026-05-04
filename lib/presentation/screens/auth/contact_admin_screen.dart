@@ -8,14 +8,13 @@ class ContactAdminScreen extends StatelessWidget {
   const ContactAdminScreen({super.key});
 
   Future<void> _openWhatsApp(BuildContext context) async {
-    final phone = AppConfig.ownerWhatsApp;
     const message =
         'Hola quiero ser usuario de la aplicacion mega vital, aun no he ido al gimnasio fisico';
     final uri = Uri.parse(
-        'https://wa.me/$phone?text=${Uri.encodeComponent(message)}');
-    if (await canLaunchUrl(uri)) {
+        'https://wa.me/${AppConfig.ownerWhatsApp}?text=${Uri.encodeComponent(message)}');
+    try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
+    } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -37,9 +36,9 @@ class ContactAdminScreen extends StatelessWidget {
             'Hola quiero ser usuario de la aplicacion mega vital, aun no he ido al gimnasio fisico',
       },
     );
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
