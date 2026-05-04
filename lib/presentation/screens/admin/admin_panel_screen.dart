@@ -1024,15 +1024,33 @@ class _UsersTab extends StatefulWidget {
 }
 
 class _UsersTabState extends State<_UsersTab> {
-  final _service = AdminUserService();
+  final _service    = AdminUserService();
+  final _searchCtrl = TextEditingController();
   bool _loading = true;
   String? _error;
   List<AdminUserInfo> _users = [];
+  String _query = '';
+
+  List<AdminUserInfo> get _filtered {
+    if (_query.isEmpty) return _users;
+    final q = _query.toLowerCase();
+    return _users.where((u) =>
+        u.name.toLowerCase().contains(q) ||
+        u.username.toLowerCase().contains(q) ||
+        u.email.toLowerCase().contains(q)).toList();
+  }
 
   @override
   void initState() {
     super.initState();
+    _searchCtrl.addListener(() => setState(() => _query = _searchCtrl.text.trim()));
     _load();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -1123,27 +1141,52 @@ class _UsersTabState extends State<_UsersTab> {
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('Usuarios registrados',
                         style: AppTextStyles.headingSmall),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Toca el icono de basura para eliminar un usuario.',
-                      style: AppTextStyles.bodySmall
-                          .copyWith(color: AppColors.textMuted),
+                    GestureDetector(
+                      onTap: _load,
+                      child: const Icon(Icons.refresh_rounded,
+                          color: AppColors.textMuted, size: 20),
                     ),
                   ],
                 ),
-                GestureDetector(
-                  onTap: _load,
-                  child: const Icon(Icons.refresh_rounded,
-                      color: AppColors.textMuted, size: 20),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _searchCtrl,
+                  style: const TextStyle(color: AppColors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'Buscar por nombre o usuario...',
+                    hintStyle: const TextStyle(
+                        color: AppColors.textMuted, fontSize: 14),
+                    prefixIcon: const Icon(Icons.search_rounded,
+                        color: AppColors.textMuted, size: 20),
+                    suffixIcon: _query.isNotEmpty
+                        ? GestureDetector(
+                            onTap: () => _searchCtrl.clear(),
+                            child: const Icon(Icons.close_rounded,
+                                color: AppColors.textMuted, size: 18),
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                          color: AppColors.primary, width: 1.5),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -1228,21 +1271,37 @@ class _UsersTabState extends State<_UsersTab> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Text(
-                '${_users.length} usuario${_users.length == 1 ? '' : 's'}',
+                _query.isEmpty
+                    ? '${_users.length} usuario${_users.length == 1 ? '' : 's'}'
+                    : '${_filtered.length} resultado${_filtered.length == 1 ? '' : 's'} de ${_users.length}',
                 style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
               ),
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 8)),
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (_, i) => _UserTile(
-                info: _users[i],
-                onDelete: () => _confirmDelete(_users[i]),
+          if (_filtered.isEmpty)
+            SliverToBoxAdapter(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Text(
+                    'Sin resultados para "$_query".',
+                    style: AppTextStyles.bodyMedium
+                        .copyWith(color: AppColors.textMuted),
+                  ),
+                ),
               ),
-              childCount: _users.length,
+            )
+          else
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (_, i) => _UserTile(
+                  info: _filtered[i],
+                  onDelete: () => _confirmDelete(_filtered[i]),
+                ),
+                childCount: _filtered.length,
+              ),
             ),
-          ),
         ],
         const SliverToBoxAdapter(child: SizedBox(height: 100)),
       ],
