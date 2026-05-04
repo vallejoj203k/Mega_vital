@@ -8,6 +8,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/challenges_provider.dart';
+import '../../../core/providers/premium_provider.dart';
 import '../../../core/providers/community_provider.dart';
 import '../../../core/providers/follow_provider.dart';
 import '../../../core/providers/notification_provider.dart';
@@ -18,6 +19,7 @@ import '../../widgets/shared_widgets.dart';
 import '../notifications/notifications_screen.dart';
 import 'stories_row.dart';
 import 'user_profile_screen.dart';
+import '../premium/premium_locked_widget.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -77,6 +79,14 @@ class _CommunityScreenState extends State<CommunityScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
+    if (!context.watch<PremiumProvider>().hasAccess) {
+      return const PremiumLockedWidget(
+        sectionName: 'Comunidad',
+        sectionIcon: Icons.people_rounded,
+      );
+    }
+
     final userName      = _currentUserName(context);
     final userId        = _currentUserId(context);
     final userInitials  = _currentUserInitials(context);
