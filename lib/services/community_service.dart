@@ -225,6 +225,7 @@ class CommunityService {
           return 'error:video_size:${e.message}';
         }
         videoUrl = await _uploadPostVideo(uid: uid, postId: postId, file: compressed);
+        await VideoCompressService.clearCache();
         if (videoUrl == null) return 'warn:video';
       }
 

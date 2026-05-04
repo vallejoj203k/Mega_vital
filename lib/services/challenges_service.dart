@@ -217,6 +217,7 @@ class ChallengesService {
         }
         videoUrl = await _uploadProofVideo(
             uid: uid, challengeId: challengeId, file: compressed);
+        await VideoCompressService.clearCache();
       }
       await _db.from('challenge_records').upsert({
         'challenge_id': challengeId,
