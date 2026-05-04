@@ -15,15 +15,19 @@ class AdminUserInfo {
     required this.createdAt,
   });
 
-  factory AdminUserInfo.fromMap(Map<String, dynamic> m) => AdminUserInfo(
-        uid:       m['uid']      as String,
-        name:      m['name']     as String,
-        username:  m['username'] as String? ?? '',
-        email:     m['email']    as String? ?? '',
-        createdAt: m['created_at'] != null
-            ? DateTime.tryParse(m['created_at'] as String) ?? DateTime.now()
-            : DateTime.now(),
-      );
+  factory AdminUserInfo.fromMap(Map<String, dynamic> m) {
+    final email = m['email'] as String? ?? '';
+    final derivedUsername = email.replaceAll('@megavital.app', '');
+    return AdminUserInfo(
+      uid:       m['uid']  as String,
+      name:      m['name'] as String,
+      username:  derivedUsername,
+      email:     email,
+      createdAt: m['created_at'] != null
+          ? DateTime.tryParse(m['created_at'] as String) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
 }
 
 class AdminUserService {
