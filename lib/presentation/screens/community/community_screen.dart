@@ -672,13 +672,23 @@ class _PublishSheetState extends State<_PublishSheet> {
           SnackBar(
             content: Text(
               error == 'warn:video'
-                  ? 'Publicación creada, pero el video no se pudo subir. '
-                    'Crea el bucket post_videos en Supabase Storage.'
-                  : 'Publicación creada, pero la foto no se pudo subir. '
-                    'Ejecuta el SQL de configuración en Supabase.',
+                  ? 'Publicación creada, pero el video no se pudo subir.'
+                  : 'Publicación creada, pero la foto no se pudo subir.',
               style: const TextStyle(color: Colors.white),
             ),
             backgroundColor: AppColors.accentOrange,
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      } else if (error != null && error.startsWith('error:video_size:')) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error.substring('error:video_size:'.length),
+              style: const TextStyle(color: Colors.white),
+            ),
+            backgroundColor: AppColors.error,
             duration: const Duration(seconds: 6),
           ),
         );

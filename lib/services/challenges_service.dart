@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'video_compress_service.dart';
 
 // ─── Models ──────────────────────────────────────────────────────────────────
 
@@ -208,8 +209,14 @@ class ChallengesService {
     try {
       String? videoUrl;
       if (videoFile != null) {
+        final File compressed;
+        try {
+          compressed = await VideoCompressService.compress(videoFile);
+        } on VideoTooLargeException catch (e) {
+          return e.message;
+        }
         videoUrl = await _uploadProofVideo(
-            uid: uid, challengeId: challengeId, file: videoFile);
+            uid: uid, challengeId: challengeId, file: compressed);
       }
       await _db.from('challenge_records').upsert({
         'challenge_id': challengeId,

@@ -61,7 +61,9 @@ class CommunityProvider extends ChangeNotifier {
       imageFile:   imageFile,
       videoFile:   videoFile,
     );
-    if (result == null || result == 'warn:image' || result == 'warn:video') {
+    final videoSizeError = result != null && result.startsWith('error:video_size:');
+    if (!videoSizeError &&
+        (result == null || result == 'warn:image' || result == 'warn:video')) {
       await loadPosts();
     }
     return result;
