@@ -446,9 +446,91 @@ class _Step0 extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           _LoginPrompt(),
+          const SizedBox(height: 24),
+
+          // Bloque de contacto
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border, width: 0.5),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.help_outline_rounded,
+                        color: AppColors.textMuted, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      '¿Tienes alguna novedad?',
+                      style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                _ContactRow(
+                  icon: Icons.phone_outlined,
+                  label: 'Administración',
+                  value: '320 888 4102',
+                ),
+                const SizedBox(height: 6),
+                _ContactRow(
+                  icon: Icons.phone_outlined,
+                  label: 'Soporte',
+                  value: '+57 322 523 7665',
+                ),
+                const SizedBox(height: 6),
+                _ContactRow(
+                  icon: Icons.email_outlined,
+                  label: 'Correo',
+                  value: 'megavitalzarzal@gmail.com',
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 40),
         ],
       ),
+    );
+  }
+}
+
+class _ContactRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _ContactRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: AppColors.textMuted),
+        const SizedBox(width: 6),
+        Text(
+          '$label: ',
+          style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+        ),
+        Flexible(
+          child: Text(
+            value,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
