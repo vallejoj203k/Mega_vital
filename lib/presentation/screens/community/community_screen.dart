@@ -647,9 +647,7 @@ class _PublishSheetState extends State<_PublishSheet> {
       source: ImageSource.gallery,
       maxDuration: const Duration(seconds: 60),
     );
-    if (xfile != null && mounted) {
-      setState(() { _pickedVideo = File(xfile.path); _pickedImage = null; });
-    }
+    if (xfile != null && mounted) setState(() { _pickedVideo = File(xfile.path); _pickedImage = null; });
   }
 
   Future<void> _submit() async {
@@ -2232,13 +2230,7 @@ class _RecordRow extends StatelessWidget {
                 style: AppTextStyles.caption
                     .copyWith(color: AppColors.textSecondary)),
             const SizedBox(height: 14),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: _VideoPostPlayer(videoUrl: record.videoUrl!),
-              ),
-            ),
+            _VideoPostPlayer(videoUrl: record.videoUrl!),
             const SizedBox(height: 8),
           ],
         ),
@@ -2293,9 +2285,7 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
       source: ImageSource.gallery,
       maxDuration: const Duration(seconds: 60),
     );
-    if (xfile != null && mounted) {
-      setState(() => _proofVideo = File(xfile.path));
-    }
+    if (xfile != null && mounted) setState(() => _proofVideo = File(xfile.path));
   }
 
   Future<void> _submit() async {
