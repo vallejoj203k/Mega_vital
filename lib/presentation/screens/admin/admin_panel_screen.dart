@@ -1026,6 +1026,7 @@ class _UsersTab extends StatefulWidget {
 class _UsersTabState extends State<_UsersTab> {
   final _service = AdminUserService();
   bool _loading = true;
+  String? _error;
   List<AdminUserInfo> _users = [];
 
   @override
@@ -1035,9 +1036,13 @@ class _UsersTabState extends State<_UsersTab> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
-    _users = await _service.listUsers();
-    if (mounted) setState(() => _loading = false);
+    setState(() { _loading = true; _error = null; });
+    try {
+      final users = await _service.listUsers();
+      if (mounted) setState(() { _users = users; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+    }
   }
 
   Future<void> _confirmDelete(AdminUserInfo user) async {
@@ -1150,6 +1155,58 @@ class _UsersTabState extends State<_UsersTab> {
               child: Padding(
                 padding: EdgeInsets.all(40),
                 child: CircularProgressIndicator(color: AppColors.primary),
+              ),
+            ),
+          )
+        else if (_error != null)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.error.withOpacity(0.35)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.error_outline_rounded,
+                            color: AppColors.error, size: 18),
+                        SizedBox(width: 8),
+                        Text(
+                          'Error al cargar usuarios',
+                          style: TextStyle(
+                            color: AppColors.error,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _error!,
+                      style: AppTextStyles.caption
+                          .copyWith(color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: _load,
+                      child: const Text(
+                        'Reintentar',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           )

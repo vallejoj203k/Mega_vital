@@ -30,17 +30,14 @@ class AdminUserService {
   static const _adminKey = 'cocodemegavital';
   final _supabase = Supabase.instance.client;
 
+  /// Retorna la lista de usuarios o lanza una excepción con el mensaje de error.
   Future<List<AdminUserInfo>> listUsers() async {
-    try {
-      final data = await _supabase
-          .rpc('admin_list_users', params: {'admin_key': _adminKey});
-      if (data == null) return [];
-      return (data as List)
-          .map((e) => AdminUserInfo.fromMap(e as Map<String, dynamic>))
-          .toList();
-    } catch (_) {
-      return [];
-    }
+    final data = await _supabase
+        .rpc('admin_list_users', params: {'admin_key': _adminKey});
+    if (data == null) return [];
+    return (data as List)
+        .map((e) => AdminUserInfo.fromMap(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<bool> deleteUser(String targetUid) async {
