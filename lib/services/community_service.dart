@@ -12,6 +12,7 @@ class CommunityPost {
   final String content;
   final String? achievement;
   final String? imageUrl;
+  final String? videoUrl;
   final String? avatarUrl;
   final DateTime createdAt;
   final int likesCount;
@@ -26,12 +27,15 @@ class CommunityPost {
     required this.content,
     this.achievement,
     this.imageUrl,
+    this.videoUrl,
     this.avatarUrl,
     required this.createdAt,
     required this.likesCount,
     required this.commentsCount,
     required this.likedByMe,
   });
+
+  bool get hasVideo => videoUrl != null && videoUrl!.isNotEmpty;
 
   factory CommunityPost.fromMap(
     Map<String, dynamic> m,
@@ -40,34 +44,36 @@ class CommunityPost {
   }) {
     final name = m['user_name'] as String? ?? 'Usuario';
     return CommunityPost(
-      id: m['id'] as String,
-      userId: m['user_id'] as String,
-      userName: name,
-      userInitials: _initials(name),
-      content: m['content'] as String,
-      achievement: m['achievement'] as String?,
-      imageUrl: m['image_url'] as String?,
-      avatarUrl: avatarUrl,
-      createdAt: DateTime.parse(m['created_at'] as String),
-      likesCount: m['likes_count'] as int? ?? 0,
+      id:            m['id'] as String,
+      userId:        m['user_id'] as String,
+      userName:      name,
+      userInitials:  _initials(name),
+      content:       m['content'] as String,
+      achievement:   m['achievement'] as String?,
+      imageUrl:      m['image_url'] as String?,
+      videoUrl:      m['video_url'] as String?,
+      avatarUrl:     avatarUrl,
+      createdAt:     DateTime.parse(m['created_at'] as String),
+      likesCount:    m['likes_count'] as int? ?? 0,
       commentsCount: m['comments_count'] as int? ?? 0,
-      likedByMe: likedByMe,
+      likedByMe:     likedByMe,
     );
   }
 
   CommunityPost copyWith({int? likesCount, bool? likedByMe}) => CommunityPost(
-    id: id,
-    userId: userId,
-    userName: userName,
-    userInitials: userInitials,
-    content: content,
-    achievement: achievement,
-    imageUrl: imageUrl,
-    avatarUrl: avatarUrl,
-    createdAt: createdAt,
-    likesCount: likesCount ?? this.likesCount,
+    id:            id,
+    userId:        userId,
+    userName:      userName,
+    userInitials:  userInitials,
+    content:       content,
+    achievement:   achievement,
+    imageUrl:      imageUrl,
+    videoUrl:      videoUrl,
+    avatarUrl:     avatarUrl,
+    createdAt:     createdAt,
+    likesCount:    likesCount ?? this.likesCount,
     commentsCount: commentsCount,
-    likedByMe: likedByMe ?? this.likedByMe,
+    likedByMe:     likedByMe ?? this.likedByMe,
   );
 
   static String _initials(String name) {
@@ -97,12 +103,12 @@ class CommunityComment {
   factory CommunityComment.fromMap(Map<String, dynamic> m) {
     final name = m['user_name'] as String? ?? 'Usuario';
     return CommunityComment(
-      id: m['id'] as String,
-      userId: m['user_id'] as String,
-      userName: name,
+      id:           m['id'] as String,
+      userId:       m['user_id'] as String,
+      userName:     name,
       userInitials: _initials(name),
-      content: m['content'] as String,
-      createdAt: DateTime.parse(m['created_at'] as String),
+      content:      m['content'] as String,
+      createdAt:    DateTime.parse(m['created_at'] as String),
     );
   }
 
@@ -139,12 +145,12 @@ class LeaderboardEntry {
   factory LeaderboardEntry.fromMap(Map<String, dynamic> m, String currentUid) {
     final name = m['name'] as String? ?? 'Usuario';
     return LeaderboardEntry(
-      userId: m['uid'] as String,
-      name: name,
+      userId:  m['uid'] as String,
+      name:    name,
       initials: _initials(name),
-      points: (m['points'] as num?)?.toInt() ?? 0,
-      rank: (m['rank'] as num?)?.toInt() ?? 0,
-      isMe: m['uid'] == currentUid,
+      points:  (m['points'] as num?)?.toInt() ?? 0,
+      rank:    (m['rank'] as num?)?.toInt() ?? 0,
+      isMe:    m['uid'] == currentUid,
     );
   }
 }
@@ -195,27 +201,35 @@ class CommunityService {
     required String content,
     String? achievement,
     File? imageFile,
+    File? videoFile,
   }) async {
     final uid = _uid;
     if (uid == null) return 'No hay sesión activa.';
     try {
-      // Generate post ID on the client so the image can be uploaded before INSERT.
       final postId = _generateId();
 
       String? imageUrl;
+      String? videoUrl;
+
       if (imageFile != null) {
         imageUrl = await _uploadPostImage(uid: uid, postId: postId, file: imageFile);
         if (imageUrl == null) return 'warn:image';
       }
 
+      if (videoFile != null) {
+        videoUrl = await _uploadPostVideo(uid: uid, postId: postId, file: videoFile);
+        if (videoUrl == null) return 'warn:video';
+      }
+
       await _db.from('community_posts').insert({
-        'id': postId,
-        'user_id': uid,
+        'id':       postId,
+        'user_id':  uid,
         'user_name': userName.isEmpty ? 'Usuario' : userName.trim(),
-        'content': content.trim(),
+        'content':  content.trim(),
         if (achievement != null && achievement.trim().isNotEmpty)
           'achievement': achievement.trim(),
         if (imageUrl != null) 'image_url': imageUrl,
+        if (videoUrl != null) 'video_url': videoUrl,
       });
 
       return null;
@@ -224,6 +238,7 @@ class CommunityService {
     }
   }
 
+  // Imagen: máx 800px de ancho, calidad 72% → ~3–5× menos peso que original
   Future<String?> _uploadPostImage({
     required String uid,
     required String postId,
@@ -231,10 +246,38 @@ class CommunityService {
   }) async {
     try {
       const bucket = 'post_images';
-      final path = '$uid/$postId';
+      final path = '$uid/$postId.jpg';
       await _db.storage.from(bucket).upload(
         path, file,
-        fileOptions: const FileOptions(cacheControl: '86400', upsert: true),
+        fileOptions: const FileOptions(
+          cacheControl: '86400',
+          upsert: true,
+          contentType: 'image/jpeg',
+        ),
+      );
+      return _db.storage.from(bucket).getPublicUrl(path);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Video: se sube tal como llega de image_picker (VideoQuality.medium,
+  // máx 60 s → ya comprimido por el OS antes de llegar aquí).
+  Future<String?> _uploadPostVideo({
+    required String uid,
+    required String postId,
+    required File file,
+  }) async {
+    try {
+      const bucket = 'post_videos';
+      final path = '$uid/$postId.mp4';
+      await _db.storage.from(bucket).upload(
+        path, file,
+        fileOptions: const FileOptions(
+          cacheControl: '86400',
+          upsert: true,
+          contentType: 'video/mp4',
+        ),
       );
       return _db.storage.from(bucket).getPublicUrl(path);
     } catch (_) {
@@ -286,7 +329,6 @@ class CommunityService {
     }
   }
 
-  /// Posts de un usuario específico (para su perfil público).
   Future<List<CommunityPost>> fetchUserPosts(String userId) async {
     final uid = _uid;
     if (uid == null) return [];
@@ -345,7 +387,8 @@ class CommunityService {
           .eq('post_id', postId)
           .order('created_at', ascending: true);
       return [
-        for (final m in data as List) CommunityComment.fromMap(m as Map<String, dynamic>),
+        for (final m in data as List)
+          CommunityComment.fromMap(m as Map<String, dynamic>),
       ];
     } catch (_) {
       return [];
@@ -361,10 +404,10 @@ class CommunityService {
     if (uid == null) return false;
     try {
       await _db.from('post_comments').insert({
-        'post_id': postId,
-        'user_id': uid,
+        'post_id':   postId,
+        'user_id':   uid,
         'user_name': userName.trim(),
-        'content': content.trim(),
+        'content':   content.trim(),
       });
       return true;
     } catch (_) {

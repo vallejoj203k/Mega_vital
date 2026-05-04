@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../services/challenges_service.dart';
 
@@ -53,12 +54,14 @@ class ChallengesProvider extends ChangeNotifier {
     required String userName,
     required double value,
     int? reps,
+    File? videoFile,
   }) async {
     final err = await _service.upsertRecord(
       challengeId: challengeId,
       userName:    userName,
       value:       value,
       reps:        reps,
+      videoFile:   videoFile,
     );
     if (err == null) await load();
     return err;

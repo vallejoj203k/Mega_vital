@@ -71,6 +71,9 @@ CREATE TABLE IF NOT EXISTS public.community_posts (
   created_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Columna de video (idempotente si ya existe)
+ALTER TABLE public.community_posts ADD COLUMN IF NOT EXISTS video_url TEXT;
+
 -- Si la tabla ya existía con FK, eliminarla:
 ALTER TABLE public.community_posts
   DROP CONSTRAINT IF EXISTS community_posts_user_id_fkey;
@@ -720,8 +723,9 @@ CREATE TABLE IF NOT EXISTS public.challenge_records (
   UNIQUE(challenge_id, user_id)
 );
 
--- Si la tabla ya existía sin la columna reps, añadirla (idempotente):
-ALTER TABLE public.challenge_records ADD COLUMN IF NOT EXISTS reps INTEGER;
+-- Columnas opcionales (idempotente):
+ALTER TABLE public.challenge_records ADD COLUMN IF NOT EXISTS reps      INTEGER;
+ALTER TABLE public.challenge_records ADD COLUMN IF NOT EXISTS video_url TEXT;
 
 ALTER TABLE public.challenge_records ENABLE ROW LEVEL SECURITY;
 
@@ -1146,3 +1150,241 @@ CREATE POLICY "weight_insert_own" ON public.weight_history
 
 CREATE POLICY "weight_delete_own" ON public.weight_history
   FOR DELETE TO authenticated USING (auth.uid() = user_id);
+
+
+-- ─── CÓDIGOS DE REGISTRO ─────────────────────────────────────────────────────
+-- El administrador genera un código único para cada persona que va a crear
+-- una cuenta. El usuario ingresa ese código en el paso 0 del registro.
+-- Todo el acceso pasa por funciones SECURITY DEFINER; RLS bloquea acceso directo.
+
+CREATE TABLE IF NOT EXISTS public.registration_codes (
+  id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  code         TEXT        UNIQUE NOT NULL,
+  created_for  TEXT        NOT NULL,
+  is_used      BOOLEAN     NOT NULL DEFAULT FALSE,
+  used_by      TEXT,
+  used_at      TIMESTAMPTZ,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.registration_codes ENABLE ROW LEVEL SECURITY;
+
+
+-- ─── NOTIFICACIONES DEL DUEÑO ────────────────────────────────────────────────
+-- Cada vez que un administrador genera un código de registro, se inserta
+-- una notificación aquí para que el dueño la vea en el panel de admin.
+
+CREATE TABLE IF NOT EXISTS public.admin_notifications (
+  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  type       TEXT        NOT NULL,
+  title      TEXT        NOT NULL,
+  body       TEXT        NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.admin_notifications ENABLE ROW LEVEL SECURITY;
+
+
+-- ── RPC: generate_registration_code ─────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.generate_registration_code(
+  admin_key   TEXT,
+  created_for TEXT
+)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_code TEXT;
+BEGIN
+  IF admin_key <> 'cocodemegavital' THEN
+    RETURN NULL;
+  END IF;
+
+  IF TRIM(created_for) = '' THEN
+    RETURN NULL;
+  END IF;
+
+  -- Generar código único de 9 caracteres con prefijo REG
+  LOOP
+    v_code := 'REG' || UPPER(SUBSTRING(MD5(gen_random_uuid()::text) FROM 1 FOR 6));
+    EXIT WHEN NOT EXISTS (
+      SELECT 1 FROM public.registration_codes WHERE code = v_code
+    );
+  END LOOP;
+
+  INSERT INTO public.registration_codes (code, created_for)
+  VALUES (v_code, TRIM(created_for));
+
+  -- Notificar al dueño de la aplicación
+  INSERT INTO public.admin_notifications (type, title, body)
+  VALUES (
+    'new_registration_code',
+    'Código de registro generado',
+    'Se generó el código ' || v_code || ' para ' || TRIM(created_for)
+  );
+
+  RETURN v_code;
+END;
+$$;
+
+
+-- ── RPC: validate_registration_code ─────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.validate_registration_code(code_text TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_is_used BOOLEAN;
+BEGIN
+  SELECT is_used INTO v_is_used
+  FROM public.registration_codes
+  WHERE UPPER(code) = UPPER(TRIM(code_text));
+
+  IF NOT FOUND THEN
+    RETURN json_build_object('valid', false, 'message', 'Código no válido.');
+  END IF;
+
+  IF v_is_used THEN
+    RETURN json_build_object('valid', false, 'message', 'Este código ya fue utilizado.');
+  END IF;
+
+  RETURN json_build_object('valid', true, 'message', 'Código válido.');
+END;
+$$;
+
+
+-- ── RPC: use_registration_code ───────────────────────────────────────────────
+-- Se llama tras el registro exitoso para marcar el código como usado.
+CREATE OR REPLACE FUNCTION public.use_registration_code(code_text TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_id      UUID;
+  v_is_used BOOLEAN;
+BEGIN
+  SELECT id, is_used INTO v_id, v_is_used
+  FROM public.registration_codes
+  WHERE UPPER(code) = UPPER(TRIM(code_text))
+  FOR UPDATE;
+
+  IF NOT FOUND OR v_is_used THEN
+    RETURN FALSE;
+  END IF;
+
+  UPDATE public.registration_codes
+  SET is_used = TRUE,
+      used_by = auth.uid()::text,
+      used_at = NOW()
+  WHERE id = v_id;
+
+  RETURN TRUE;
+END;
+$$;
+
+
+-- ── RPC: list_registration_codes ─────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.list_registration_codes(admin_key TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF admin_key <> 'cocodemegavital' THEN
+    RETURN '[]'::JSON;
+  END IF;
+
+  RETURN COALESCE(
+    (
+      SELECT JSON_AGG(
+        json_build_object(
+          'id',          id::text,
+          'code',        code,
+          'created_for', created_for,
+          'is_used',     is_used,
+          'used_by',     used_by,
+          'used_at',     CASE WHEN used_at IS NOT NULL
+                           THEN TO_CHAR(used_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                           ELSE NULL END,
+          'created_at',  TO_CHAR(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+        )
+        ORDER BY created_at DESC
+      )
+      FROM public.registration_codes
+    ),
+    '[]'::JSON
+  );
+END;
+$$;
+
+
+-- ── RPC: list_admin_notifications ────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.list_admin_notifications(admin_key TEXT)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF admin_key <> 'cocodemegavital' THEN
+    RETURN '[]'::JSON;
+  END IF;
+
+  RETURN COALESCE(
+    (
+      SELECT JSON_AGG(
+        json_build_object(
+          'id',         id::text,
+          'type',       type,
+          'title',      title,
+          'body',       body,
+          'created_at', TO_CHAR(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+        )
+        ORDER BY created_at DESC
+      )
+      FROM public.admin_notifications
+      LIMIT 100
+    ),
+    '[]'::JSON
+  );
+END;
+$$;
+
+
+-- ─── STORAGE: bucket post_videos ────────────────────────────────────────────
+-- Ejecutar en Supabase Dashboard → Storage → New bucket:
+--   Nombre: post_videos   |  Public: true  |  Max file size: 50 MB
+--   Allowed MIME types: video/mp4, video/quicktime, video/webm
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'post_videos',
+  'post_videos',
+  true,
+  52428800,
+  ARRAY['video/mp4', 'video/quicktime', 'video/webm']
+)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "post_videos_select" ON storage.objects;
+DROP POLICY IF EXISTS "post_videos_insert" ON storage.objects;
+DROP POLICY IF EXISTS "post_videos_delete" ON storage.objects;
+
+CREATE POLICY "post_videos_select"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'post_videos');
+
+CREATE POLICY "post_videos_insert"
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'post_videos' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "post_videos_delete"
+  ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'post_videos' AND auth.uid()::text = (storage.foldername(name))[1]);

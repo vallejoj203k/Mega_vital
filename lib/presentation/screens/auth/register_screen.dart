@@ -14,6 +14,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../services/registration_code_service.dart';
 import '../../widgets/shared_widgets.dart';
 import 'login_screen.dart' show AuthField;
 
@@ -30,10 +31,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   int _step = 0;
   final _totalSteps = 4;
 
-  // ── Controladores paso 0 (admin gate) ──
-  final _adminPassCtrl = TextEditingController();
-  bool _obscureAdmin = true;
-  String? _adminPassError;
+  // ── Controladores paso 0 (código de registro) ──
+  final _regCodeCtrl = TextEditingController();
+  bool _validatingCode = false;
+  String? _regCodeError;
+  String _validatedCode = '';
 
   // ── Controladores paso 1 ──
   final _nameCtrl = TextEditingController();
@@ -66,7 +68,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   // ── Títulos de cada paso ──
   final _stepTitles = [
-    ('Acceso admin', 'Solo el administrador puede crear cuentas'),
+    ('Código de acceso', 'El administrador te entrega un código único'),
     ('Tu cuenta', 'Crea tus credenciales de acceso'),
     ('Tu cuerpo', 'Ayúdanos a personalizar tu plan'),
     ('Tu meta', 'Define tu objetivo principal'),
@@ -74,7 +76,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
-    _adminPassCtrl.dispose();
+    _regCodeCtrl.dispose();
     _nameCtrl.dispose();
     _usernameCtrl.dispose();
     _passCtrl.dispose();
@@ -192,10 +194,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     switch (_step) {
       case 0:
         return _Step0(
-          adminPassCtrl: _adminPassCtrl,
-          obscureAdmin: _obscureAdmin,
-          error: _adminPassError,
-          onToggle: () => setState(() => _obscureAdmin = !_obscureAdmin),
+          regCodeCtrl: _regCodeCtrl,
+          error: _regCodeError,
+          isLoading: _validatingCode,
           onNext: _nextStep,
         );
       case 1:
@@ -242,17 +243,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // ── Avanzar paso ──
   void _nextStep() {
     if (_step == 0) {
-      if (_adminPassCtrl.text.trim() != 'cocodemegavital') {
-        setState(() => _adminPassError = 'Contraseña incorrecta');
-        return;
-      }
-      setState(() => _adminPassError = null);
+      _verifyRegCode();
+      return;
     }
     if (_step == 1 && !(_formKey1.currentState?.validate() ?? false)) return;
     if (_step == 2 && !(_formKey2.currentState?.validate() ?? false)) return;
-    if (_step < _totalSteps - 1) {
-      setState(() => _step++);
+    if (_step < _totalSteps - 1) setState(() => _step++);
+  }
+
+  // ── Validar código de registro (async, maneja su propio estado) ──
+  Future<void> _verifyRegCode() async {
+    final code = _regCodeCtrl.text.trim().toUpperCase();
+    if (code.isEmpty) {
+      setState(() => _regCodeError = 'Ingresa el código de acceso');
+      return;
     }
+    setState(() { _validatingCode = true; _regCodeError = null; });
+    final result = await RegistrationCodeService().validateCode(code);
+    if (!mounted) return;
+    if (!result.valid) {
+      setState(() { _validatingCode = false; _regCodeError = result.message; });
+      return;
+    }
+    setState(() { _validatingCode = false; _validatedCode = code; _step++; });
   }
 
   // ── Retroceder paso ──
@@ -282,6 +295,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
 
     if (ok) {
+      if (_validatedCode.isNotEmpty) {
+        await RegistrationCodeService().useCode(_validatedCode);
+      }
+      if (!mounted) return;
       Navigator.of(context).popUntil((route) => route.isFirst);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -346,21 +363,19 @@ class _StepProgressBar extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// PASO 0 — Contraseña de administrador
-// Solo el admin del gimnasio conoce esta contraseña.
+// PASO 0 — Código de registro
+// El administrador entrega un código único a cada nuevo miembro.
 // ─────────────────────────────────────────────────────────────────
 class _Step0 extends StatelessWidget {
-  final TextEditingController adminPassCtrl;
-  final bool obscureAdmin;
+  final TextEditingController regCodeCtrl;
   final String? error;
-  final VoidCallback onToggle;
+  final bool isLoading;
   final VoidCallback onNext;
 
   const _Step0({
-    required this.adminPassCtrl,
-    required this.obscureAdmin,
+    required this.regCodeCtrl,
     required this.error,
-    required this.onToggle,
+    required this.isLoading,
     required this.onNext,
   });
 
@@ -376,18 +391,20 @@ class _Step0 extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.accentOrange.withOpacity(0.08),
+              color: AppColors.primary.withOpacity(0.08),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.accentOrange.withOpacity(0.3), width: 0.5),
+              border: Border.all(
+                  color: AppColors.primary.withOpacity(0.3), width: 0.5),
             ),
             child: Row(
               children: [
-                Icon(Icons.admin_panel_settings_outlined, color: AppColors.accentOrange, size: 22),
+                const Icon(Icons.key_rounded, color: AppColors.primary, size: 22),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Esta app es exclusiva para miembros del gimnasio. Solo el administrador puede crear cuentas nuevas.',
-                    style: AppTextStyles.bodySmall.copyWith(color: AppColors.accentOrange),
+                    'Esta app es exclusiva para miembros del gimnasio. Solicita tu código de acceso al administrador.',
+                    style: AppTextStyles.bodySmall
+                        .copyWith(color: AppColors.primary),
                   ),
                 ),
               ],
@@ -395,21 +412,13 @@ class _Step0 extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // Campo de contraseña admin
+          // Campo de código de registro
           AuthField(
-            controller: adminPassCtrl,
-            label: 'Contraseña de administrador',
-            hint: '••••••••••••••',
-            icon: Icons.shield_outlined,
-            obscureText: obscureAdmin,
-            suffixIcon: IconButton(
-              icon: Icon(
-                obscureAdmin ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                size: 20,
-                color: AppColors.textMuted,
-              ),
-              onPressed: onToggle,
-            ),
+            controller: regCodeCtrl,
+            label: 'Código de acceso',
+            hint: 'Ej: REGAB1C2D',
+            icon: Icons.vpn_key_outlined,
+            textCapitalization: TextCapitalization.characters,
           ),
 
           // Error inline
@@ -417,20 +426,111 @@ class _Step0 extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 15),
+                const Icon(Icons.error_outline_rounded,
+                    color: AppColors.error, size: 15),
                 const SizedBox(width: 6),
-                Text(error!, style: TextStyle(color: AppColors.error, fontSize: 12)),
+                Flexible(
+                  child: Text(error!,
+                      style:
+                          const TextStyle(color: AppColors.error, fontSize: 12)),
+                ),
               ],
             ),
           ],
 
           const SizedBox(height: 28),
-          _StepButton(label: 'Verificar →', onTap: onNext),
+          _StepButton(
+            label: isLoading ? '' : 'Verificar →',
+            isLoading: isLoading,
+            onTap: isLoading ? () {} : onNext,
+          ),
           const SizedBox(height: 20),
           _LoginPrompt(),
+          const SizedBox(height: 24),
+
+          // Bloque de contacto
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border, width: 0.5),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.help_outline_rounded,
+                        color: AppColors.textMuted, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      '¿Tienes alguna novedad?',
+                      style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                _ContactRow(
+                  icon: Icons.phone_outlined,
+                  label: 'Administración',
+                  value: '320 888 4102',
+                ),
+                const SizedBox(height: 6),
+                _ContactRow(
+                  icon: Icons.phone_outlined,
+                  label: 'Soporte',
+                  value: '+57 322 523 7665',
+                ),
+                const SizedBox(height: 6),
+                _ContactRow(
+                  icon: Icons.email_outlined,
+                  label: 'Correo',
+                  value: 'megavitalzarzal@gmail.com',
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 40),
         ],
       ),
+    );
+  }
+}
+
+class _ContactRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _ContactRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: AppColors.textMuted),
+        const SizedBox(width: 6),
+        Text(
+          '$label: ',
+          style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+        ),
+        Flexible(
+          child: Text(
+            value,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
