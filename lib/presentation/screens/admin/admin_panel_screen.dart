@@ -10,6 +10,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/premium_provider.dart';
 import '../../../services/registration_code_service.dart';
+import '../../../services/admin_user_service.dart';
 
 // ── Pantalla de acceso (contraseña) ─────────────────────────────
 class AdminAccessScreen extends StatefulWidget {
@@ -142,7 +143,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -169,6 +170,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
           tabs: const [
             Tab(text: 'Premium'),
             Tab(text: 'Acceso'),
+            Tab(text: 'Usuarios'),
           ],
         ),
       ),
@@ -177,6 +179,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
         children: const [
           _PremiumTab(),
           _AccessTab(),
+          _UsersTab(),
         ],
       ),
     );
@@ -1005,6 +1008,277 @@ class _RegCodeTile extends StatelessWidget {
                 child: const Icon(Icons.copy_rounded,
                     color: AppColors.textMuted, size: 18),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Pestaña de usuarios ───────────────────────────────────────────
+class _UsersTab extends StatefulWidget {
+  const _UsersTab();
+
+  @override
+  State<_UsersTab> createState() => _UsersTabState();
+}
+
+class _UsersTabState extends State<_UsersTab> {
+  final _service = AdminUserService();
+  bool _loading = true;
+  List<AdminUserInfo> _users = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    _users = await _service.listUsers();
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _confirmDelete(AdminUserInfo user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.warning_rounded, color: AppColors.error, size: 22),
+            const SizedBox(width: 10),
+            Text('Eliminar usuario', style: AppTextStyles.headingSmall),
+          ],
+        ),
+        content: RichText(
+          text: TextSpan(
+            style: AppTextStyles.bodySmall
+                .copyWith(color: AppColors.textSecondary),
+            children: [
+              const TextSpan(text: '¿Seguro que deseas eliminar a '),
+              TextSpan(
+                text: user.name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const TextSpan(
+                  text:
+                      '? Esta acción eliminará todos sus datos y no se puede deshacer.'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar',
+                style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Eliminar',
+                style: TextStyle(
+                    color: AppColors.error, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final ok = await _service.deleteUser(user.uid);
+    if (!mounted) return;
+
+    if (ok) {
+      setState(() => _users.removeWhere((u) => u.uid == user.uid));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${user.name} eliminado correctamente.'),
+          backgroundColor: AppColors.primary,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error al eliminar el usuario. Verifica la conexión.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Usuarios registrados',
+                        style: AppTextStyles.headingSmall),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Toca el icono de basura para eliminar un usuario.',
+                      style: AppTextStyles.bodySmall
+                          .copyWith(color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
+                GestureDetector(
+                  onTap: _load,
+                  child: const Icon(Icons.refresh_rounded,
+                      color: AppColors.textMuted, size: 20),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_loading)
+          const SliverToBoxAdapter(
+            child: Center(
+              child: Padding(
+                padding: EdgeInsets.all(40),
+                child: CircularProgressIndicator(color: AppColors.primary),
+              ),
+            ),
+          )
+        else if (_users.isEmpty)
+          SliverToBoxAdapter(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(40),
+                child: Text(
+                  'No hay usuarios registrados.',
+                  style: AppTextStyles.bodyMedium
+                      .copyWith(color: AppColors.textMuted),
+                ),
+              ),
+            ),
+          )
+        else ...[
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                '${_users.length} usuario${_users.length == 1 ? '' : 's'}',
+                style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+              ),
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 8)),
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (_, i) => _UserTile(
+                info: _users[i],
+                onDelete: () => _confirmDelete(_users[i]),
+              ),
+              childCount: _users.length,
+            ),
+          ),
+        ],
+        const SliverToBoxAdapter(child: SizedBox(height: 100)),
+      ],
+    );
+  }
+}
+
+// ── Tile de usuario ───────────────────────────────────────────────
+class _UserTile extends StatelessWidget {
+  final AdminUserInfo info;
+  final VoidCallback onDelete;
+
+  const _UserTile({required this.info, required this.onDelete});
+
+  String _fmt(DateTime dt) =>
+      '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  info.name.isNotEmpty
+                      ? info.name[0].toUpperCase()
+                      : '?',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    info.name,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '@${info.username}',
+                    style: AppTextStyles.bodySmall
+                        .copyWith(color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    'Desde ${_fmt(info.createdAt)}',
+                    style: AppTextStyles.caption
+                        .copyWith(color: AppColors.textMuted),
+                  ),
+                ],
+              ),
+            ),
+            GestureDetector(
+              onTap: onDelete,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: AppColors.error,
+                  size: 20,
+                ),
+              ),
+            ),
           ],
         ),
       ),

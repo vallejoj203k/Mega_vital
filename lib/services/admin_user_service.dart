@@ -1,0 +1,57 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class AdminUserInfo {
+  final String uid;
+  final String name;
+  final String username;
+  final String email;
+  final DateTime createdAt;
+
+  const AdminUserInfo({
+    required this.uid,
+    required this.name,
+    required this.username,
+    required this.email,
+    required this.createdAt,
+  });
+
+  factory AdminUserInfo.fromMap(Map<String, dynamic> m) => AdminUserInfo(
+        uid:       m['uid']      as String,
+        name:      m['name']     as String,
+        username:  m['username'] as String? ?? '',
+        email:     m['email']    as String? ?? '',
+        createdAt: m['created_at'] != null
+            ? DateTime.tryParse(m['created_at'] as String) ?? DateTime.now()
+            : DateTime.now(),
+      );
+}
+
+class AdminUserService {
+  static const _adminKey = 'cocodemegavital';
+  final _supabase = Supabase.instance.client;
+
+  Future<List<AdminUserInfo>> listUsers() async {
+    try {
+      final data = await _supabase
+          .rpc('admin_list_users', params: {'admin_key': _adminKey});
+      if (data == null) return [];
+      return (data as List)
+          .map((e) => AdminUserInfo.fromMap(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<bool> deleteUser(String targetUid) async {
+    try {
+      await _supabase.rpc('admin_delete_user', params: {
+        'admin_key': _adminKey,
+        'target_uid': targetUid,
+      });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+}

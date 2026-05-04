@@ -1388,3 +1388,90 @@ CREATE POLICY "post_videos_insert"
 CREATE POLICY "post_videos_delete"
   ON storage.objects FOR DELETE TO authenticated
   USING (bucket_id = 'post_videos' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- ─── admin_list_users ─────────────────────────────────────────────────────────
+-- Retorna todos los perfiles de usuario. Solo accesible con la clave de admin.
+
+CREATE OR REPLACE FUNCTION public.admin_list_users(admin_key TEXT)
+RETURNS TABLE (
+  uid         TEXT,
+  name        TEXT,
+  username    TEXT,
+  email       TEXT,
+  created_at  TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF admin_key <> 'cocodemegavital' THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY
+    SELECT
+      up.uid,
+      up.name,
+      up.username,
+      up.email,
+      up.created_at
+    FROM public.user_profiles up
+    ORDER BY up.created_at DESC;
+END;
+$$;
+
+-- ─── admin_delete_user ────────────────────────────────────────────────────────
+-- Elimina todos los datos de un usuario y su cuenta de auth.
+-- Solo accesible con la clave de admin.
+
+CREATE OR REPLACE FUNCTION public.admin_delete_user(admin_key TEXT, target_uid TEXT)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_uid      uuid := target_uid::uuid;
+  v_uid_text text := target_uid;
+BEGIN
+  IF admin_key <> 'cocodemegavital' THEN
+    RAISE EXCEPTION 'Acceso denegado';
+  END IF;
+
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'UID inválido';
+  END IF;
+
+  -- Datos de nutrición y rutinas
+  DELETE FROM public.nutrition_logs    WHERE user_id = v_uid_text;
+  DELETE FROM public.user_routines     WHERE user_id = v_uid_text;
+
+  -- Retos y records
+  DELETE FROM public.challenge_records WHERE user_id = v_uid_text;
+  DELETE FROM public.challenges        WHERE creator_id = v_uid_text;
+
+  -- Historias
+  DELETE FROM public.story_views       WHERE viewer_id = v_uid_text;
+  DELETE FROM public.user_stories      WHERE user_id = v_uid_text;
+
+  -- Comunidad
+  DELETE FROM public.point_events      WHERE user_id = v_uid_text;
+  DELETE FROM public.post_likes        WHERE user_id = v_uid_text;
+  DELETE FROM public.post_comments     WHERE user_id = v_uid_text;
+  DELETE FROM public.community_posts   WHERE user_id = v_uid_text;
+
+  -- Notificaciones y seguidos
+  DELETE FROM public.notifications     WHERE user_id = v_uid_text OR actor_id = v_uid_text;
+  DELETE FROM public.user_follows      WHERE follower_id = v_uid_text OR following_id = v_uid_text;
+
+  -- Spinning
+  DELETE FROM public.spinning_bookings WHERE user_id = v_uid;
+
+  -- Perfil
+  DELETE FROM public.user_profiles     WHERE uid = v_uid_text;
+
+  -- Cuenta de autenticación (debe ser lo último)
+  DELETE FROM auth.users WHERE id = v_uid;
+END;
+$$;
