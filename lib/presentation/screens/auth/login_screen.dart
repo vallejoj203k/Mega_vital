@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/auth_provider.dart';
 import 'register_screen.dart';
+import 'contact_admin_screen.dart';
 
 // ─── Landing / Welcome screen ────────────────────────────────────────────────
 
@@ -59,6 +60,27 @@ class _LoginScreenState extends State<LoginScreen>
               CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
           child: child,
         ),
+      ),
+    );
+  }
+
+  void _showRegisterChoice() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _RegisterChoiceSheet(
+        onGymMember: () {
+          Navigator.pop(context);
+          _goToRegister();
+        },
+        onNotMember: () {
+          Navigator.pop(context);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => const ContactAdminScreen()),
+          );
+        },
       ),
     );
   }
@@ -169,7 +191,7 @@ class _LoginScreenState extends State<LoginScreen>
                       Expanded(
                         child: _GreenButton(
                           label: 'Crear cuenta',
-                          onTap: _goToRegister,
+                          onTap: _showRegisterChoice,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -618,6 +640,170 @@ class _LoginSheetState extends State<_LoginSheet> {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Register choice bottom sheet ────────────────────────────────────────────
+
+class _RegisterChoiceSheet extends StatelessWidget {
+  final VoidCallback onGymMember;
+  final VoidCallback onNotMember;
+
+  const _RegisterChoiceSheet({
+    required this.onGymMember,
+    required this.onNotMember,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 22),
+
+          Text('¿Eres miembro del gimnasio?',
+              style: AppTextStyles.headingSmall),
+          const SizedBox(height: 6),
+          Text(
+            'Para crear una cuenta necesitas un código de acceso entregado en el gimnasio.',
+            style: AppTextStyles.bodySmall
+                .copyWith(color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 24),
+
+          // Botón: Estoy en el gimnasio
+          GestureDetector(
+            onTap: onGymMember,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.30),
+                    blurRadius: 14,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.18),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.fitness_center_rounded,
+                        color: Colors.white, size: 22),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Estoy en el gimnasio',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Ya tengo mi código de acceso',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.80),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios_rounded,
+                      color: Colors.white, size: 16),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Botón: No soy usuario
+          GestureDetector(
+            onTap: onNotMember,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.accentOrange.withOpacity(0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.person_add_alt_1_rounded,
+                        color: AppColors.accentOrange, size: 22),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'No soy usuario',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Quiero más información',
+                          style: AppTextStyles.caption
+                              .copyWith(color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios_rounded,
+                      color: AppColors.textMuted, size: 16),
+                ],
+              ),
             ),
           ),
         ],
