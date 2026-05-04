@@ -54,10 +54,10 @@ class AppConfig {
 
   // ── WhatsApp del dueño del gimnasio ──────────────────────────
   // Formato internacional sin '+' ni espacios. Ej: 521XXXXXXXXXX (México)
-  static const String ownerWhatsApp = '521XXXXXXXXXX';
+  static const String ownerWhatsApp = '573225237665';
 
   // ── Gmail del dueño del gimnasio ─────────────────────────────
-  static const String ownerEmail = 'vallejoj645@gmail.com';
+  static const String ownerEmail = 'vallejojuanpablo27@gmail.com';
 
   // ── Emails con acceso al panel de administración ──────────────
   // Solo estos usuarios ven el botón "Administración" en el perfil.

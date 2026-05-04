@@ -10,7 +10,7 @@ class ContactAdminScreen extends StatelessWidget {
   Future<void> _openWhatsApp(BuildContext context) async {
     final phone = AppConfig.ownerWhatsApp;
     const message =
-        'Hola, me gustaría obtener información para unirme al gimnasio Mega Vital.';
+        'Hola quiero ser usuario de la aplicacion mega vital, aun no he ido al gimnasio fisico';
     final uri = Uri.parse(
         'https://wa.me/$phone?text=${Uri.encodeComponent(message)}');
     if (await canLaunchUrl(uri)) {
@@ -32,9 +32,9 @@ class ContactAdminScreen extends StatelessWidget {
       scheme: 'mailto',
       path: AppConfig.ownerEmail,
       queryParameters: {
-        'subject': 'Información para unirme a Mega Vital',
+        'subject': 'Quiero ser usuario de Mega Vital',
         'body':
-            'Hola, me gustaría obtener información para unirme al gimnasio.',
+            'Hola quiero ser usuario de la aplicacion mega vital, aun no he ido al gimnasio fisico',
       },
     );
     if (await canLaunchUrl(uri)) {
