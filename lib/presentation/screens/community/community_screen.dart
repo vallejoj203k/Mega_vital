@@ -2143,55 +2143,105 @@ class _RecordRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-      color: isMe ? AppColors.primary.withOpacity(0.05) : Colors.transparent,
-      child: Row(
-        children: [
-          SizedBox(
-            width: 32,
-            child: record.rank <= 3
-                ? Text(_medal(record.rank),
-                    style: const TextStyle(fontSize: 20),
-                    textAlign: TextAlign.center)
-                : Text('#${record.rank}',
-                    style: AppTextStyles.caption.copyWith(
-                        color: AppColors.textMuted)),
-          ),
-          const SizedBox(width: 10),
-          InitialsAvatar(
-            initials: record.initials,
-            size: 36,
-            photoUrl: record.avatarUrl,
-            bgColor: AppColors.surfaceVariant,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              record.userName + (isMe ? ' (tú)' : ''),
-              style: AppTextStyles.labelMedium.copyWith(
-                  color: isMe ? AppColors.primary : AppColors.textPrimary),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+    final hasVideo = record.videoUrl != null && record.videoUrl!.isNotEmpty;
+    return GestureDetector(
+      onTap: hasVideo ? () => _showVideo(context) : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        color: isMe ? AppColors.primary.withOpacity(0.05) : Colors.transparent,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 32,
+              child: record.rank <= 3
+                  ? Text(_medal(record.rank),
+                      style: const TextStyle(fontSize: 20),
+                      textAlign: TextAlign.center)
+                  : Text('#${record.rank}',
+                      style: AppTextStyles.caption.copyWith(
+                          color: AppColors.textMuted)),
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                _formatRecord(record.value, unit, record.reps),
-                style: AppTextStyles.labelLarge.copyWith(
-                  color: record.rank == 1 ? AppColors.primary : AppColors.textPrimary,
-                ),
+            const SizedBox(width: 10),
+            InitialsAvatar(
+              initials: record.initials,
+              size: 36,
+              photoUrl: record.avatarUrl,
+              bgColor: AppColors.surfaceVariant,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                record.userName + (isMe ? ' (tú)' : ''),
+                style: AppTextStyles.labelMedium.copyWith(
+                    color: isMe ? AppColors.primary : AppColors.textPrimary),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              if (unit == 'kg×reps')
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
                 Text(
-                  '${record.volume.toInt()} vol',
-                  style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                  _formatRecord(record.value, unit, record.reps),
+                  style: AppTextStyles.labelLarge.copyWith(
+                    color: record.rank == 1 ? AppColors.primary : AppColors.textPrimary,
+                  ),
                 ),
+                if (unit == 'kg×reps')
+                  Text(
+                    '${record.volume.toInt()} vol',
+                    style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                  ),
+              ],
+            ),
+            if (hasVideo) ...[
+              const SizedBox(width: 8),
+              Icon(Icons.play_circle_outline_rounded,
+                  size: 22, color: AppColors.primary),
             ],
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showVideo(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(record.userName,
+                style: AppTextStyles.labelLarge),
+            Text(_formatRecord(record.value, unit, record.reps),
+                style: AppTextStyles.caption
+                    .copyWith(color: AppColors.textSecondary)),
+            const SizedBox(height: 14),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: _VideoPostPlayer(videoUrl: record.videoUrl!),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
