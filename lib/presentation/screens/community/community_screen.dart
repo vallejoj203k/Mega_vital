@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:video_player/video_player.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -460,6 +461,12 @@ class _PostCard extends StatelessWidget {
             ),
           ],
 
+          // Post video
+          if (post.hasVideo) ...[
+            const SizedBox(height: 12),
+            _VideoPostPlayer(videoUrl: post.videoUrl!),
+          ],
+
           const SizedBox(height: 14),
           Divider(color: AppColors.divider, height: 1),
           const SizedBox(height: 10),
@@ -613,6 +620,7 @@ class _PublishSheetState extends State<_PublishSheet> {
   bool _loading = false;
   bool _showAchievement = false;
   File? _pickedImage;
+  File? _pickedVideo;
 
   @override
   void dispose() {
@@ -625,11 +633,22 @@ class _PublishSheetState extends State<_PublishSheet> {
     final picker = ImagePicker();
     final xfile = await picker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 1080,
-      imageQuality: 85,
+      maxWidth: 800,
+      imageQuality: 72,
     );
     if (xfile != null && mounted) {
-      setState(() => _pickedImage = File(xfile.path));
+      setState(() { _pickedImage = File(xfile.path); _pickedVideo = null; });
+    }
+  }
+
+  Future<void> _pickVideo() async {
+    final picker = ImagePicker();
+    final xfile = await picker.pickVideo(
+      source: ImageSource.gallery,
+      maxDuration: const Duration(seconds: 60),
+    );
+    if (xfile != null && mounted) {
+      setState(() { _pickedVideo = File(xfile.path); _pickedImage = null; });
     }
   }
 
@@ -642,22 +661,27 @@ class _PublishSheetState extends State<_PublishSheet> {
         : null;
     final error = await context
         .read<CommunityProvider>()
-        .createPost(widget.userName, text, achievement: achievement, imageFile: _pickedImage);
+        .createPost(widget.userName, text,
+            achievement: achievement,
+            imageFile: _pickedImage,
+            videoFile: _pickedVideo);
     if (mounted) {
       if (error == null) {
         Navigator.pop(context);
-      } else if (error == 'warn:image') {
-        // Post creado pero imagen no pudo subirse (configura el bucket en Supabase)
+      } else if (error == 'warn:image' || error == 'warn:video') {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Publicación creada, pero la foto no se pudo subir. '
-              'Ejecuta el SQL de configuración en Supabase para habilitar imágenes.',
-              style: TextStyle(color: Colors.white),
+              error == 'warn:video'
+                  ? 'Publicación creada, pero el video no se pudo subir. '
+                    'Crea el bucket post_videos en Supabase Storage.'
+                  : 'Publicación creada, pero la foto no se pudo subir. '
+                    'Ejecuta el SQL de configuración en Supabase.',
+              style: const TextStyle(color: Colors.white),
             ),
             backgroundColor: AppColors.accentOrange,
-            duration: Duration(seconds: 6),
+            duration: const Duration(seconds: 6),
           ),
         );
       } else {
@@ -755,57 +779,39 @@ class _PublishSheetState extends State<_PublishSheet> {
 
           // Image preview
           if (_pickedImage != null) ...[
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    _pickedImage!,
-                    width: double.infinity,
-                    height: 180,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                Positioned(
-                  top: 6, right: 6,
-                  child: GestureDetector(
-                    onTap: () => setState(() => _pickedImage = null),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        shape: BoxShape.circle,
-                      ),
-                      padding: const EdgeInsets.all(4),
-                      child: const Icon(Icons.close, color: Colors.white, size: 16),
-                    ),
-                  ),
-                ),
-              ],
+            _MediaPreview(
+              child: Image.file(_pickedImage!, width: double.infinity,
+                  height: 180, fit: BoxFit.cover),
+              onRemove: () => setState(() => _pickedImage = null),
+            ),
+            const SizedBox(height: 10),
+          ],
+
+          // Video preview
+          if (_pickedVideo != null) ...[
+            _MediaPreview(
+              child: _LocalVideoPreview(file: _pickedVideo!),
+              onRemove: () => setState(() => _pickedVideo = null),
             ),
             const SizedBox(height: 10),
           ],
 
           Row(
             children: [
-              GestureDetector(
-                onTap: _pickImage,
-                child: Row(
-                  children: [
-                    Icon(
-                      _pickedImage != null
-                          ? Icons.image_rounded
-                          : Icons.image_outlined,
-                      color: AppColors.primary, size: 18,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _pickedImage != null ? 'Cambiar foto' : 'Añadir foto',
-                      style: AppTextStyles.caption.copyWith(color: AppColors.primary),
-                    ),
-                  ],
-                ),
+              _MediaButton(
+                icon: _pickedImage != null ? Icons.image_rounded : Icons.image_outlined,
+                label: _pickedImage != null ? 'Cambiar foto' : 'Foto',
+                onTap: _pickedVideo != null ? null : _pickImage,
               ),
-              const SizedBox(width: 20),
+              const SizedBox(width: 16),
+              _MediaButton(
+                icon: _pickedVideo != null
+                    ? Icons.videocam_rounded
+                    : Icons.videocam_outlined,
+                label: _pickedVideo != null ? 'Cambiar video' : 'Video',
+                onTap: _pickedImage != null ? null : _pickVideo,
+              ),
+              const SizedBox(width: 16),
               GestureDetector(
                 onTap: () => setState(() => _showAchievement = !_showAchievement),
                 child: Row(
@@ -817,10 +823,9 @@ class _PublishSheetState extends State<_PublishSheet> {
                       color: AppColors.primary, size: 18,
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      'Añadir logro',
-                      style: AppTextStyles.caption.copyWith(color: AppColors.primary),
-                    ),
+                    Text('Logro',
+                        style: AppTextStyles.caption
+                            .copyWith(color: AppColors.primary)),
                   ],
                 ),
               ),
@@ -2772,4 +2777,227 @@ String _formatRecord(double v, String unit, int? reps) {
   if (unit != 'kg×reps') return _formatValue(v, unit);
   final kgStr = v == v.truncateToDouble() ? '${v.toInt()} kg' : '${v.toStringAsFixed(1)} kg';
   return reps != null && reps > 0 ? '$kgStr × $reps reps' : kgStr;
+}
+
+// ─── Botón de media en el sheet de publicación ────────────────────────────────
+class _MediaButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  const _MediaButton({required this.icon, required this.label, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final active = onTap != null;
+    return GestureDetector(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(icon,
+              color: active ? AppColors.primary : AppColors.textMuted, size: 18),
+          const SizedBox(width: 6),
+          Text(label,
+              style: AppTextStyles.caption.copyWith(
+                  color: active ? AppColors.primary : AppColors.textMuted)),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Preview genérico con botón X para quitar ────────────────────────────────
+class _MediaPreview extends StatelessWidget {
+  final Widget child;
+  final VoidCallback onRemove;
+  const _MediaPreview({required this.child, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            width: double.infinity,
+            height: 180,
+            child: child,
+          ),
+        ),
+        Positioned(
+          top: 6, right: 6,
+          child: GestureDetector(
+            onTap: onRemove,
+            child: Container(
+              decoration: const BoxDecoration(
+                  color: Colors.black54, shape: BoxShape.circle),
+              padding: const EdgeInsets.all(4),
+              child: const Icon(Icons.close, color: Colors.white, size: 16),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Preview de video local antes de publicar ────────────────────────────────
+class _LocalVideoPreview extends StatefulWidget {
+  final File file;
+  const _LocalVideoPreview({required this.file});
+
+  @override
+  State<_LocalVideoPreview> createState() => _LocalVideoPreviewState();
+}
+
+class _LocalVideoPreviewState extends State<_LocalVideoPreview> {
+  late VideoPlayerController _ctrl;
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = VideoPlayerController.file(widget.file)
+      ..initialize().then((_) {
+        if (mounted) setState(() => _ready = true);
+      });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) {
+      return Container(
+        color: AppColors.surfaceVariant,
+        child: const Center(
+            child: CircularProgressIndicator(
+                color: AppColors.primary, strokeWidth: 2)),
+      );
+    }
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _ctrl.value.isPlaying ? _ctrl.pause() : _ctrl.play();
+        });
+      },
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          AspectRatio(aspectRatio: _ctrl.value.aspectRatio, child: VideoPlayer(_ctrl)),
+          if (!_ctrl.value.isPlaying)
+            Container(
+              decoration: const BoxDecoration(
+                  color: Colors.black45, shape: BoxShape.circle),
+              padding: const EdgeInsets.all(10),
+              child: const Icon(Icons.play_arrow_rounded,
+                  color: Colors.white, size: 30),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Reproductor de video en el feed ─────────────────────────────────────────
+class _VideoPostPlayer extends StatefulWidget {
+  final String videoUrl;
+  const _VideoPostPlayer({required this.videoUrl});
+
+  @override
+  State<_VideoPostPlayer> createState() => _VideoPostPlayerState();
+}
+
+class _VideoPostPlayerState extends State<_VideoPostPlayer> {
+  VideoPlayerController? _ctrl;
+  bool _ready = false;
+  bool _visible = false; // carga diferida: solo inicializa cuando el usuario toca
+
+  void _initPlayer() {
+    if (_ctrl != null) return;
+    _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
+      ..initialize().then((_) {
+        if (mounted) {
+          setState(() => _ready = true);
+          _ctrl!.play();
+        }
+      });
+    setState(() => _visible = true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_visible) {
+      // Miniatura con botón de play — no consume recursos hasta que el usuario toca
+      return GestureDetector(
+        onTap: _initPlayer,
+        child: Container(
+          height: 200,
+          decoration: BoxDecoration(
+            color: AppColors.surfaceVariant,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.play_circle_rounded,
+                    color: AppColors.primary, size: 52),
+                SizedBox(height: 6),
+                Text('Toca para reproducir',
+                    style: TextStyle(
+                        color: AppColors.textMuted, fontSize: 12)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (!_ready) {
+      return Container(
+        height: 200,
+        decoration: BoxDecoration(
+            color: AppColors.surfaceVariant,
+            borderRadius: BorderRadius.circular(12)),
+        child: const Center(
+            child: CircularProgressIndicator(
+                color: AppColors.primary, strokeWidth: 2)),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () => setState(() {
+        _ctrl!.value.isPlaying ? _ctrl!.pause() : _ctrl!.play();
+      }),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            AspectRatio(
+                aspectRatio: _ctrl!.value.aspectRatio,
+                child: VideoPlayer(_ctrl!)),
+            if (!_ctrl!.value.isPlaying)
+              Container(
+                decoration: const BoxDecoration(
+                    color: Colors.black45, shape: BoxShape.circle),
+                padding: const EdgeInsets.all(10),
+                child: const Icon(Icons.play_arrow_rounded,
+                    color: Colors.white, size: 32),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }

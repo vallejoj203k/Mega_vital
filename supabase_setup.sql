@@ -71,6 +71,9 @@ CREATE TABLE IF NOT EXISTS public.community_posts (
   created_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Columna de video (idempotente si ya existe)
+ALTER TABLE public.community_posts ADD COLUMN IF NOT EXISTS video_url TEXT;
+
 -- Si la tabla ya existía con FK, eliminarla:
 ALTER TABLE public.community_posts
   DROP CONSTRAINT IF EXISTS community_posts_user_id_fkey;
@@ -1352,3 +1355,35 @@ BEGIN
   );
 END;
 $$;
+
+
+-- ─── STORAGE: bucket post_videos ────────────────────────────────────────────
+-- Ejecutar en Supabase Dashboard → Storage → New bucket:
+--   Nombre: post_videos   |  Public: true  |  Max file size: 50 MB
+--   Allowed MIME types: video/mp4, video/quicktime, video/webm
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'post_videos',
+  'post_videos',
+  true,
+  52428800,
+  ARRAY['video/mp4', 'video/quicktime', 'video/webm']
+)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "post_videos_select" ON storage.objects;
+DROP POLICY IF EXISTS "post_videos_insert" ON storage.objects;
+DROP POLICY IF EXISTS "post_videos_delete" ON storage.objects;
+
+CREATE POLICY "post_videos_select"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'post_videos');
+
+CREATE POLICY "post_videos_insert"
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'post_videos' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "post_videos_delete"
+  ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'post_videos' AND auth.uid()::text = (storage.foldername(name))[1]);
