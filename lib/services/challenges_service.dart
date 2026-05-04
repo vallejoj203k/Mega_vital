@@ -232,7 +232,7 @@ class ChallengesService {
   }) async {
     try {
       const bucket = 'post_videos';
-      final path = 'challenges/$uid/$challengeId.mp4';
+      final path = '$uid/challenges/$challengeId.mp4';
       await _db.storage.from(bucket).upload(
         path, file,
         fileOptions: const FileOptions(
