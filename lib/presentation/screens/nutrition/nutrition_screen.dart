@@ -25,6 +25,7 @@ import '../../../services/food_vision_service.dart';
 import '../../widgets/shared_widgets.dart';
 import '../meal_detail/meal_detail_screen.dart';
 import '../api_keys/api_keys_screen.dart';
+import '../../../core/theme/dynamic_colors.dart';
 
 class NutritionScreen extends StatefulWidget {
   const NutritionScreen({super.key});
@@ -39,6 +40,7 @@ class _NutritionScreenState extends State<NutritionScreen>
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     super.build(context);
 
     if (!context.watch<PremiumProvider>().hasAccess) {
@@ -74,7 +76,7 @@ class _NutritionScreenState extends State<NutritionScreen>
         : [2000, 2150, 2300, 2500];
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: c.background,
       floatingActionButton: _AddFab(
         onTap: () => _showAddFoodSheet(context, nutrition),
       ),
@@ -176,7 +178,7 @@ class _NutritionScreenState extends State<NutritionScreen>
                   child: Container(
                     height: 50,
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceVariant,
+                      color: c.surfaceVariant,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                           color: AppColors.primary.withOpacity(0.4), width: 1),
@@ -214,14 +216,14 @@ class _NutritionScreenState extends State<NutritionScreen>
 
   void _confirmClear(BuildContext ctx, NutritionProvider nutrition) {
     showDialog(context: ctx, builder: (_) => AlertDialog(
-      backgroundColor: AppColors.surface,
+      backgroundColor: c.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Text('¿Limpiar el día?', style: AppTextStyles.headingSmall),
       content: Text('Se eliminarán todos los alimentos de hoy.',
           style: AppTextStyles.bodyMedium),
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancelar', style: TextStyle(color: AppColors.textSecondary))),
+            child: Text('Cancelar', style: TextStyle(color: c.textSecondary))),
         TextButton(onPressed: () { Navigator.pop(ctx); nutrition.clearDay(); },
             child: Text('Limpiar', style: TextStyle(color: AppColors.error))),
       ],
@@ -303,12 +305,12 @@ class _NavBtn extends StatelessWidget {
     child: Container(
       width: 36, height: 36,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: c.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border, width: 0.5),
+        border: Border.all(color: c.border, width: 0.5),
       ),
       child: Icon(icon,
-          color: disabled ? AppColors.textMuted : AppColors.textSecondary,
+          color: disabled ? c.textMuted : c.textSecondary,
           size: 20),
     ),
   );
@@ -336,6 +338,7 @@ class _CalorieRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     final pct       = (consumed / goal).clamp(0.0, 1.0);
     final remaining = goal - consumed;
     final over      = consumed > goal;
@@ -361,7 +364,7 @@ class _CalorieRing extends StatelessWidget {
           ),
           const SizedBox(width: 20),
           Expanded(child: Column(children: [
-            _CalRow('Objetivo',   '$goal kcal',          AppColors.textSecondary),
+            _CalRow('Objetivo',   '$goal kcal',          c.textSecondary),
             const SizedBox(height: 10),
             _CalRow('Consumidas', '$consumed kcal',       AppColors.primary),
             const SizedBox(height: 10),
@@ -394,7 +397,7 @@ class _CalorieRing extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(_mealLabel(mealType),
                     style: AppTextStyles.bodyMedium
-                        .copyWith(color: AppColors.textSecondary)),
+                        .copyWith(color: c.textSecondary)),
                 const Spacer(),
                 Text('$cal kcal',
                     style: AppTextStyles.labelLarge
@@ -435,7 +438,7 @@ class _RingPainter extends CustomPainter {
     final r = (size.width - sw * 2) / 2;
 
     canvas.drawCircle(c, r, Paint()
-      ..color = AppColors.border..strokeWidth = sw..style = PaintingStyle.stroke);
+      ..color = c.border..strokeWidth = sw..style = PaintingStyle.stroke);
 
     if (progress > 0) {
       canvas.drawArc(Rect.fromCircle(center: c, radius: r),
@@ -482,6 +485,7 @@ class _MacroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     final pct = (value / goal).clamp(0.0, 1.0);
     return DarkCard(padding: const EdgeInsets.all(12), child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -567,14 +571,14 @@ class _FoodEntryRow extends StatelessWidget {
             if (entry.portions != 1.0)
               Text('×${entry.portions}',
                   style: AppTextStyles.caption
-                      .copyWith(color: AppColors.textSecondary)),
+                      .copyWith(color: c.textSecondary)),
           ]),
         ])),
         GestureDetector(
           onTap: onDelete,
           child: Container(padding: const EdgeInsets.all(6),
-              child: const Icon(Icons.delete_outline_rounded,
-                  color: AppColors.textMuted, size: 17)),
+              child: Icon(Icons.delete_outline_rounded,
+                  color: c.textMuted, size: 17)),
         ),
       ]),
     ),
@@ -606,9 +610,9 @@ class _EmptyState extends StatelessWidget {
     padding: const EdgeInsets.symmetric(vertical: 32),
     child: Column(children: [
       Container(width: 72, height: 72,
-          decoration: BoxDecoration(color: AppColors.surfaceVariant, shape: BoxShape.circle),
-          child: const Icon(Icons.restaurant_menu_rounded,
-              color: AppColors.textMuted, size: 32)),
+          decoration: BoxDecoration(color: c.surfaceVariant, shape: BoxShape.circle),
+          child: Icon(Icons.restaurant_menu_rounded,
+              color: c.textMuted, size: 32)),
       const SizedBox(height: 16),
       Text('Sin alimentos registrados', style: AppTextStyles.headingSmall),
       const SizedBox(height: 8),
@@ -637,11 +641,11 @@ class _AddFab extends StatelessWidget {
         boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.4),
             blurRadius: 16, offset: const Offset(0, 6))],
       ),
-      child: const Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.add, color: AppColors.background, size: 20),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.add, color: c.background, size: 20),
         SizedBox(width: 8),
         Text('Agregar comida', style: TextStyle(fontSize: 14,
-            fontWeight: FontWeight.w700, color: AppColors.background)),
+            fontWeight: FontWeight.w700, color: c.background)),
       ]),
     ),
   );
@@ -671,6 +675,7 @@ class _LevelSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     final desc = FitnessCalculator.nivelDescripcion(goal, currentLevel);
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -693,10 +698,10 @@ class _LevelSelector extends StatelessWidget {
               duration: const Duration(milliseconds: 180),
               height: 52,
               decoration: BoxDecoration(
-                color: active ? color.withOpacity(0.14) : AppColors.surfaceVariant,
+                color: active ? color.withOpacity(0.14) : c.surfaceVariant,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: active ? color : AppColors.border,
+                  color: active ? color : c.border,
                   width: active ? 1.5 : 0.5,
                 ),
               ),
@@ -706,13 +711,13 @@ class _LevelSelector extends StatelessWidget {
                   Text(_labels[i], style: TextStyle(
                     fontSize: i == 3 ? 15 : 14,
                     fontWeight: active ? FontWeight.w800 : FontWeight.w500,
-                    color: active ? color : AppColors.textSecondary,
+                    color: active ? color : c.textSecondary,
                   )),
                   const SizedBox(height: 2),
                   Text('${levelCalories[i]}', style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: active ? color.withOpacity(0.9) : AppColors.textMuted,
+                    color: active ? color.withOpacity(0.9) : c.textMuted,
                   )),
                 ],
               ),
@@ -927,13 +932,14 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     final bottom = MediaQuery.of(context).viewInsets.bottom;
     final totalCartCal = _cart.fold(0, (s, i) => s + i.calories);
 
     return Container(
       padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + bottom),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
+      decoration: BoxDecoration(
+        color: c.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SingleChildScrollView(
@@ -942,15 +948,15 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
           // Handle
           Container(margin: const EdgeInsets.symmetric(vertical: 12),
               width: 40, height: 4,
-              decoration: BoxDecoration(color: AppColors.border,
+              decoration: BoxDecoration(color: c.border,
                   borderRadius: BorderRadius.circular(2))),
 
           // Título + tipo de comida
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Text('Agregar alimentos', style: AppTextStyles.headingSmall),
             GestureDetector(onTap: () => Navigator.pop(context),
-                child: const Icon(Icons.close_rounded,
-                    color: AppColors.textMuted, size: 22)),
+                child: Icon(Icons.close_rounded,
+                    color: c.textMuted, size: 22)),
           ]),
 
           const SizedBox(height: 10),
@@ -1003,8 +1009,8 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
                       )),
                       GestureDetector(
                         onTap: () => setState(() => _cart.removeAt(i)),
-                        child: const Icon(Icons.remove_circle_outline_rounded,
-                            size: 18, color: AppColors.textMuted),
+                        child: Icon(Icons.remove_circle_outline_rounded,
+                            size: 18, color: c.textMuted),
                       ),
                     ]),
                   );
@@ -1046,11 +1052,11 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
           // ── Separador ─────────────────────────────────────────
           if (_visionItems.isEmpty && !_isAnalyzingPhoto) ...[
             Row(children: [
-              Expanded(child: Divider(color: AppColors.border, height: 1)),
+              Expanded(child: Divider(color: c.border, height: 1)),
               Padding(padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Text('busca por nombre',
                       style: AppTextStyles.caption)),
-              Expanded(child: Divider(color: AppColors.border, height: 1)),
+              Expanded(child: Divider(color: c.border, height: 1)),
             ]),
 
             const SizedBox(height: 10),
@@ -1064,31 +1070,31 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
               decoration: InputDecoration(
                 hintText: 'huevo, arepa, pollo, café...',
                 hintStyle: AppTextStyles.bodyMedium
-                    .copyWith(color: AppColors.textMuted),
+                    .copyWith(color: c.textMuted),
                 prefixIcon: _isSearching
                     ? const Padding(padding: EdgeInsets.all(12),
                     child: SizedBox(width: 18, height: 18,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: AppColors.primary)))
-                    : const Icon(Icons.search_rounded,
-                    size: 20, color: AppColors.textMuted),
+                    : Icon(Icons.search_rounded,
+                    size: 20, color: c.textMuted),
                 suffixIcon: _searchCtrl.text.isNotEmpty
                     ? IconButton(
-                    icon: const Icon(Icons.clear_rounded,
-                        size: 18, color: AppColors.textMuted),
+                    icon: Icon(Icons.clear_rounded,
+                        size: 18, color: c.textMuted),
                     onPressed: () {
                       _searchCtrl.clear();
                       setState(() => _results = []);
                     }) : null,
-                filled: true, fillColor: AppColors.surfaceVariant,
+                filled: true, fillColor: c.surfaceVariant,
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(
-                        color: AppColors.border, width: 0.5)),
+                    borderSide: BorderSide(
+                        color: c.border, width: 0.5)),
                 enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(
-                        color: AppColors.border, width: 0.5)),
+                    borderSide: BorderSide(
+                        color: c.border, width: 0.5)),
                 focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: const BorderSide(
@@ -1102,9 +1108,9 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
             if (_results.isNotEmpty) ...[
               const SizedBox(height: 8),
               Container(
-                decoration: BoxDecoration(color: AppColors.surfaceVariant,
+                decoration: BoxDecoration(color: c.surfaceVariant,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.border, width: 0.5)),
+                    border: Border.all(color: c.border, width: 0.5)),
                 child: Column(
                   children: _results.asMap().entries.map((e) {
                     final r = e.value;
@@ -1161,12 +1167,12 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(color: AppColors.surfaceVariant,
+                      decoration: BoxDecoration(color: c.surfaceVariant,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.border, width: 0.5)),
+                          border: Border.all(color: c.border, width: 0.5)),
                       child: Row(children: [
-                        const Icon(Icons.edit_outlined,
-                            size: 16, color: AppColors.textMuted),
+                        Icon(Icons.edit_outlined,
+                            size: 16, color: c.textMuted),
                         const SizedBox(width: 10),
                         Expanded(child: Text(
                             '"${_searchCtrl.text}" — ingresar manualmente',
@@ -1180,7 +1186,7 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
           // ── Formulario del alimento actual ─────────────────────
           if (_selected != null || _manualMode) ...[
             const SizedBox(height: 14),
-            Divider(color: AppColors.border, height: 1),
+            Divider(color: c.border, height: 1),
             const SizedBox(height: 12),
 
             _SheetField(controller: _nameCtrl, label: 'Nombre',
@@ -1193,8 +1199,8 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
             // Gramos si viene de búsqueda
             if (_selected != null) ...[
               Row(children: [
-                const Icon(Icons.scale_outlined,
-                    size: 16, color: AppColors.textMuted),
+                Icon(Icons.scale_outlined,
+                    size: 16, color: c.textMuted),
                 const SizedBox(width: 8),
                 Text('Cantidad (g)', style: AppTextStyles.labelMedium),
                 const Spacer(),
@@ -1213,15 +1219,15 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
                       },
                       decoration: InputDecoration(
                           suffixText: 'g', suffixStyle: AppTextStyles.caption,
-                          filled: true, fillColor: AppColors.surfaceVariant,
+                          filled: true, fillColor: c.surfaceVariant,
                           border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
-                              borderSide: const BorderSide(
-                                  color: AppColors.border, width: 0.5)),
+                              borderSide: BorderSide(
+                                  color: c.border, width: 0.5)),
                           enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
-                              borderSide: const BorderSide(
-                                  color: AppColors.border, width: 0.5)),
+                              borderSide: BorderSide(
+                                  color: c.border, width: 0.5)),
                           focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
                               borderSide: const BorderSide(
@@ -1255,12 +1261,12 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
                 decoration: BoxDecoration(
                   color: _formFilled
                       ? AppColors.accentBlue.withOpacity(0.12)
-                      : AppColors.surfaceVariant,
+                      : c.surfaceVariant,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: _formFilled
                         ? AppColors.accentBlue.withOpacity(0.5)
-                        : AppColors.border,
+                        : c.border,
                     width: _formFilled ? 1.0 : 0.5,
                   ),
                 ),
@@ -1268,14 +1274,14 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
                     children: [
                       Icon(Icons.add_rounded,
                           color: _formFilled
-                              ? AppColors.accentBlue : AppColors.textMuted,
+                              ? AppColors.accentBlue : c.textMuted,
                           size: 18),
                       const SizedBox(width: 8),
                       Text('Agregar a la lista',
                           style: TextStyle(fontSize: 14,
                               fontWeight: FontWeight.w600,
                               color: _formFilled
-                                  ? AppColors.accentBlue : AppColors.textMuted)),
+                                  ? AppColors.accentBlue : c.textMuted)),
                     ]),
               ),
             ),
@@ -1302,21 +1308,21 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
                       blurRadius: 16)],
                 ),
                 child: Center(child: _isSaving
-                    ? const SizedBox(width: 20, height: 20,
+                    ? SizedBox(width: 20, height: 20,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2.5, color: AppColors.background))
+                        strokeWidth: 2.5, color: c.background))
                     : Row(mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.save_rounded,
-                          color: AppColors.background, size: 18),
+                      Icon(Icons.save_rounded,
+                          color: c.background, size: 18),
                       const SizedBox(width: 8),
                       Text(
                           _cart.length > 1
                               ? 'Guardar ${_cart.length + (_formFilled ? 1 : 0)} alimentos'
                               : 'Guardar alimento',
-                          style: const TextStyle(fontSize: 15,
+                          style: TextStyle(fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.background)),
+                              color: c.background)),
                     ])),
               ),
             ),
@@ -1346,6 +1352,7 @@ class _MealTypePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     final types = [
       ('desayuno', 'Desayuno', Icons.wb_sunny_rounded,     const Color(0xFFFFB020)),
       ('almuerzo', 'Almuerzo', Icons.lunch_dining_rounded,  const Color(0xFF4FC3F7)),
@@ -1368,17 +1375,17 @@ class _MealTypePicker extends StatelessWidget {
               duration: const Duration(milliseconds: 180),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                  color: sel ? color.withOpacity(0.15) : AppColors.surfaceVariant,
+                  color: sel ? color.withOpacity(0.15) : c.surfaceVariant,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                      color: sel ? color.withOpacity(0.5) : AppColors.border,
+                      color: sel ? color.withOpacity(0.5) : c.border,
                       width: sel ? 1.0 : 0.5)),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(icon, size: 14, color: sel ? color : AppColors.textMuted),
+                Icon(icon, size: 14, color: sel ? color : c.textMuted),
                 const SizedBox(width: 6),
                 Text(label, style: TextStyle(fontSize: 12,
                     fontWeight: sel ? FontWeight.w700 : FontWeight.w400,
-                    color: sel ? color : AppColors.textSecondary)),
+                    color: sel ? color : c.textSecondary)),
               ]),
             ),
           );
@@ -1410,15 +1417,15 @@ class _SheetField extends StatelessWidget {
     decoration: InputDecoration(
       labelText: label, hintText: hint,
       labelStyle: AppTextStyles.caption
-          .copyWith(color: color ?? AppColors.textMuted),
+          .copyWith(color: color ?? c.textMuted),
       hintStyle: AppTextStyles.caption,
       prefixIcon: Icon(icon, size: 16,
-          color: color?.withOpacity(0.7) ?? AppColors.textMuted),
-      filled: true, fillColor: AppColors.surfaceVariant,
+          color: color?.withOpacity(0.7) ?? c.textMuted),
+      filled: true, fillColor: c.surfaceVariant,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
+          borderSide: BorderSide(color: c.border, width: 0.5)),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
+          borderSide: BorderSide(color: c.border, width: 0.5)),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: color ?? AppColors.primary, width: 1.5)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -1442,6 +1449,7 @@ class _MacrosPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     if (editable) {
       return Column(children: [
         Row(children: [
@@ -1501,7 +1509,7 @@ class _MPrev extends StatelessWidget {
 class _MPDiv extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
-      Container(width: 0.5, height: 28, color: AppColors.border);
+      Container(width: 0.5, height: 28, color: c.border);
 }
 
 // ── Botones de foto ────────────────────────────────────────────────
@@ -1519,23 +1527,23 @@ class _PhotoButtons extends StatelessWidget {
         decoration: BoxDecoration(
             color: visionEnabled
                 ? AppColors.primary.withOpacity(0.08)
-                : AppColors.surfaceVariant,
+                : c.surfaceVariant,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
                 color: visionEnabled
                     ? AppColors.primary.withOpacity(0.4)
-                    : AppColors.border,
+                    : c.border,
                 width: visionEnabled ? 1.0 : 0.5)),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(Icons.camera_alt_rounded,
-              color: visionEnabled ? AppColors.primary : AppColors.textMuted,
+              color: visionEnabled ? AppColors.primary : c.textMuted,
               size: 20),
           const SizedBox(width: 8),
           Column(mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Tomar foto', style: TextStyle(fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: visionEnabled ? AppColors.primary : AppColors.textMuted)),
+                    color: visionEnabled ? AppColors.primary : c.textMuted)),
                 Text('IA calcula los macros',
                     style: AppTextStyles.caption.copyWith(fontSize: 10)),
               ]),
@@ -1547,19 +1555,19 @@ class _PhotoButtons extends StatelessWidget {
       onTap: visionEnabled ? onGallery : () => _showKeyInfo(context),
       child: Container(height: 54,
         decoration: BoxDecoration(
-            color: AppColors.surfaceVariant,
+            color: c.surfaceVariant,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border, width: 0.5)),
+            border: Border.all(color: c.border, width: 0.5)),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(Icons.photo_library_rounded,
-              color: visionEnabled ? AppColors.accentBlue : AppColors.textMuted,
+              color: visionEnabled ? AppColors.accentBlue : c.textMuted,
               size: 20),
           const SizedBox(width: 8),
           Column(mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Galería', style: TextStyle(fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: visionEnabled ? AppColors.accentBlue : AppColors.textMuted)),
+                    color: visionEnabled ? AppColors.accentBlue : c.textMuted)),
                 Text('Elegir imagen',
                     style: AppTextStyles.caption.copyWith(fontSize: 10)),
               ]),
@@ -1570,7 +1578,7 @@ class _PhotoButtons extends StatelessWidget {
 
   void _showKeyInfo(BuildContext context) {
     showDialog(context: context, builder: (_) => AlertDialog(
-      backgroundColor: AppColors.surface,
+      backgroundColor: c.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Text('Activa el análisis con IA', style: AppTextStyles.headingSmall),
       content: Column(mainAxisSize: MainAxisSize.min,
@@ -1583,7 +1591,7 @@ class _PhotoButtons extends StatelessWidget {
           ]),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: TextStyle(color: AppColors.textMuted))),
+            child: Text('Cancelar', style: TextStyle(color: c.textMuted))),
         TextButton(
             onPressed: () {
               Navigator.pop(context);
@@ -1620,7 +1628,7 @@ class _AnalyzingIndicator extends StatelessWidget {
                 .copyWith(color: AppColors.primary)),
             const SizedBox(height: 6),
             LinearProgressIndicator(
-              backgroundColor: AppColors.border,
+              backgroundColor: c.border,
               valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
               borderRadius: BorderRadius.circular(4),
             ),
@@ -1683,7 +1691,7 @@ class _VisionResultsCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.only(bottom: 12),
     decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
+        color: c.surfaceVariant,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 0.5)),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1702,7 +1710,7 @@ class _VisionResultsCard extends StatelessWidget {
                   style: AppTextStyles.bodySmall),
             ])),
       ])),
-      Divider(color: AppColors.border, height: 1),
+      Divider(color: c.border, height: 1),
       ...items.asMap().entries.map((e) {
         final item   = e.value;
         final isLast = e.key == items.length - 1;

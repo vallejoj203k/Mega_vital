@@ -22,6 +22,7 @@ import '../../widgets/shared_widgets.dart';
 import '../workout_log/active_workout_screen.dart';
 import '../workout_log/workout_history_screen.dart';
 import 'exercise_animations.dart';
+import '../../../core/theme/dynamic_colors.dart';
 
 class WorkoutsScreen extends StatefulWidget {
   const WorkoutsScreen({super.key});
@@ -131,7 +132,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: c.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('Guardar rutina', style: AppTextStyles.headingSmall),
         content: SizedBox(
@@ -146,11 +147,11 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
                 decoration: InputDecoration(
                   labelText: 'Nombre de la rutina',
                   labelStyle: AppTextStyles.bodyMedium,
-                  filled: true, fillColor: AppColors.surfaceVariant,
+                  filled: true, fillColor: c.surfaceVariant,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
+                      borderSide: BorderSide(color: c.border, width: 0.5)),
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
+                      borderSide: BorderSide(color: c.border, width: 0.5)),
                   focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -161,13 +162,13 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
                 alignment: Alignment.centerLeft,
                 child: Text('Peso por ejercicio (opcional)',
                     style: AppTextStyles.caption
-                        .copyWith(color: AppColors.textMuted)),
+                        .copyWith(color: c.textMuted)),
               ),
               const SizedBox(height: 8),
               ...exList.map((ex) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(children: [
-                  Icon(ex.icon, size: 14, color: AppColors.textMuted),
+                  Icon(ex.icon, size: 14, color: c.textMuted),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(ex.name,
@@ -180,21 +181,21 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
                     child: TextField(
                       controller: weightCtrls[ex.id],
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      style: AppTextStyles.caption.copyWith(color: AppColors.textPrimary),
+                      style: AppTextStyles.caption.copyWith(color: c.textPrimary),
                       cursorColor: AppColors.primary,
                       textAlign: TextAlign.center,
                       decoration: InputDecoration(
                         hintText: '0',
-                        hintStyle: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                        hintStyle: AppTextStyles.caption.copyWith(color: c.textMuted),
                         suffixText: 'kg',
-                        suffixStyle: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                        suffixStyle: AppTextStyles.caption.copyWith(color: c.textMuted),
                         filled: true,
-                        fillColor: AppColors.surfaceVariant,
+                        fillColor: c.surfaceVariant,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
+                            borderSide: BorderSide(color: c.border, width: 0.5)),
                         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
+                            borderSide: BorderSide(color: c.border, width: 0.5)),
                         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8),
                             borderSide: const BorderSide(color: AppColors.primary, width: 1)),
                       ),
@@ -208,7 +209,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+            child: Text('Cancelar', style: TextStyle(color: c.textSecondary)),
           ),
           TextButton(
             onPressed: () async {
@@ -244,6 +245,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     super.build(context);
     final muscle    = _selectedMuscleId != null ? getMuscleById(_selectedMuscleId!) : null;
     final exercises = _selectedMuscleId != null
@@ -253,7 +255,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
         context.watch<AuthProvider>().profile?.isMale ?? false;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: c.background,
       body: SafeArea(child: Column(children: [
         // ── Header ────────────────────────────────────────────────
         Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
@@ -266,7 +268,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
                       _selectedMuscleId == null ? 'Toca un músculo para ver ejercicios'
                           : muscle?.name ?? '',
                       style: AppTextStyles.bodyMedium.copyWith(
-                          color: muscle?.color ?? AppColors.textSecondary),
+                          color: muscle?.color ?? c.textSecondary),
                     )),
               ])),
               if (_selectedExIds.isNotEmpty)
@@ -281,13 +283,13 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
                           color: AppColors.primary.withOpacity(0.3), blurRadius: 8)],
                     ),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.save_rounded,
-                          color: AppColors.background, size: 14),
+                      Icon(Icons.save_rounded,
+                          color: c.background, size: 14),
                       const SizedBox(width: 6),
                       Text('Guardar ${_selectedExIds.length}',
-                          style: const TextStyle(fontSize: 12,
+                          style: TextStyle(fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.background)),
+                              color: c.background)),
                     ]),
                   ),
                 ),
@@ -361,6 +363,7 @@ class _AnatomyBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     // Músculo activo (si lo hay)
     final muscle = selectedMuscleId != null
         ? getMuscleById(selectedMuscleId!) : null;
@@ -374,7 +377,7 @@ class _AnatomyBody extends StatelessWidget {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: c.surface,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 0.5),
               ),
@@ -392,12 +395,12 @@ class _AnatomyBody extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                   decoration: BoxDecoration(
-                      color: AppColors.surfaceVariant,
+                      color: c.surfaceVariant,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.border, width: 0.5)),
+                      border: Border.all(color: c.border, width: 0.5)),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.flip_rounded,
-                        size: 13, color: AppColors.textSecondary),
+                    Icon(Icons.flip_rounded,
+                        size: 13, color: c.textSecondary),
                     const SizedBox(width: 6),
                     Text('Voltear', style: AppTextStyles.caption),
                   ]),
@@ -468,9 +471,9 @@ class _AnatomyBody extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                  color: AppColors.surface.withOpacity(0.9),
+                  color: c.surface.withOpacity(0.9),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.border, width: 0.5)),
+                  border: Border.all(color: c.border, width: 0.5)),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 const Icon(Icons.touch_app_rounded,
                     size: 12, color: AppColors.primary),
@@ -781,6 +784,7 @@ class _ExercisePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     final sel   = selectedExIds.length;
     final total = exercises.length;
     final pct   = total > 0 ? (sel / total * 100).round() : 0;
@@ -792,7 +796,7 @@ class _ExercisePanel extends StatelessWidget {
           GestureDetector(onTap: onBack,
             child: Container(width: 36, height: 36,
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: c.surface,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: muscle.color.withOpacity(0.3), width: 0.5)),
               child: Icon(Icons.arrow_back_ios_new_rounded,
@@ -874,6 +878,7 @@ class _ExerciseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     final ex  = exercise;
     final col = muscleColor;
     final dc  = _diffColor(ex.difficulty);
@@ -885,10 +890,10 @@ class _ExerciseCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected
               ? col.withOpacity(0.10)
-              : AppColors.surface,
+              : c.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: selected ? col.withOpacity(0.5) : AppColors.border,
+            color: selected ? col.withOpacity(0.5) : c.border,
             width: selected ? 1.5 : 0.5,
           ),
           boxShadow: selected
@@ -978,6 +983,7 @@ class _MuscleLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     final muscles = kMuscleGroups.where((m) => m.isFront == isFront).toList();
     return SizedBox(height: 38,
       child: ListView.separated(
@@ -1027,13 +1033,14 @@ class _RoutinesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     if (routines.isEmpty) return Center(child: Column(
         mainAxisAlignment: MainAxisAlignment.center, children: [
       Container(width: 72, height: 72,
-          decoration: BoxDecoration(color: AppColors.surfaceVariant,
+          decoration: BoxDecoration(color: c.surfaceVariant,
               shape: BoxShape.circle),
-          child: const Icon(Icons.fitness_center_rounded,
-              color: AppColors.textMuted, size: 32)),
+          child: Icon(Icons.fitness_center_rounded,
+              color: c.textMuted, size: 32)),
       const SizedBox(height: 16),
       Text('Sin rutinas guardadas', style: AppTextStyles.headingSmall),
       const SizedBox(height: 8),
@@ -1062,7 +1069,7 @@ class _RoutineCard extends StatelessWidget {
       final resume = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
-          backgroundColor: AppColors.surface,
+          backgroundColor: c.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text('Entrenamiento en curso',
               style: AppTextStyles.headingSmall),
@@ -1073,7 +1080,7 @@ class _RoutineCard extends StatelessWidget {
             TextButton(
                 onPressed: () => Navigator.pop(context, false),
                 child: Text('Cancelar',
-                    style: TextStyle(color: AppColors.textSecondary))),
+                    style: TextStyle(color: c.textSecondary))),
             TextButton(
                 onPressed: () => Navigator.pop(context, true),
                 child: Text('Retomar',
@@ -1097,6 +1104,7 @@ class _RoutineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     final muscle = getMuscleById(routine.muscleId);
     final color  = muscle?.color ?? AppColors.primary;
     return DarkCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
@@ -1111,8 +1119,8 @@ class _RoutineCard extends StatelessWidget {
                       style: AppTextStyles.caption),
                 ])),
             GestureDetector(onTap: onDelete,
-                child: const Icon(Icons.delete_outline_rounded,
-                    color: AppColors.textMuted, size: 20)),
+                child: Icon(Icons.delete_outline_rounded,
+                    color: c.textMuted, size: 20)),
           ]),
           const SizedBox(height: 10),
           Wrap(spacing: 6, runSpacing: 6,
@@ -1182,6 +1190,7 @@ class _HistorialTabState extends State<_HistorialTab>
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     super.build(context);
     final provider  = context.watch<WorkoutLogProvider>();
     final completed = provider.history.where((s) => s.isCompleted).toList();
@@ -1196,10 +1205,10 @@ class _HistorialTabState extends State<_HistorialTab>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(width: 72, height: 72,
-              decoration: const BoxDecoration(
-                  color: AppColors.surfaceVariant, shape: BoxShape.circle),
-              child: const Icon(Icons.history_rounded,
-                  color: AppColors.textMuted, size: 34)),
+              decoration: BoxDecoration(
+                  color: c.surfaceVariant, shape: BoxShape.circle),
+              child: Icon(Icons.history_rounded,
+                  color: c.textMuted, size: 34)),
           const SizedBox(height: 16),
           Text('Sin entrenamientos aún',
               style: AppTextStyles.headingSmall),
@@ -1221,9 +1230,9 @@ class _HistorialTabState extends State<_HistorialTab>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: c.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border, width: 0.5)),
+              border: Border.all(color: c.border, width: 0.5)),
           child: Row(children: [
             _MiniStat('${completed.length}', 'Sesiones', AppColors.primary),
             _VertDiv(),
@@ -1264,7 +1273,7 @@ class _HistorialTabState extends State<_HistorialTab>
               final ok = await showDialog<bool>(
                 context: ctx,
                 builder: (_) => AlertDialog(
-                  backgroundColor: AppColors.surface,
+                  backgroundColor: c.surface,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20)),
                   title: Text('¿Eliminar sesión?',
@@ -1274,7 +1283,7 @@ class _HistorialTabState extends State<_HistorialTab>
                   actions: [
                     TextButton(onPressed: () => Navigator.pop(ctx, false),
                         child: Text('Cancelar',
-                            style: TextStyle(color: AppColors.textSecondary))),
+                            style: TextStyle(color: c.textSecondary))),
                     TextButton(onPressed: () => Navigator.pop(ctx, true),
                         child: Text('Eliminar',
                             style: TextStyle(color: AppColors.error,
@@ -1295,12 +1304,12 @@ class _HistorialTabState extends State<_HistorialTab>
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: c.surface,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                         color: isExpanded
                             ? AppColors.primary.withOpacity(0.35)
-                            : AppColors.border,
+                            : c.border,
                         width: isExpanded ? 1.5 : 0.5)),
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1330,7 +1339,7 @@ class _HistorialTabState extends State<_HistorialTab>
                           Icon(isExpanded
                               ? Icons.expand_less_rounded
                               : Icons.expand_more_rounded,
-                              color: AppColors.textMuted, size: 20),
+                              color: c.textMuted, size: 20),
                         ]),
                       ),
 
@@ -1383,7 +1392,7 @@ class _MiniStat extends StatelessWidget {
 class _VertDiv extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
-      Container(width: 0.5, height: 28, color: AppColors.border,
+      Container(width: 0.5, height: 28, color: c.border,
           margin: const EdgeInsets.symmetric(horizontal: 4));
 }
 
@@ -1425,6 +1434,7 @@ class _InlineSessionDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     final exDone = session.exercises.where((e) => e.doneSets > 0).toList();
     if (exDone.isEmpty) {
       return Padding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
@@ -1434,9 +1444,9 @@ class _InlineSessionDetail extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(14, 0, 14, 12),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-          color: AppColors.surfaceVariant,
+          color: c.surfaceVariant,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.border, width: 0.5)),
+          border: Border.all(color: c.border, width: 0.5)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: exDone.map((ex) => Padding(
@@ -1444,11 +1454,11 @@ class _InlineSessionDetail extends StatelessWidget {
           child: Row(children: [
             Expanded(child: Text(ex.exerciseName,
                 style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textPrimary, fontSize: 11),
+                    color: c.textPrimary, fontSize: 11),
                 overflow: TextOverflow.ellipsis)),
             Text('${ex.doneSets} series  ·  ${_bestSet(ex)}',
                 style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textSecondary, fontSize: 10)),
+                    color: c.textSecondary, fontSize: 10)),
           ]),
         )).toList(),
       ),
@@ -1464,16 +1474,16 @@ class _WorkoutTabBar extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 20),
     child: Container(height: 40,
-        decoration: BoxDecoration(color: AppColors.surface,
+        decoration: BoxDecoration(color: c.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border, width: 0.5)),
+            border: Border.all(color: c.border, width: 0.5)),
         child: TabBar(controller: controller,
           indicator: BoxDecoration(gradient: AppColors.primaryGradient,
               borderRadius: BorderRadius.circular(10)),
           indicatorSize: TabBarIndicatorSize.tab,
           indicatorPadding: const EdgeInsets.all(4),
-          labelColor: AppColors.background,
-          unselectedLabelColor: AppColors.textSecondary,
+          labelColor: c.background,
+          unselectedLabelColor: c.textSecondary,
           labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
           dividerColor: Colors.transparent,
           tabs: const [

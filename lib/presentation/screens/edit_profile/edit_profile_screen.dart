@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../widgets/shared_widgets.dart';
+import '../../../core/theme/dynamic_colors.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -64,7 +65,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             const SizedBox(width: 10),
             Text(ok ? 'Perfil guardado correctamente' : 'Error al guardar'),
           ]),
-          backgroundColor: AppColors.surface, behavior: SnackBarBehavior.floating,
+          backgroundColor: c.surface, behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.all(16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ));
@@ -73,17 +74,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: c.background,
       body: CustomScrollView(physics: const BouncingScrollPhysics(), slivers: [
         // App bar
         SliverAppBar(
-          pinned: true, backgroundColor: AppColors.background,
+          pinned: true, backgroundColor: c.background,
           leading: GestureDetector(
             onTap: () => _hasChanges ? _showDiscard() : Navigator.pop(context),
             child: Container(margin: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border, width: 0.5)),
-                child: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 16)),
+                decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(10), border: Border.all(color: c.border, width: 0.5)),
+                child: Icon(Icons.arrow_back_ios_new_rounded, color: c.textPrimary, size: 16)),
           ),
           title: Text('Editar perfil', style: AppTextStyles.headingSmall),
           centerTitle: true,
@@ -94,8 +96,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   decoration: BoxDecoration(gradient: AppColors.primaryGradient, borderRadius: BorderRadius.circular(20),
                       boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 8)]),
                   child: _isSaving
-                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.background))
-                      : const Text('Guardar', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.background)),
+                      ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: c.background))
+                      : Text('Guardar', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c.background)),
                 ),
               ))],
         ),
@@ -121,14 +123,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         const SliverToBoxAdapter(child: SizedBox(height: 14)),
         SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20),
             child: DarkCard(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), child: Row(children: [
-              const Icon(Icons.email_outlined, size: 20, color: AppColors.textMuted),
+              Icon(Icons.email_outlined, size: 20, color: c.textMuted),
               const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Correo electrónico', style: AppTextStyles.caption),
                 const SizedBox(height: 2),
                 Text(context.watch<AuthProvider>().firebaseUser?.email ?? '', style: AppTextStyles.bodyMedium),
               ])),
-              const Icon(Icons.lock_outline_rounded, size: 16, color: AppColors.textMuted),
+              Icon(Icons.lock_outline_rounded, size: 16, color: c.textMuted),
             ])))),
 
         const SliverToBoxAdapter(child: SizedBox(height: 24)),
@@ -164,12 +166,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     decoration: BoxDecoration(
                       gradient: sel ? AppColors.primaryGradient : null,
-                      color: sel ? null : AppColors.surface,
+                      color: sel ? null : c.surface,
                       borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: sel ? AppColors.primary.withOpacity(0.5) : AppColors.border, width: 0.5),
+                      border: Border.all(color: sel ? AppColors.primary.withOpacity(0.5) : c.border, width: 0.5),
                       boxShadow: sel ? [BoxShadow(color: AppColors.primary.withOpacity(0.2), blurRadius: 8)] : null,
                     ),
-                    child: Text(g, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: sel ? AppColors.background : AppColors.textSecondary)),
+                    child: Text(g, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: sel ? c.background : c.textSecondary)),
                   ),
                 );
               }).toList(),
@@ -181,12 +183,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   void _showDiscard() => showDialog(context: context, builder: (_) => AlertDialog(
-    backgroundColor: AppColors.surface,
+    backgroundColor: c.surface,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     title: Text('¿Descartar cambios?', style: AppTextStyles.headingSmall),
     content: Text('Tienes cambios sin guardar.', style: AppTextStyles.bodyMedium),
     actions: [
-      TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancelar', style: TextStyle(color: AppColors.textSecondary))),
+      TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancelar', style: TextStyle(color: c.textSecondary))),
       TextButton(onPressed: () { Navigator.pop(context); Navigator.pop(context); }, child: Text('Descartar', style: TextStyle(color: AppColors.error))),
     ],
   ));
@@ -202,10 +204,10 @@ class _AvatarEditor extends StatelessWidget {
     Container(width: 96, height: 96,
         decoration: BoxDecoration(gradient: AppColors.primaryGradient, shape: BoxShape.circle,
             boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 20, spreadRadius: 2)]),
-        child: Center(child: Text(initials, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: AppColors.background)))),
+        child: Center(child: Text(initials, style: TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: c.background)))),
     Positioned(right: 0, bottom: 0, child: GestureDetector(onTap: () {},
         child: Container(width: 32, height: 32,
-            decoration: BoxDecoration(color: AppColors.surface, shape: BoxShape.circle, border: Border.all(color: AppColors.primary, width: 1.5)),
+            decoration: BoxDecoration(color: c.surface, shape: BoxShape.circle, border: Border.all(color: AppColors.primary, width: 1.5)),
             child: const Icon(Icons.camera_alt_outlined, size: 15, color: AppColors.primary)))),
   ]);
 }
@@ -221,7 +223,7 @@ class _FormRow extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
     child: Row(children: [
-      Icon(icon, size: 18, color: AppColors.textMuted),
+      Icon(icon, size: 18, color: c.textMuted),
       const SizedBox(width: 12),
       Expanded(child: TextField(
         controller: controller, keyboardType: keyboardType,
@@ -244,6 +246,7 @@ class _MeasureSlider extends StatelessWidget {
     required this.color, required this.onChanged});
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     final display = decimals > 0 ? value.toStringAsFixed(decimals) : value.round().toString();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -255,7 +258,7 @@ class _MeasureSlider extends StatelessWidget {
       ]),
       const SizedBox(height: 8),
       SliderTheme(data: SliderThemeData(
-        activeTrackColor: color, inactiveTrackColor: AppColors.border,
+        activeTrackColor: color, inactiveTrackColor: c.border,
         thumbColor: color, overlayColor: color.withOpacity(0.15),
         trackHeight: 4, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 9),
         activeTickMarkColor: Colors.transparent, inactiveTickMarkColor: Colors.transparent,

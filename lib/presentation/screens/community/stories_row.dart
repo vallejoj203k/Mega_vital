@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/stories_provider.dart';
+import '../../../core/theme/dynamic_colors.dart';
 
 const _kStoryDuration = Duration(seconds: 5);
 
@@ -34,6 +35,7 @@ class StoriesRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     return SizedBox(
       height: 98,
       child: ListView.builder(
@@ -81,6 +83,7 @@ class _MyCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     return GestureDetector(
       onTap: () => _openSheet(context),
       child: _CircleLayout(
@@ -95,7 +98,7 @@ class _MyCircle extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: AppColors.primaryGradient,
               ),
-              child: const Icon(Icons.add, size: 14, color: AppColors.background),
+              child: Icon(Icons.add, size: 14, color: c.background),
             ),
           ),
         ]),
@@ -122,13 +125,14 @@ class _UserCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     return GestureDetector(
       onTap: onTap,
       child: _CircleLayout(
         label: group.firstName,
         labelColor: group.hasUnviewed
-            ? AppColors.textPrimary
-            : AppColors.textSecondary,
+            ? c.textPrimary
+            : c.textSecondary,
         avatar: _Ring(
           hasNew: group.hasUnviewed,
           child: _AvatarContent(
@@ -163,7 +167,7 @@ class _CircleLayout extends StatelessWidget {
           child: Text(
             label,
             style: AppTextStyles.caption.copyWith(
-              color: labelColor ?? AppColors.textSecondary,
+              color: labelColor ?? c.textSecondary,
             ),
             maxLines: 1,
             textAlign: TextAlign.center,
@@ -186,12 +190,12 @@ class _Ring extends StatelessWidget {
     decoration: BoxDecoration(
       shape: BoxShape.circle,
       gradient: hasNew ? AppColors.primaryGradient : null,
-      color: hasNew ? null : AppColors.textMuted.withOpacity(0.35),
+      color: hasNew ? null : c.textMuted.withOpacity(0.35),
     ),
     alignment: Alignment.center,
     child: Container(
       width: 60, height: 60,
-      decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.background),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: c.background),
       alignment: Alignment.center,
       child: child,
     ),
@@ -206,6 +210,7 @@ class _AvatarContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     final hasPhoto = avatarUrl != null && avatarUrl!.isNotEmpty;
     return Container(
       width: 56, height: 56,
@@ -214,7 +219,7 @@ class _AvatarContent extends StatelessWidget {
         shape: BoxShape.circle,
         color: hasNew
             ? AppColors.primary.withOpacity(0.12)
-            : AppColors.surfaceVariant,
+            : c.surfaceVariant,
       ),
       alignment: Alignment.center,
       child: hasPhoto
@@ -231,7 +236,7 @@ class _AvatarContent extends StatelessWidget {
   Widget _initialsWidget() => Text(
     initials,
     style: AppTextStyles.headingMedium.copyWith(
-      color: hasNew ? AppColors.primary : AppColors.textSecondary,
+      color: hasNew ? AppColors.primary : c.textSecondary,
       fontWeight: FontWeight.w800,
     ),
   );
@@ -327,6 +332,7 @@ class _StoryViewerPageState extends State<StoryViewerPage>
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     final group = _group;
     final story = _story;
     final total = group.stories.length;
@@ -360,8 +366,8 @@ class _StoryViewerPageState extends State<StoryViewerPage>
                 errorBuilder: (_, __, ___) => Container(
                   color: Colors.black,
                   alignment: Alignment.center,
-                  child: const Icon(Icons.broken_image_outlined,
-                      color: AppColors.textMuted, size: 48),
+                  child: Icon(Icons.broken_image_outlined,
+                      color: c.textMuted, size: 48),
                 ),
               ),
             ),
@@ -399,7 +405,7 @@ class _StoryViewerPageState extends State<StoryViewerPage>
                       alignment: Alignment.center,
                       child: Text(group.initials,
                           style: AppTextStyles.displayLarge
-                              .copyWith(color: AppColors.background)),
+                              .copyWith(color: c.background)),
                     ),
                     const SizedBox(height: 36),
                     if (story.content != null && story.content!.isNotEmpty)
@@ -488,7 +494,7 @@ class _StoryViewerPageState extends State<StoryViewerPage>
                       alignment: Alignment.center,
                       child: Text(group.initials,
                           style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.background,
+                            color: c.background,
                             fontWeight: FontWeight.w800,
                           )),
                     ),
@@ -548,7 +554,7 @@ class _AddStorySheetState extends State<AddStorySheet> {
   void _showSourcePicker() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: c.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -556,7 +562,7 @@ class _AddStorySheetState extends State<AddStorySheet> {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           const SizedBox(height: 8),
           Container(width: 36, height: 4,
-              decoration: BoxDecoration(color: AppColors.border,
+              decoration: BoxDecoration(color: c.border,
                   borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 16),
           ListTile(
@@ -610,7 +616,7 @@ class _AddStorySheetState extends State<AddStorySheet> {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Text('Historia publicada'),
-        backgroundColor: AppColors.surface,
+        backgroundColor: c.surface,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ));
@@ -621,15 +627,16 @@ class _AddStorySheetState extends State<AddStorySheet> {
 
   @override
   Widget build(BuildContext context) {
+      final c = context.colors;
     final bottom = MediaQuery.of(context).viewInsets.bottom;
 
     return Container(
       margin: EdgeInsets.fromLTRB(12, 0, 12, 12 + bottom),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: c.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border, width: 0.5),
+        border: Border.all(color: c.border, width: 0.5),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -639,7 +646,7 @@ class _AddStorySheetState extends State<AddStorySheet> {
           Center(child: Container(
             width: 36, height: 4,
             margin: const EdgeInsets.only(bottom: 20),
-            decoration: BoxDecoration(color: AppColors.border,
+            decoration: BoxDecoration(color: c.border,
                 borderRadius: BorderRadius.circular(2)),
           )),
 
@@ -647,7 +654,7 @@ class _AddStorySheetState extends State<AddStorySheet> {
             Text('Nueva historia', style: AppTextStyles.headingMedium),
             const Spacer(),
             Text('24 h', style: AppTextStyles.caption.copyWith(
-              color: AppColors.textMuted,
+              color: c.textMuted,
             )),
           ]),
           const SizedBox(height: 16),
@@ -659,10 +666,10 @@ class _AddStorySheetState extends State<AddStorySheet> {
                 ? Container(
                     width: double.infinity, height: 130,
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceVariant,
+                      color: c.surfaceVariant,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: AppColors.border,
+                        color: c.border,
                         width: 1,
                         style: BorderStyle.solid,
                       ),
@@ -685,7 +692,7 @@ class _AddStorySheetState extends State<AddStorySheet> {
                       const SizedBox(height: 2),
                       Text('Cámara o galería',
                           style: AppTextStyles.caption.copyWith(
-                            color: AppColors.textMuted,
+                            color: c.textMuted,
                           )),
                     ]),
                   )
@@ -747,15 +754,15 @@ class _AddStorySheetState extends State<AddStorySheet> {
               hintText: _image != null
                   ? 'Añadir texto (opcional)…'
                   : '¿Qué quieres compartir?',
-              hintStyle: AppTextStyles.bodyLarge.copyWith(color: AppColors.textMuted),
+              hintStyle: AppTextStyles.bodyLarge.copyWith(color: c.textMuted),
               filled: true,
-              fillColor: AppColors.surfaceVariant,
+              fillColor: c.surfaceVariant,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide.none,
               ),
               contentPadding: const EdgeInsets.all(14),
-              counterStyle: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+              counterStyle: AppTextStyles.caption.copyWith(color: c.textMuted),
             ),
           ),
           const SizedBox(height: 12),
@@ -772,21 +779,21 @@ class _AddStorySheetState extends State<AddStorySheet> {
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
                         gradient: _canPost ? AppColors.primaryGradient : null,
-                        color: _canPost ? null : AppColors.surfaceVariant,
+                        color: _canPost ? null : c.surfaceVariant,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       alignment: Alignment.center,
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         Icon(Icons.auto_awesome_rounded, size: 16,
                             color: _canPost
-                                ? AppColors.background
-                                : AppColors.textMuted),
+                                ? c.background
+                                : c.textMuted),
                         const SizedBox(width: 8),
                         Text('Publicar historia',
                             style: AppTextStyles.labelLarge.copyWith(
                               color: _canPost
-                                  ? AppColors.background
-                                  : AppColors.textMuted,
+                                  ? c.background
+                                  : c.textMuted,
                             )),
                       ]),
                     ),
