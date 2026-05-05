@@ -9,7 +9,6 @@ import '../../../core/providers/follow_provider.dart';
 import '../../../services/community_service.dart';
 import '../../../services/routine_service.dart';
 import '../../widgets/shared_widgets.dart';
-import '../../../core/theme/dynamic_colors.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final String userId;
@@ -111,9 +110,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return Scaffold(
-      backgroundColor: c.background,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: _loading
             ? const Center(
@@ -129,9 +127,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         children: [
                           GestureDetector(
                             onTap: () => Navigator.pop(context),
-                            child: Icon(
+                            child: const Icon(
                               Icons.arrow_back_ios_new_rounded,
-                              color: c.textPrimary,
+                              color: AppColors.textPrimary,
                               size: 20,
                             ),
                           ),
@@ -181,9 +179,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                       if (_goal != null) ...[
                                         const SizedBox(height: 4),
                                         Row(children: [
-                                          Icon(Icons.flag_outlined,
+                                          const Icon(Icons.flag_outlined,
                                               size: 13,
-                                              color: c.textMuted),
+                                              color: AppColors.textMuted),
                                           const SizedBox(width: 4),
                                           Expanded(
                                             child: Text(_goal!,
@@ -233,13 +231,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                               ? null
                                               : AppColors.primaryGradient,
                                           color: following
-                                              ? c.surfaceVariant
+                                              ? AppColors.surfaceVariant
                                               : null,
                                           borderRadius:
                                               BorderRadius.circular(20),
                                           border: following
                                               ? Border.all(
-                                                  color: c.border,
+                                                  color: AppColors.border,
                                                   width: 0.5)
                                               : null,
                                         ),
@@ -249,8 +247,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                             fontSize: 13,
                                             fontWeight: FontWeight.w700,
                                             color: following
-                                                ? c.textSecondary
-                                                : c.background,
+                                                ? AppColors.textSecondary
+                                                : AppColors.background,
                                           ),
                                         ),
                                       ),
@@ -284,7 +282,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           child: Text(
                             'Sin rutinas aún',
                             style: AppTextStyles.bodyMedium
-                                .copyWith(color: c.textMuted),
+                                .copyWith(color: AppColors.textMuted),
                           ),
                         ),
                       ),
@@ -320,7 +318,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           child: Text(
                             'Sin publicaciones aún',
                             style: AppTextStyles.bodyMedium
-                                .copyWith(color: c.textMuted),
+                                .copyWith(color: AppColors.textMuted),
                           ),
                         ),
                       ),
@@ -358,7 +356,6 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -377,7 +374,6 @@ class _RoutineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     final muscle = kMuscleGroups.cast<MuscleGroup?>()
         .firstWhere((m) => m?.id == routine.muscleId, orElse: () => null);
     final color = muscle?.color ?? AppColors.primary;
@@ -416,7 +412,7 @@ class _RoutineCard extends StatelessWidget {
               ),
               Text(
                 '${routine.exercises.length} ejerc.',
-                style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
               ),
             ],
           ),
@@ -428,7 +424,7 @@ class _RoutineCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Row(
                   children: [
-                    Icon(ex.icon, size: 14, color: c.textMuted),
+                    Icon(ex.icon, size: 14, color: AppColors.textMuted),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(ex.name, style: AppTextStyles.caption),
@@ -464,7 +460,7 @@ class _RoutineCard extends StatelessWidget {
                 child: Text(
                   '+${routine.exercises.length - 4} más',
                   style: AppTextStyles.caption
-                      .copyWith(color: c.textMuted),
+                      .copyWith(color: AppColors.textMuted),
                 ),
               ),
           ],
@@ -482,8 +478,7 @@ class _ExerciseChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
-    final color = highlight ? AppColors.primary : c.textMuted;
+    final color = highlight ? AppColors.primary : AppColors.textMuted;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
@@ -507,7 +502,6 @@ class _ProfilePostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     final provider = context.read<CommunityProvider>();
     return DarkCard(
       padding: const EdgeInsets.all(14),
@@ -526,10 +520,10 @@ class _ProfilePostCard extends StatelessWidget {
                 ),
                 child: Text(
                   post.achievement!,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: c.background,
+                    color: AppColors.background,
                   ),
                 ),
               ),
@@ -547,7 +541,7 @@ class _ProfilePostCard extends StatelessWidget {
                     ? child
                     : Container(
                         height: 160,
-                        color: c.surfaceVariant,
+                        color: AppColors.surfaceVariant,
                         child: const Center(
                           child: CircularProgressIndicator(
                               color: AppColors.primary, strokeWidth: 2),
@@ -570,25 +564,25 @@ class _ProfilePostCard extends StatelessWidget {
                     size: 16,
                     color: post.likedByMe
                         ? AppColors.error
-                        : c.textMuted,
+                        : AppColors.textMuted,
                   ),
                   const SizedBox(width: 4),
                   Text('${post.likesCount}',
                       style: TextStyle(
-                          fontSize: 12, color: c.textMuted)),
+                          fontSize: 12, color: AppColors.textMuted)),
                 ]),
               ),
               const SizedBox(width: 16),
               Icon(Icons.chat_bubble_outline_rounded,
-                  size: 16, color: c.textMuted),
+                  size: 16, color: AppColors.textMuted),
               const SizedBox(width: 4),
               Text('${post.commentsCount}',
                   style: TextStyle(
-                      fontSize: 12, color: c.textMuted)),
+                      fontSize: 12, color: AppColors.textMuted)),
               const Spacer(),
               Text(timeAgo,
                   style: AppTextStyles.caption
-                      .copyWith(color: c.textMuted)),
+                      .copyWith(color: AppColors.textMuted)),
             ],
           ),
         ],

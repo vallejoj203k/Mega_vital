@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import 'spinning_screen.dart';
-import '../../../core/theme/dynamic_colors.dart';
 
 class SeatSelectionScreen extends StatefulWidget {
   final SpinClass spinClass;
@@ -77,9 +76,8 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return Scaffold(
-      backgroundColor: c.background,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -99,15 +97,14 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
   }
 
   Widget _buildAppBar(BuildContext context) {
-      final c = context.colors;
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: Icon(Icons.arrow_back_ios_new_rounded,
-                color: c.textPrimary, size: 20),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                color: AppColors.textPrimary, size: 20),
           ),
           Expanded(
             child: Column(
@@ -119,8 +116,8 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
                 ),
                 Text(
                   widget.spinClass.name,
-                  style: TextStyle(
-                      fontSize: 12, color: c.textSecondary),
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textSecondary),
                 ),
               ],
             ),
@@ -148,14 +145,13 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
   }
 
   Widget _buildClassInfo() {
-      final c = context.colors;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: c.surface,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: c.border, width: 0.5),
+        border: Border.all(color: AppColors.border, width: 0.5),
       ),
       child: Row(
         children: [
@@ -197,7 +193,6 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
   }
 
   Widget _buildLegend() {
-      final c = context.colors;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Wrap(
@@ -205,9 +200,9 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
         spacing: 14,
         runSpacing: 6,
         children: [
-          _LegendItem(color: c.surface, border: _accentColor, label: 'Disponible'),
+          _LegendItem(color: AppColors.surface, border: _accentColor, label: 'Disponible'),
           _LegendItem(color: _accentColor, border: _accentColor, label: 'Seleccionado'),
-          _LegendItem(color: c.border, border: c.border, label: 'Ocupado'),
+          _LegendItem(color: AppColors.border, border: AppColors.border, label: 'Ocupado'),
           if (widget.currentSeat != null)
             _LegendItem(
               color: _accentColor.withOpacity(0.2),
@@ -221,7 +216,6 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
   }
 
   Widget _buildInstructorZone() {
-      final c = context.colors;
     return Column(
       children: [
         // Instructor platform
@@ -259,13 +253,12 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
         const SizedBox(height: 8),
         // Arrow pointing toward seats
         Icon(Icons.keyboard_arrow_down_rounded,
-            color: c.textMuted, size: 20),
+            color: AppColors.textMuted, size: 20),
       ],
     );
   }
 
   Widget _buildSeatGrid() {
-      final c = context.colors;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -278,9 +271,9 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
                   width: 24,
                   child: Text(
                     _rowLabel(row),
-                    style: TextStyle(
+                    style: const TextStyle(
                         fontSize: 12,
-                        color: c.textMuted,
+                        color: AppColors.textMuted,
                         fontWeight: FontWeight.w600),
                     textAlign: TextAlign.center,
                   ),
@@ -302,10 +295,10 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
                   IconData iconData;
 
                   if (isOccupied) {
-                    bgColor = c.border;
-                    borderColor = c.border;
-                    iconColor = c.textMuted;
-                    textColor = c.textMuted;
+                    bgColor = AppColors.border;
+                    borderColor = AppColors.border;
+                    iconColor = AppColors.textMuted;
+                    textColor = AppColors.textMuted;
                     iconData = Icons.close_rounded;
                   } else if (isSelected) {
                     bgColor = _accentColor;
@@ -322,10 +315,10 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
                     textColor = _accentColor;
                     iconData = Icons.person_rounded;
                   } else {
-                    bgColor = c.surface;
+                    bgColor = AppColors.surface;
                     borderColor = _accentColor.withOpacity(0.3);
                     iconColor = _accentColor.withOpacity(0.7);
-                    textColor = c.textSecondary;
+                    textColor = AppColors.textSecondary;
                     iconData = Icons.directions_bike_rounded;
                   }
 
@@ -380,9 +373,9 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
                   width: 24,
                   child: Text(
                     _rowLabel(row),
-                    style: TextStyle(
+                    style: const TextStyle(
                         fontSize: 12,
-                        color: c.textMuted,
+                        color: AppColors.textMuted,
                         fontWeight: FontWeight.w600),
                     textAlign: TextAlign.center,
                   ),
@@ -396,7 +389,6 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
   }
 
   Widget _buildBottomBar() {
-      final c = context.colors;
     final hasSelection = _selectedSeat != null;
     final row = hasSelection ? _selectedSeat! ~/ cols : 0;
     final col = hasSelection ? _selectedSeat! % cols : 0;
@@ -406,9 +398,9 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       decoration: BoxDecoration(
-        color: c.surface,
+        color: AppColors.surface,
         border: Border(
-            top: BorderSide(color: c.border, width: 0.5)),
+            top: BorderSide(color: AppColors.border, width: 0.5)),
       ),
       child: Row(
         children: [
@@ -418,10 +410,10 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
+                const Text(
                   'Puesto seleccionado',
                   style: TextStyle(
-                      fontSize: 11, color: c.textSecondary),
+                      fontSize: 11, color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 2),
                 AnimatedSwitcher(
@@ -433,7 +425,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color:
-                          hasSelection ? _accentColor : c.textMuted,
+                          hasSelection ? _accentColor : AppColors.textMuted,
                     ),
                   ),
                 ),
@@ -458,7 +450,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
                         )
                       : null,
                   color:
-                      hasSelection ? null : c.border,
+                      hasSelection ? null : AppColors.border,
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: hasSelection
                       ? [
@@ -477,7 +469,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
                     fontWeight: FontWeight.w700,
                     color: hasSelection
                         ? Colors.white
-                        : c.textMuted,
+                        : AppColors.textMuted,
                   ),
                 ),
               ),
@@ -506,7 +498,6 @@ class _InfoItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return Expanded(
       child: Column(
         children: [
@@ -521,8 +512,8 @@ class _InfoItem extends StatelessWidget {
           ),
           Text(
             label,
-            style: TextStyle(
-                fontSize: 10, color: c.textMuted),
+            style: const TextStyle(
+                fontSize: 10, color: AppColors.textMuted),
           ),
         ],
       ),
@@ -533,9 +524,8 @@ class _InfoItem extends StatelessWidget {
 class _Divider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return Container(
-        width: 0.5, height: 36, color: c.border);
+        width: 0.5, height: 36, color: AppColors.border);
   }
 }
 
@@ -554,7 +544,6 @@ class _LegendItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -566,13 +555,13 @@ class _LegendItem extends StatelessWidget {
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: border, width: 1.5),
           ),
-          child: Icon(icon, size: 12, color: c.textSecondary),
+          child: Icon(icon, size: 12, color: AppColors.textSecondary),
         ),
         const SizedBox(width: 6),
         Text(
           label,
-          style: TextStyle(
-              fontSize: 11, color: c.textSecondary),
+          style: const TextStyle(
+              fontSize: 11, color: AppColors.textSecondary),
         ),
       ],
     );

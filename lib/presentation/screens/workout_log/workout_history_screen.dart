@@ -14,7 +14,6 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/workout_log_provider.dart';
 import '../../../services/workout_log_service.dart';
-import '../../../core/theme/dynamic_colors.dart';
 
 class WorkoutHistoryScreen extends StatefulWidget {
   const WorkoutHistoryScreen({super.key});
@@ -35,13 +34,12 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     final provider  = context.watch<WorkoutLogProvider>();
     final sessions  = provider.history;
     final completed = sessions.where((s) => s.isCompleted).toList();
 
     return Scaffold(
-      backgroundColor: c.background,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(children: [
           // ── Header ───────────────────────────────────────────
@@ -53,11 +51,11 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
                 child: Container(
                   width: 38, height: 38,
                   decoration: BoxDecoration(
-                      color: c.surfaceVariant,
+                      color: AppColors.surfaceVariant,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: c.border, width: 0.5)),
-                  child: Icon(Icons.arrow_back_ios_new_rounded,
-                      color: c.textPrimary, size: 14),
+                      border: Border.all(color: AppColors.border, width: 0.5)),
+                  child: const Icon(Icons.arrow_back_ios_new_rounded,
+                      color: AppColors.textPrimary, size: 14),
                 ),
               ),
               const SizedBox(width: 14),
@@ -114,7 +112,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
         padding: const EdgeInsets.only(top: 4, bottom: 8),
         child: Text(entry.key,
             style: AppTextStyles.caption.copyWith(
-                color: c.textSecondary,
+                color: AppColors.textSecondary,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.2)),
       ));
@@ -152,7 +150,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
     final confirmed = await showDialog<bool>(
       context: ctx,
       builder: (_) => AlertDialog(
-        backgroundColor: c.surface,
+        backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('¿Eliminar sesión?', style: AppTextStyles.headingSmall),
         content: Text('Esta acción no se puede deshacer.',
@@ -161,7 +159,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
               child: Text('Cancelar',
-                  style: TextStyle(color: c.textSecondary))),
+                  style: TextStyle(color: AppColors.textSecondary))),
           TextButton(
               onPressed: () => Navigator.pop(ctx, true),
               child: Text('Eliminar',
@@ -185,7 +183,6 @@ class _GlobalStats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     final totalSeries = sessions.fold(0, (s, e) => s + e.totalDoneSets);
     final totalVol    = sessions.fold(0.0, (s, e) => s + e.totalVolume);
     final totalMin    = sessions.fold(0, (s, e) => s + e.durationMinutes);
@@ -193,9 +190,9 @@ class _GlobalStats extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-          color: c.surface,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: c.border, width: 0.5)),
+          border: Border.all(color: AppColors.border, width: 0.5)),
       child: Row(children: [
         _StatPill(
             value: sessions.length.toString(),
@@ -241,7 +238,7 @@ class _StatPill extends StatelessWidget {
 class _Divider extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
-      width: 0.5, height: 32, color: c.border,
+      width: 0.5, height: 32, color: AppColors.border,
       margin: const EdgeInsets.symmetric(horizontal: 4));
 }
 
@@ -284,7 +281,6 @@ class _SessionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     final vol = session.totalVolume;
 
     return Dismissible(
@@ -307,12 +303,12 @@ class _SessionCard extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 220),
           decoration: BoxDecoration(
-              color: c.surface,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                   color: isExpanded
                       ? AppColors.primary.withOpacity(0.35)
-                      : c.border,
+                      : AppColors.border,
                   width: isExpanded ? 1.5 : 0.5)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -349,7 +345,7 @@ class _SessionCard extends StatelessWidget {
                     isExpanded
                         ? Icons.keyboard_arrow_up_rounded
                         : Icons.keyboard_arrow_down_rounded,
-                    color: c.textMuted, size: 20,
+                    color: AppColors.textMuted, size: 20,
                   ),
                 ]),
               ),
@@ -398,13 +394,12 @@ class _SessionDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return Container(
       margin: const EdgeInsets.fromLTRB(14, 0, 14, 12),
       decoration: BoxDecoration(
-          color: c.surfaceVariant,
+          color: AppColors.surfaceVariant,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: c.border, width: 0.5)),
+          border: Border.all(color: AppColors.border, width: 0.5)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -420,7 +415,7 @@ class _SessionDetail extends StatelessWidget {
                   style: AppTextStyles.caption, textAlign: TextAlign.right)),
             ]),
           ),
-          Divider(height: 0, thickness: 0.5, color: c.border),
+          const Divider(height: 0, thickness: 0.5, color: AppColors.border),
 
           // Filas de ejercicios
           ...session.exercises
@@ -477,7 +472,7 @@ class _ExerciseDetailRow extends StatelessWidget {
         children: [
           Text(exercise.exerciseName,
               style: AppTextStyles.labelMedium.copyWith(
-                  color: c.textPrimary, fontSize: 12),
+                  color: AppColors.textPrimary, fontSize: 12),
               overflow: TextOverflow.ellipsis),
           Text('${exercise.doneSets} series',
               style: AppTextStyles.caption),
@@ -485,7 +480,7 @@ class _ExerciseDetailRow extends StatelessWidget {
       )),
       SizedBox(width: 72, child: Text(_bestSetStr(),
           style: AppTextStyles.caption.copyWith(
-              color: c.textSecondary),
+              color: AppColors.textSecondary),
           textAlign: TextAlign.center)),
       SizedBox(width: 56, child: Text(_volStr(exercise.totalVolume),
           style: AppTextStyles.labelMedium.copyWith(
@@ -527,10 +522,10 @@ class _EmptyHistory extends StatelessWidget {
     child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       Container(
         width: 72, height: 72,
-        decoration: BoxDecoration(
-            color: c.surfaceVariant, shape: BoxShape.circle),
-        child: Icon(Icons.history_rounded,
-            color: c.textMuted, size: 34),
+        decoration: const BoxDecoration(
+            color: AppColors.surfaceVariant, shape: BoxShape.circle),
+        child: const Icon(Icons.history_rounded,
+            color: AppColors.textMuted, size: 34),
       ),
       const SizedBox(height: 16),
       Text('Sin entrenamientos aún',

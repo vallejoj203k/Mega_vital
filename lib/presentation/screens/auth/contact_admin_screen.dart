@@ -3,7 +3,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
-import '../../../core/theme/dynamic_colors.dart';
 
 class ContactAdminScreen extends StatelessWidget {
   const ContactAdminScreen({super.key});
@@ -53,15 +52,14 @@ class ContactAdminScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return Scaffold(
-      backgroundColor: c.background,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: c.textPrimary, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              color: AppColors.textPrimary, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -90,10 +88,10 @@ class ContactAdminScreen extends StatelessWidget {
               const SizedBox(height: 24),
 
               Text('¿Quieres unirte\na Mega Vital?',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 30,
                     fontWeight: FontWeight.w900,
-                    color: c.textPrimary,
+                    color: AppColors.textPrimary,
                     height: 1.1,
                     letterSpacing: -0.5,
                   )),
@@ -102,7 +100,7 @@ class ContactAdminScreen extends StatelessWidget {
               Text(
                 'Contáctanos y te explicamos todo sobre nuestros planes, horarios y cómo comenzar.',
                 style: AppTextStyles.bodyMedium
-                    .copyWith(color: c.textSecondary),
+                    .copyWith(color: AppColors.textSecondary),
               ),
               const SizedBox(height: 40),
 
@@ -131,7 +129,7 @@ class ContactAdminScreen extends StatelessWidget {
                 child: Text(
                   'Una vez inscrito recibirás tu código\nde acceso a la app.',
                   style: AppTextStyles.caption
-                      .copyWith(color: c.textMuted),
+                      .copyWith(color: AppColors.textMuted),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -161,13 +159,12 @@ class _ContactButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: c.surface,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: color.withOpacity(0.35)),
         ),
@@ -189,17 +186,17 @@ class _ContactButton extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: c.textPrimary,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
                     style: AppTextStyles.bodySmall
-                        .copyWith(color: c.textSecondary),
+                        .copyWith(color: AppColors.textSecondary),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],

@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import 'seat_selection_screen.dart';
-import '../../../core/theme/dynamic_colors.dart';
 
 // ── Models ─────────────────────────────────────────────
 
@@ -381,22 +380,22 @@ class _SpinningScreenState extends State<SpinningScreen>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: c.surface,
+        backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: Text(
+        title: const Text(
           'Cancelar reserva',
           style: TextStyle(
-              color: c.textPrimary, fontWeight: FontWeight.w700),
+              color: AppColors.textPrimary, fontWeight: FontWeight.w700),
         ),
         content: Text(
           '¿Seguro que quieres cancelar tu puesto en ${cls.name}?',
-          style: TextStyle(color: c.textSecondary, fontSize: 13),
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('No',
-                style: TextStyle(color: c.textSecondary)),
+            child: const Text('No',
+                style: TextStyle(color: AppColors.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -420,7 +419,7 @@ class _SpinningScreenState extends State<SpinningScreen>
     HapticFeedback.mediumImpact();
     _showSnackBar(
       icon: Icons.info_outline_rounded,
-      iconColor: c.textSecondary,
+      iconColor: AppColors.textSecondary,
       text: 'Reserva cancelada en ${cls.name}',
     );
 
@@ -465,7 +464,7 @@ class _SpinningScreenState extends State<SpinningScreen>
             ),
           ],
         ),
-        backgroundColor: c.surface,
+        backgroundColor: AppColors.surface,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
@@ -475,10 +474,9 @@ class _SpinningScreenState extends State<SpinningScreen>
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     super.build(context);
     return Scaffold(
-      backgroundColor: c.background,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -527,7 +525,6 @@ class _SpinningScreenState extends State<SpinningScreen>
   }
 
   Widget _buildHeader() {
-      final c = context.colors;
     final availableClasses = _classes.where((c) => c.availableSpots > 0).length;
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
@@ -537,7 +534,7 @@ class _SpinningScreenState extends State<SpinningScreen>
           end: Alignment.bottomRight,
           colors: [
             AppColors.accentOrange.withOpacity(0.18),
-            c.background,
+            AppColors.background,
           ],
         ),
       ),
@@ -594,7 +591,7 @@ class _SpinningScreenState extends State<SpinningScreen>
                     Text(
                       'Sesiones certificadas con instructores profesionales',
                       style: AppTextStyles.bodySmall
-                          .copyWith(color: c.textSecondary),
+                          .copyWith(color: AppColors.textSecondary),
                     ),
                   ],
                 ),
@@ -649,14 +646,13 @@ class _SpinningScreenState extends State<SpinningScreen>
   }
 
   Widget _buildTabBar() {
-      final c = context.colors;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: c.surface,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: c.border, width: 0.5),
+        border: Border.all(color: AppColors.border, width: 0.5),
       ),
       child: TabBar(
         controller: _tabController,
@@ -673,7 +669,7 @@ class _SpinningScreenState extends State<SpinningScreen>
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         labelColor: Colors.white,
-        unselectedLabelColor: c.textSecondary,
+        unselectedLabelColor: AppColors.textSecondary,
         labelStyle: const TextStyle(
             fontSize: 13, fontWeight: FontWeight.w600),
         unselectedLabelStyle: const TextStyle(
@@ -698,7 +694,6 @@ class _CredBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return Expanded(
       child: Row(
         children: [
@@ -729,7 +724,6 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -778,7 +772,6 @@ class _ScheduleTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
       itemCount: classes.length,
@@ -826,19 +819,18 @@ class _ClassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     final color = levelColor(cls.level);
     final isFull = cls.availableSpots == 0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: c.surface,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isBooked
               ? color.withOpacity(0.5)
-              : c.border,
+              : AppColors.border,
           width: isBooked ? 1.5 : 0.5,
         ),
         boxShadow: [
@@ -872,7 +864,7 @@ class _ClassCard extends StatelessWidget {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          c.surface.withOpacity(0.95),
+                          AppColors.surface.withOpacity(0.95),
                         ],
                         stops: const [0.3, 1.0],
                       ),
@@ -969,9 +961,9 @@ class _ClassCard extends StatelessWidget {
                 // Descripción profesional
                 Text(
                   cls.description,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
-                    color: c.textSecondary,
+                    color: AppColors.textSecondary,
                     height: 1.45,
                   ),
                 ),
@@ -996,7 +988,7 @@ class _ClassCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 // Divisor
-                Container(height: 0.5, color: c.border),
+                Container(height: 0.5, color: AppColors.border),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 6,
@@ -1033,15 +1025,15 @@ class _ClassCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Icon(Icons.calendar_today_rounded,
-                        size: 15, color: c.textSecondary),
+                    const Icon(Icons.calendar_today_rounded,
+                        size: 15, color: AppColors.textSecondary),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         cls.days,
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontSize: 12,
-                            color: c.textSecondary),
+                            color: AppColors.textSecondary),
                       ),
                     ),
                     // Spots indicator
@@ -1087,11 +1079,11 @@ class _ClassCard extends StatelessWidget {
                         Icon(Icons.event_seat_rounded,
                             size: 14, color: color),
                         const SizedBox(width: 8),
-                        Text(
+                        const Text(
                           'Tu puesto reservado:',
                           style: TextStyle(
                               fontSize: 12,
-                              color: c.textSecondary),
+                              color: AppColors.textSecondary),
                         ),
                         const Spacer(),
                         Text(
@@ -1156,7 +1148,6 @@ class _ClassHeroImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     final icons = [
       Icons.directions_bike_rounded,
       Icons.electric_bolt_rounded,
@@ -1173,7 +1164,7 @@ class _ClassHeroImage extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             color.withOpacity(0.3),
-            c.surface,
+            AppColors.surface,
           ],
         ),
       ),
@@ -1211,7 +1202,6 @@ class _InfoPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
@@ -1245,7 +1235,6 @@ class _SpotsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     final ratio = booked / total;
     final color = ratio >= 0.9
         ? AppColors.error
@@ -1257,7 +1246,7 @@ class _SpotsBar extends StatelessWidget {
       width: 80,
       height: 4,
       decoration: BoxDecoration(
-        color: c.border,
+        color: AppColors.border,
         borderRadius: BorderRadius.circular(2),
       ),
       child: FractionallySizedBox(
@@ -1282,7 +1271,6 @@ class _BookButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1333,7 +1321,6 @@ class _BookedActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return Row(
       children: [
         Expanded(
@@ -1401,7 +1388,6 @@ class _BookedActions extends StatelessWidget {
 class _FullButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return Container(
       decoration: BoxDecoration(
         color: AppColors.error.withOpacity(0.1),
@@ -1435,7 +1421,6 @@ class _InstructorsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
       itemCount: instructors.length,
@@ -1450,11 +1435,10 @@ class _InstructorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
-        color: c.surface,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: inst.color.withOpacity(0.35), width: 1),
         boxShadow: [
@@ -1492,7 +1476,7 @@ class _InstructorCard extends StatelessWidget {
                           end: Alignment.bottomRight,
                           colors: [
                             inst.color.withOpacity(0.35),
-                            c.surface,
+                            AppColors.surface,
                           ],
                         ),
                       ),
@@ -1632,12 +1616,12 @@ class _InstructorCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
+                  const Text(
                     'Perfil profesional',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: c.textPrimary,
+                      color: AppColors.textPrimary,
                       letterSpacing: 0.3,
                     ),
                   ),
@@ -1645,9 +1629,9 @@ class _InstructorCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 Text(
                   inst.bio,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 13,
-                    color: c.textSecondary,
+                    color: AppColors.textSecondary,
                     height: 1.6,
                   ),
                 ),
@@ -1680,7 +1664,6 @@ class _StatColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1693,7 +1676,7 @@ class _StatColumn extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           label,
-          style: TextStyle(fontSize: 10, color: c.textMuted),
+          style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
         ),
       ],
     );
@@ -1707,7 +1690,6 @@ class _SpecChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -1731,7 +1713,6 @@ class _MiniStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1766,7 +1747,6 @@ class _MyBookingsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     final booked =
         classes.where((c) => myBookings.containsKey(c.id)).toList();
     if (booked.isEmpty) {
@@ -1777,19 +1757,19 @@ class _MyBookingsTab extends StatelessWidget {
             Icon(
               Icons.event_seat_outlined,
               size: 64,
-              color: c.textMuted,
+              color: AppColors.textMuted,
             ),
             const SizedBox(height: 16),
             Text(
               'Sin reservas aún',
               style: AppTextStyles.headingMedium
-                  .copyWith(color: c.textSecondary),
+                  .copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 8),
             Text(
               'Ve a Horarios y reserva tu puesto',
               style: AppTextStyles.bodyMedium
-                  .copyWith(color: c.textMuted),
+                  .copyWith(color: AppColors.textMuted),
             ),
           ],
         ),
@@ -1807,7 +1787,7 @@ class _MyBookingsTab extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: c.surface,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: color.withOpacity(0.4), width: 1),
           ),
@@ -1834,14 +1814,14 @@ class _MyBookingsTab extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           cls.time,
-                          style: TextStyle(
+                          style: const TextStyle(
                               fontSize: 12,
-                              color: c.textSecondary),
+                              color: AppColors.textSecondary),
                         ),
                         Text(
                           cls.days,
-                          style: TextStyle(
-                              fontSize: 11, color: c.textMuted),
+                          style: const TextStyle(
+                              fontSize: 11, color: AppColors.textMuted),
                         ),
                       ],
                     ),
@@ -1874,15 +1854,15 @@ class _MyBookingsTab extends StatelessWidget {
                       ),
                       Text(
                         '${cls.caloriesMin}–${cls.caloriesMax} kcal',
-                        style: TextStyle(
-                            fontSize: 11, color: c.textSecondary),
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.textSecondary),
                       ),
                     ],
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              Container(height: 0.5, color: c.border),
+              Container(height: 0.5, color: AppColors.border),
               const SizedBox(height: 10),
               Row(
                 children: [

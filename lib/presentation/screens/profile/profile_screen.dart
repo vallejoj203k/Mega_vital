@@ -8,8 +8,6 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../core/mock/mock_data.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/workout_log_provider.dart';
-import '../../../core/theme/dynamic_colors.dart';
-import '../../../core/providers/theme_provider.dart';
 import '../../widgets/shared_widgets.dart';
 import '../../../core/config/app_config.dart';
 import '../admin/admin_panel_screen.dart';
@@ -43,9 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
 
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     super.build(context);
-    final c = context.colors;
     final auth = context.watch<AuthProvider>();
     final name = auth.profile?.name ?? auth.displayName;
     final initials = auth.userInitials;
@@ -56,7 +52,7 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
     final age = auth.profile?.age ?? MockData.currentUser.age;
 
     return Scaffold(
-      backgroundColor: c.background,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
@@ -71,8 +67,8 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
                     setState(() {}); // refresca al volver
                   },
                   child: Container(width: 40, height: 40,
-                    decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.border, width: 0.5)),
-                    child: Icon(Icons.edit_outlined, color: c.textSecondary, size: 20)),
+                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border, width: 0.5)),
+                    child: const Icon(Icons.edit_outlined, color: AppColors.textSecondary, size: 20)),
                 ),
               ]),
             )),
@@ -91,9 +87,9 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
                       _uploadingAvatar
                           ? Container(
                               width: 72, height: 72,
-                              decoration: BoxDecoration(
+                              decoration: const BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: c.surfaceVariant,
+                                color: AppColors.surfaceVariant,
                               ),
                               child: const Center(
                                 child: CircularProgressIndicator(
@@ -106,8 +102,8 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
                         width: 24, height: 24,
                         decoration: BoxDecoration(
                           color: AppColors.primary, shape: BoxShape.circle,
-                          border: Border.all(color: c.background, width: 2)),
-                        child: Icon(Icons.camera_alt, size: 12, color: c.background)),
+                          border: Border.all(color: AppColors.background, width: 2)),
+                        child: const Icon(Icons.camera_alt, size: 12, color: AppColors.background)),
                       ),
                     ]),
                   ),
@@ -120,10 +116,10 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
                         final e = auth.profile?.email ?? auth.firebaseUser?.email ?? '';
                         return e.isEmpty || e.startsWith('noemail_') ? 'Sin correo registrado' : e;
                       }(),
-                      style: AppTextStyles.bodySmall.copyWith(color: c.textMuted),
+                      style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted),
                     ),
                     const SizedBox(height: 6),
-                    Row(children: [Icon(Icons.flag_outlined, size: 13, color: c.textMuted), SizedBox(width: 4), Text(goal, style: AppTextStyles.bodyMedium)]),
+                    Row(children: [const Icon(Icons.flag_outlined, size: 13, color: AppColors.textMuted), const SizedBox(width: 4), Text(goal, style: AppTextStyles.bodyMedium)]),
                     const SizedBox(height: 10),
                     _Chip(label: '${MockData.achievements.where((a) => a.unlocked).length} logros', color: AppColors.accentBlue),
                   ])),
@@ -229,28 +225,24 @@ class _AchievementCard extends StatelessWidget {
   final AchievementModel a;
   const _AchievementCard({required this.a});
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Opacity(
-      opacity: a.unlocked ? 1.0 : 0.35,
-      child: DarkCard(
-        borderColor: a.unlocked ? a.color.withOpacity(0.3) : null,
-        padding: const EdgeInsets.all(14),
-        child: SizedBox(width: 90, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Container(width: 40, height: 40, decoration: BoxDecoration(color: a.color.withOpacity(0.15), shape: BoxShape.circle),
-            child: Icon(a.icon, color: a.color, size: 20)),
-          const SizedBox(height: 6),
-          Text(a.title, style: AppTextStyles.caption.copyWith(color: a.unlocked ? c.textPrimary : c.textMuted, fontWeight: FontWeight.w600, fontSize: 11), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-        ])),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Opacity(
+    opacity: a.unlocked ? 1.0 : 0.35,
+    child: DarkCard(
+      borderColor: a.unlocked ? a.color.withOpacity(0.3) : null,
+      padding: const EdgeInsets.all(14),
+      child: SizedBox(width: 90, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Container(width: 40, height: 40, decoration: BoxDecoration(color: a.color.withOpacity(0.15), shape: BoxShape.circle),
+          child: Icon(a.icon, color: a.color, size: 20)),
+        const SizedBox(height: 6),
+        Text(a.title, style: AppTextStyles.caption.copyWith(color: a.unlocked ? AppColors.textPrimary : AppColors.textMuted, fontWeight: FontWeight.w600, fontSize: 11), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+      ])),
+    ),
+  );
 }
 
 class _LifetimeStats extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     final history = context.watch<WorkoutLogProvider>().history;
     final totalWorkouts = history.length;
     final totalMinutes  = history.fold<int>(0, (sum, s) => sum + s.durationMinutes);
@@ -276,8 +268,6 @@ class _LifetimeStats extends StatelessWidget {
 class _SettingsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final isDark = context.watch<ThemeProvider>().isDark;
     final email = context.read<AuthProvider>().profile?.email ?? '';
     final isAdmin = AppConfig.adminEmails.contains(email.toLowerCase().trim());
     final items = [
@@ -292,38 +282,16 @@ class _SettingsList extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => const AdminAccessScreen()))),
     ];
     return DarkCard(padding: const EdgeInsets.symmetric(vertical: 8), child: Column(
-      children: [
-        // Theme toggle row
-        GestureDetector(
-          onTap: () => context.read<ThemeProvider>().toggle(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Row(children: [
-              BoxedIcon(
-                icon: isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                color: isDark ? AppColors.accentOrange : AppColors.accentBlue,
-                size: 36,
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: Text(
-                isDark ? 'Modo claro' : 'Modo oscuro',
-                style: AppTextStyles.labelLarge,
-              )),
-              Icon(Icons.chevron_right_rounded, color: c.textMuted, size: 20),
-            ]),
-          ),
-        ),
-        ...items.map((item) => GestureDetector(
-          onTap: item.onTap,
-          child: Padding(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Row(children: [
-              BoxedIcon(icon: item.icon, color: item.color, size: 36),
-              const SizedBox(width: 12),
-              Expanded(child: Text(item.label, style: AppTextStyles.labelLarge)),
-              Icon(Icons.chevron_right_rounded, color: c.textMuted, size: 20),
-            ])),
-        )),
-      ],
+      children: items.map((item) => GestureDetector(
+        onTap: item.onTap,
+        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(children: [
+            BoxedIcon(icon: item.icon, color: item.color, size: 36),
+            const SizedBox(width: 12),
+            Expanded(child: Text(item.label, style: AppTextStyles.labelLarge)),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+          ])),
+      )).toList(),
     ));
   }
 }
@@ -342,16 +310,15 @@ class _SI {
 class _LogoutButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-      final c = context.colors;
     return GestureDetector(
       onTap: () async {
         final ok = await showDialog<bool>(context: context, builder: (_) => AlertDialog(
-          backgroundColor: c.surface,
+          backgroundColor: AppColors.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text('¿Cerrar sesión?', style: AppTextStyles.headingSmall),
           content: Text('¿Seguro que quieres salir de tu cuenta?', style: AppTextStyles.bodyMedium),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancelar', style: TextStyle(color: c.textSecondary))),
+            TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancelar', style: TextStyle(color: AppColors.textSecondary))),
             TextButton(onPressed: () => Navigator.pop(context, true), child: Text('Salir', style: TextStyle(color: AppColors.error))),
           ],
         ));
@@ -380,7 +347,6 @@ class _DeleteAccountButtonState extends State<_DeleteAccountButton> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return GestureDetector(
       onTap: _deleting ? null : () => _confirmDelete(context),
       child: Container(
@@ -388,14 +354,14 @@ class _DeleteAccountButtonState extends State<_DeleteAccountButton> {
         decoration: BoxDecoration(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: c.textMuted.withOpacity(0.3), width: 0.5),
+          border: Border.all(color: AppColors.textMuted.withOpacity(0.3), width: 0.5),
         ),
         child: _deleting
-            ? Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: c.textMuted)))
+            ? const Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textMuted)))
             : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.delete_outline_rounded, color: c.textMuted, size: 18),
+                Icon(Icons.delete_outline_rounded, color: AppColors.textMuted, size: 18),
                 const SizedBox(width: 8),
-                Text('Eliminar cuenta', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: c.textMuted)),
+                Text('Eliminar cuenta', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textMuted)),
               ]),
       ),
     );
@@ -405,18 +371,18 @@ class _DeleteAccountButtonState extends State<_DeleteAccountButton> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: c.surface,
+        backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('Eliminar cuenta', style: AppTextStyles.headingSmall.copyWith(color: AppColors.error)),
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Esta acción es permanente e irreversible.', style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          Text('Se eliminarán:\n• Tu perfil y datos personales\n• Todas tus publicaciones y comentarios\n• Tu historial de entrenamientos y nutrición\n• Tus rutinas y retos', style: AppTextStyles.bodySmall.copyWith(color: c.textSecondary)),
+          Text('Se eliminarán:\n• Tu perfil y datos personales\n• Todas tus publicaciones y comentarios\n• Tu historial de entrenamientos y nutrición\n• Tus rutinas y retos', style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
         ]),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancelar', style: TextStyle(color: c.textSecondary)),
+            child: Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
