@@ -79,18 +79,22 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildAppBar(context),
-            _buildClassInfo(),
-            const SizedBox(height: 8),
-            _buildLegend(),
-            const SizedBox(height: 20),
-            _buildInstructorZone(),
-            const SizedBox(height: 16),
-            Expanded(child: _buildSeatGrid()),
-            _buildBottomBar(),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Column(
+              children: [
+                _buildAppBar(context),
+                _buildClassInfo(),
+                const SizedBox(height: 8),
+                _buildLegend(),
+                const SizedBox(height: 16),
+                _buildInstructorZone(),
+                const SizedBox(height: 12),
+                Expanded(child: _buildSeatGrid()),
+                _buildBottomBar(),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -259,132 +263,138 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
   }
 
   Widget _buildSeatGrid() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: List.generate(rows, (row) {
-          return Expanded(
-            child: Row(
-              children: [
-                // Row label
-                SizedBox(
-                  width: 24,
-                  child: Text(
-                    _rowLabel(row),
-                    style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                        fontWeight: FontWeight.w600),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Seats
-                ...List.generate(cols, (col) {
-                  final index = row * cols + col;
-                  final isMySeat = index == widget.currentSeat;
-                  final isOccupied =
-                      widget.spinClass.reservedSeats.contains(index) &&
-                          !isMySeat;
-                  final isSelected = _selectedSeat == index;
-
-                  Color bgColor;
-                  Color borderColor;
-                  Color iconColor;
-                  Color textColor;
-                  IconData iconData;
-
-                  if (isOccupied) {
-                    bgColor = AppColors.border;
-                    borderColor = AppColors.border;
-                    iconColor = AppColors.textMuted;
-                    textColor = AppColors.textMuted;
-                    iconData = Icons.close_rounded;
-                  } else if (isSelected) {
-                    bgColor = _accentColor;
-                    borderColor = _accentColor;
-                    iconColor = Colors.white;
-                    textColor = Colors.white;
-                    iconData = isMySeat
-                        ? Icons.person_rounded
-                        : Icons.directions_bike_rounded;
-                  } else if (isMySeat) {
-                    bgColor = _accentColor.withOpacity(0.2);
-                    borderColor = _accentColor;
-                    iconColor = _accentColor;
-                    textColor = _accentColor;
-                    iconData = Icons.person_rounded;
-                  } else {
-                    bgColor = AppColors.surface;
-                    borderColor = _accentColor.withOpacity(0.3);
-                    iconColor = _accentColor.withOpacity(0.7);
-                    textColor = AppColors.textSecondary;
-                    iconData = Icons.directions_bike_rounded;
-                  }
-
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: GestureDetector(
-                        onTap: () => _onSeatTap(index),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeInOut,
-                          decoration: BoxDecoration(
-                            color: bgColor,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: borderColor,
-                              width: (isSelected || isMySeat) ? 2 : 1,
-                            ),
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: _accentColor.withOpacity(0.5),
-                                      blurRadius: 12,
-                                      spreadRadius: 1,
-                                    )
-                                  ]
-                                : null,
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(iconData, size: 20, color: iconColor),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${_rowLabel(row)}${col + 1}',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: textColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final rowHeight = constraints.maxHeight / rows;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            children: List.generate(rows, (row) {
+              return SizedBox(
+                height: rowHeight,
+                child: Row(
+                  children: [
+                    // Row label
+                    SizedBox(
+                      width: 24,
+                      child: Text(
+                        _rowLabel(row),
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                            fontWeight: FontWeight.w600),
+                        textAlign: TextAlign.center,
                       ),
                     ),
-                  );
-                }),
-                const SizedBox(width: 8),
-                // Mirror label
-                SizedBox(
-                  width: 24,
-                  child: Text(
-                    _rowLabel(row),
-                    style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                        fontWeight: FontWeight.w600),
-                    textAlign: TextAlign.center,
-                  ),
+                    const SizedBox(width: 8),
+                    // Seats
+                    ...List.generate(cols, (col) {
+                      final index = row * cols + col;
+                      final isMySeat = index == widget.currentSeat;
+                      final isOccupied =
+                          widget.spinClass.reservedSeats.contains(index) &&
+                              !isMySeat;
+                      final isSelected = _selectedSeat == index;
+
+                      Color bgColor;
+                      Color borderColor;
+                      Color iconColor;
+                      Color textColor;
+                      IconData iconData;
+
+                      if (isOccupied) {
+                        bgColor = AppColors.border;
+                        borderColor = AppColors.border;
+                        iconColor = AppColors.textMuted;
+                        textColor = AppColors.textMuted;
+                        iconData = Icons.close_rounded;
+                      } else if (isSelected) {
+                        bgColor = _accentColor;
+                        borderColor = _accentColor;
+                        iconColor = Colors.white;
+                        textColor = Colors.white;
+                        iconData = isMySeat
+                            ? Icons.person_rounded
+                            : Icons.directions_bike_rounded;
+                      } else if (isMySeat) {
+                        bgColor = _accentColor.withOpacity(0.2);
+                        borderColor = _accentColor;
+                        iconColor = _accentColor;
+                        textColor = _accentColor;
+                        iconData = Icons.person_rounded;
+                      } else {
+                        bgColor = AppColors.surface;
+                        borderColor = _accentColor.withOpacity(0.3);
+                        iconColor = _accentColor.withOpacity(0.7);
+                        textColor = AppColors.textSecondary;
+                        iconData = Icons.directions_bike_rounded;
+                      }
+
+                      return Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: GestureDetector(
+                            onTap: () => _onSeatTap(index),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeInOut,
+                              decoration: BoxDecoration(
+                                color: bgColor,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: borderColor,
+                                  width: (isSelected || isMySeat) ? 2 : 1,
+                                ),
+                                boxShadow: isSelected
+                                    ? [
+                                        BoxShadow(
+                                          color: _accentColor.withOpacity(0.5),
+                                          blurRadius: 12,
+                                          spreadRadius: 1,
+                                        )
+                                      ]
+                                    : null,
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(iconData, size: 20, color: iconColor),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${_rowLabel(row)}${col + 1}',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                    const SizedBox(width: 8),
+                    // Mirror label
+                    SizedBox(
+                      width: 24,
+                      child: Text(
+                        _rowLabel(row),
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                            fontWeight: FontWeight.w600),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
-        }),
-      ),
+              );
+            }),
+          ),
+        );
+      },
     );
   }
 

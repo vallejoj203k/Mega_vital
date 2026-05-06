@@ -481,7 +481,7 @@ class _SpinningScreenState extends State<SpinningScreen>
         bottom: false,
         child: Column(
           children: [
-            _buildHeader(),
+            _buildHeader(context),
             _buildTabBar(),
             Expanded(
               child: _loading
@@ -524,8 +524,9 @@ class _SpinningScreenState extends State<SpinningScreen>
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     final availableClasses = _classes.where((c) => c.availableSpots > 0).length;
+    final canGoBack = Navigator.canPop(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       decoration: BoxDecoration(
@@ -544,6 +545,16 @@ class _SpinningScreenState extends State<SpinningScreen>
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (canGoBack) ...[
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                      color: AppColors.textPrimary, size: 20),
+                ),
+                const SizedBox(width: 10),
+              ],
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -619,20 +630,20 @@ class _SpinningScreenState extends State<SpinningScreen>
             ),
           ),
           const SizedBox(height: 12),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
               _StatChip(
                 icon: Icons.calendar_today_rounded,
                 label: '$availableClasses clases disponibles',
                 color: AppColors.accentOrange,
               ),
-              const SizedBox(width: 10),
               _StatChip(
                 icon: Icons.local_fire_department_rounded,
                 label: '400–800 kcal',
                 color: AppColors.accentPurple,
               ),
-              const SizedBox(width: 10),
               _StatChip(
                 icon: Icons.timer_rounded,
                 label: '60 min',
