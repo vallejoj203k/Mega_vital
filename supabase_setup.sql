@@ -1388,3 +1388,27 @@ CREATE POLICY "post_videos_insert"
 CREATE POLICY "post_videos_delete"
   ON storage.objects FOR DELETE TO authenticated
   USING (bucket_id = 'post_videos' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+
+-- ─── STORAGE: bucket exercise-animations ────────────────────────────────────
+-- Bucket público con videos MP4 de ejercicios.
+-- Estructura: exercise-animations/{musculo}/{exerciseId}.mp4
+-- Ejemplo: exercise-animations/pectoral/pec1.mp4
+-- Solo lectura pública; escritura exclusiva para service_role (admin).
+
+INSERT INTO storage.buckets (id, name, public, allowed_mime_types)
+VALUES (
+  'exercise-animations',
+  'exercise-animations',
+  true,
+  ARRAY['video/mp4', 'video/quicktime', 'video/webm']
+)
+ON CONFLICT (id) DO UPDATE
+  SET public            = true,
+      allowed_mime_types = ARRAY['video/mp4', 'video/quicktime', 'video/webm'];
+
+DROP POLICY IF EXISTS "exercise_animations_select" ON storage.objects;
+
+CREATE POLICY "exercise_animations_select"
+  ON storage.objects FOR SELECT TO public
+  USING (bucket_id = 'exercise-animations');

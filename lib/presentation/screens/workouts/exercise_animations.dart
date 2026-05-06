@@ -7,11 +7,12 @@
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
 
 // ── Supabase Storage ──────────────────────────────────────────────
 // Bucket público: exercise-animations
-// Sube el GIF con el nombre del ID: pectoral/pec1.gif, hombros/hom1.gif…
-// Sin cambios de código al agregar nuevos GIFs.
+// Sube el video con el nombre del ID: pectoral/pec1.mp4, hombros/hom1.mp4…
+// Sin cambios de código al agregar nuevos videos.
 const _kStorageBase =
     'https://ntxbjwmkxnewzzducfzz.supabase.co/storage/v1/object/public/exercise-animations';
 
@@ -30,17 +31,17 @@ const _kPrefixToFolder = <String, String>{
   'isq': 'isquiotibiales',
 };
 
-String? _gifUrl(String exerciseId) {
+String? _videoUrl(String exerciseId) {
   final prefix = exerciseId.replaceAll(RegExp(r'[0-9]'), '');
   final folder  = _kPrefixToFolder[prefix];
   if (folder == null) return null;
-  return '$_kStorageBase/$folder/$exerciseId.gif';
+  return '$_kStorageBase/$folder/$exerciseId.mp4';
 }
 
 // ── Widget principal ──────────────────────────────────────────────
-// Muestra el GIF animado desde Supabase Storage.
+// Reproduce el video MP4 desde Supabase Storage en loop y sin sonido.
 // Mientras carga o si no existe → stickman como fallback.
-class ExerciseAnimationWidget extends StatelessWidget {
+class ExerciseAnimationWidget extends StatefulWidget {
   final String exerciseId;
   final Color  color;
   final double size;
@@ -53,27 +54,72 @@ class ExerciseAnimationWidget extends StatelessWidget {
   });
 
   @override
+  State<ExerciseAnimationWidget> createState() => _ExerciseAnimationWidgetState();
+}
+
+class _ExerciseAnimationWidgetState extends State<ExerciseAnimationWidget> {
+  VideoPlayerController? _controller;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initVideo();
+  }
+
+  Future<void> _initVideo() async {
+    final url = _videoUrl(widget.exerciseId);
+    if (url == null) return;
+
+    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
+    try {
+      await controller.initialize();
+      if (!mounted) {
+        controller.dispose();
+        return;
+      }
+      controller.setLooping(true);
+      controller.setVolume(0);
+      controller.play();
+      setState(() => _controller = controller);
+    } catch (_) {
+      controller.dispose();
+      if (mounted) setState(() => _hasError = true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final url      = _gifUrl(exerciseId);
     final stickman = _StickmanWidget(
-      exerciseId: exerciseId,
-      color:      color,
-      size:       size,
+      exerciseId: widget.exerciseId,
+      color:      widget.color,
+      size:       widget.size,
     );
-    if (url == null) return stickman;
+
+    final url = _videoUrl(widget.exerciseId);
+    if (url == null || _hasError) return stickman;
+
+    final ctrl = _controller;
+    if (ctrl == null || !ctrl.value.isInitialized) return stickman;
 
     return SizedBox(
-      width:  size,
-      height: size * 1.15,
-      child: Image.network(
-        url,
-        width:           size,
-        height:          size * 1.15,
-        fit:             BoxFit.contain,
-        gaplessPlayback: true,
-        errorBuilder:    (_, __, ___) => stickman,
-        loadingBuilder:  (_, child, progress) =>
-            progress == null ? child : stickman,
+      width:  widget.size,
+      height: widget.size * 1.15,
+      child: ClipRect(
+        child: FittedBox(
+          fit: BoxFit.contain,
+          child: SizedBox(
+            width:  ctrl.value.size.width,
+            height: ctrl.value.size.height,
+            child:  VideoPlayer(ctrl),
+          ),
+        ),
       ),
     );
   }
