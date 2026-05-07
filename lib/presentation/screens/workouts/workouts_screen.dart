@@ -39,6 +39,17 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
   final Set<String> _selectedExIds = {};
   final _routineService = RoutineService();
   List<SavedRoutine> _routines = [];
+
+  // IDs de músculos que ya tienen ejercicios seleccionados
+  Set<String> get _activeMuscleIds {
+    final ids = <String>{};
+    for (final exId in _selectedExIds) {
+      final ex = kAllExercises.cast<ExerciseItem?>()
+          .firstWhere((e) => e?.id == exId, orElse: () => null);
+      if (ex != null) ids.add(ex.muscleId);
+    }
+    return ids;
+  }
   late TabController _tabCtrl;
 
   // Animaciones
@@ -86,16 +97,21 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
     if (_selectedMuscleId == muscleId) {
       _closeExercises();
     } else {
-      setState(() { _selectedMuscleId = muscleId; _selectedExIds.clear(); });
+      setState(() => _selectedMuscleId = muscleId);
       _bodyCtrl.forward().then((_) => _listCtrl.forward());
     }
   }
 
   void _closeExercises() {
     _listCtrl.reverse().then((_) {
-      setState(() { _selectedMuscleId = null; _selectedExIds.clear(); });
+      setState(() => _selectedMuscleId = null);
       _bodyCtrl.reverse();
     });
+  }
+
+  void _clearSelection() {
+    HapticFeedback.lightImpact();
+    setState(() => _selectedExIds.clear());
   }
 
   void _flip() {
@@ -120,12 +136,24 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
 
   void _showSaveDialog() {
     if (_selectedExIds.isEmpty) return;
-    final muscle  = getMuscleById(_selectedMuscleId ?? '');
-    final nameCtrl = TextEditingController(text: 'Rutina ${muscle?.name ?? ""}');
-    final exList   = _selectedExIds
+
+    final activeIds  = _activeMuscleIds;
+    final isMulti    = activeIds.length > 1;
+    final routineMuscleId = isMulti
+        ? 'custom'
+        : (activeIds.isNotEmpty ? activeIds.first : (_selectedMuscleId ?? ''));
+    final routineMuscle   = getMuscleById(routineMuscleId);
+    final routineMuscleName = isMulti
+        ? activeIds.map((id) => getMuscleById(id)?.nameShort ?? id).join(' + ')
+        : (routineMuscle?.name ?? '');
+
+    final nameCtrl = TextEditingController(
+        text: isMulti ? 'Rutina combinada' : 'Rutina $routineMuscleName');
+    final exList = _selectedExIds
         .map((id) => kAllExercises.cast<ExerciseItem?>()
             .firstWhere((e) => e?.id == id, orElse: () => null))
-        .whereType<ExerciseItem>().toList();
+        .whereType<ExerciseItem>().toList()
+      ..sort((a, b) => a.muscleId.compareTo(b.muscleId));
     final weightCtrls = {for (final ex in exList) ex.id: TextEditingController()};
 
     showDialog(
@@ -138,6 +166,28 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
           width: double.maxFinite,
           child: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
+              // Chips de grupos musculares activos
+              if (isMulti) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Wrap(spacing: 6, runSpacing: 4,
+                    children: activeIds.map((mid) {
+                      final m = getMuscleById(mid);
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: (m?.color ?? AppColors.primary).withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color: (m?.color ?? AppColors.primary).withOpacity(0.35), width: 0.5)),
+                        child: Text(m?.nameShort ?? mid,
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
+                              color: m?.color ?? AppColors.primary)),
+                      );
+                    }).toList()),
+                ),
+                const SizedBox(height: 12),
+              ],
               TextField(
                 controller: nameCtrl,
                 autofocus: true,
@@ -164,44 +214,52 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
                         .copyWith(color: AppColors.textMuted)),
               ),
               const SizedBox(height: 8),
-              ...exList.map((ex) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(children: [
-                  Icon(ex.icon, size: 14, color: AppColors.textMuted),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(ex.name,
-                        style: AppTextStyles.caption,
-                        overflow: TextOverflow.ellipsis),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 64,
-                    child: TextField(
-                      controller: weightCtrls[ex.id],
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      style: AppTextStyles.caption.copyWith(color: AppColors.textPrimary),
-                      cursorColor: AppColors.primary,
-                      textAlign: TextAlign.center,
-                      decoration: InputDecoration(
-                        hintText: '0',
-                        hintStyle: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
-                        suffixText: 'kg',
-                        suffixStyle: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
-                        filled: true,
-                        fillColor: AppColors.surfaceVariant,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.primary, width: 1)),
+              ...exList.map((ex) {
+                final exMuscle = getMuscleById(ex.muscleId);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(children: [
+                    if (isMulti)
+                      Container(width: 6, height: 6, margin: const EdgeInsets.only(right: 6),
+                        decoration: BoxDecoration(
+                            color: exMuscle?.color ?? AppColors.primary,
+                            shape: BoxShape.circle)),
+                    Icon(ex.icon, size: 14, color: AppColors.textMuted),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(ex.name,
+                          style: AppTextStyles.caption,
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 64,
+                      child: TextField(
+                        controller: weightCtrls[ex.id],
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        style: AppTextStyles.caption.copyWith(color: AppColors.textPrimary),
+                        cursorColor: AppColors.primary,
+                        textAlign: TextAlign.center,
+                        decoration: InputDecoration(
+                          hintText: '0',
+                          hintStyle: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                          suffixText: 'kg',
+                          suffixStyle: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                          filled: true,
+                          fillColor: AppColors.surfaceVariant,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8),
+                              borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8),
+                              borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8),
+                              borderSide: const BorderSide(color: AppColors.primary, width: 1)),
+                        ),
                       ),
                     ),
-                  ),
-                ]),
-              )),
+                  ]),
+                );
+              }),
             ]),
           ),
         ),
@@ -222,8 +280,8 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
               await _routineService.saveRoutine(SavedRoutine(
                 id: DateTime.now().millisecondsSinceEpoch.toString(),
                 name: name,
-                muscleId: muscle?.id ?? '',
-                muscleName: muscle?.name ?? '',
+                muscleId: routineMuscleId,
+                muscleName: routineMuscleName,
                 exercises: exList,
                 exerciseWeights: weights,
                 createdAt: DateTime.now(),
@@ -262,14 +320,36 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
                 Text('Entrenamientos', style: AppTextStyles.displayMedium),
                 AnimatedSwitcher(duration: const Duration(milliseconds: 200),
                     child: Text(
-                      key: ValueKey(_selectedMuscleId),
-                      _selectedMuscleId == null ? 'Toca un músculo para ver ejercicios'
-                          : muscle?.name ?? '',
+                      key: ValueKey('${_selectedMuscleId}_${_activeMuscleIds.length}'),
+                      _selectedMuscleId != null
+                          ? muscle?.name ?? ''
+                          : _activeMuscleIds.length > 1
+                              ? '${_activeMuscleIds.length} grupos · toca para agregar más'
+                              : _activeMuscleIds.length == 1
+                                  ? '${getMuscleById(_activeMuscleIds.first)?.name ?? ""} · toca para agregar más'
+                                  : 'Toca un músculo para ver ejercicios',
                       style: AppTextStyles.bodyMedium.copyWith(
-                          color: muscle?.color ?? AppColors.textSecondary),
+                          color: muscle?.color ??
+                              (_activeMuscleIds.isNotEmpty
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary)),
                     )),
               ])),
-              if (_selectedExIds.isNotEmpty)
+              if (_selectedExIds.isNotEmpty) ...[
+                GestureDetector(
+                  onTap: _clearSelection,
+                  child: Container(
+                    width: 34, height: 34,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceVariant,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.border, width: 0.5),
+                    ),
+                    child: const Icon(Icons.close_rounded,
+                        color: AppColors.textMuted, size: 16),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 GestureDetector(
                   onTap: _showSaveDialog,
                   child: Container(
@@ -284,13 +364,17 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
                       const Icon(Icons.save_rounded,
                           color: AppColors.background, size: 14),
                       const SizedBox(width: 6),
-                      Text('Guardar ${_selectedExIds.length}',
-                          style: const TextStyle(fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.background)),
+                      Text(
+                        _activeMuscleIds.length > 1
+                            ? '${_selectedExIds.length} ejercicios'
+                            : 'Guardar ${_selectedExIds.length}',
+                        style: const TextStyle(fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.background)),
                     ]),
                   ),
                 ),
+              ],
             ])),
         const SizedBox(height: 10),
 
@@ -312,6 +396,8 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
                     isFront:          _isFront,
                     isMale:           isMale,
                     selectedMuscleId: _selectedMuscleId,
+                    activeMuscleIds:  _activeMuscleIds,
+                    totalSelected:    _selectedExIds.length,
                     onMuscleTap:      _onMuscleTap,
                     onFlip:           _flip,
                   ),
@@ -325,6 +411,8 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
                       muscle:        muscle!,
                       exercises:     exercises,
                       selectedExIds: _selectedExIds,
+                      totalSelected: _selectedExIds.length,
+                      activeMuscles: _activeMuscleIds.length,
                       onToggle:      _toggleExercise,
                       onBack:        _closeExercises,
                     ),
@@ -349,14 +437,17 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
 // CUERPO ANATÓMICO CON IMAGEN PNG
 // ─────────────────────────────────────────────────────────────────
 class _AnatomyBody extends StatelessWidget {
-  final bool    isFront;
-  final bool    isMale;
-  final String? selectedMuscleId;
+  final bool       isFront;
+  final bool       isMale;
+  final String?    selectedMuscleId;
+  final Set<String> activeMuscleIds;
+  final int        totalSelected;
   final ValueChanged<String> onMuscleTap;
   final VoidCallback onFlip;
 
   const _AnatomyBody({required this.isFront, required this.isMale,
-    required this.selectedMuscleId, required this.onMuscleTap,
+    required this.selectedMuscleId, required this.activeMuscleIds,
+    required this.totalSelected, required this.onMuscleTap,
     required this.onFlip});
 
   @override
@@ -444,7 +535,6 @@ class _AnatomyBody extends StatelessWidget {
           SizedBox(width: dispW, height: dispH,
             child: GestureDetector(
               onTapDown: (d) {
-                // Convertir tap a coordenadas de imagen (imgW × imgH)
                 final lx = d.localPosition.dx / dispW * imgW;
                 final ly = d.localPosition.dy / dispH * imgH;
                 final id = _findMuscle(lx, ly, isFront);
@@ -454,7 +544,7 @@ class _AnatomyBody extends StatelessWidget {
                 painter: _MuscleOverlayPainter(
                   isFront:          isFront,
                   selectedMuscleId: selectedMuscleId,
-                  // Pasa el tamaño real para escalar los paths
+                  activeMuscleIds:  activeMuscleIds,
                   dispW: dispW, dispH: dispH,
                 ),
               ),
@@ -462,23 +552,44 @@ class _AnatomyBody extends StatelessWidget {
           ),
 
           // ── Hint ───────────────────────────────────────────────
+          // ── Hint / badge de selección global ──────────────────
           Positioned(bottom: 4, child: AnimatedOpacity(
             opacity: selectedMuscleId == null ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 200),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                  color: AppColors.surface.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.border, width: 0.5)),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.touch_app_rounded,
-                    size: 12, color: AppColors.primary),
-                const SizedBox(width: 6),
-                Text('Toca un grupo muscular',
-                    style: AppTextStyles.caption),
-              ]),
-            ),
+            child: totalSelected > 0
+                ? Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.primary.withOpacity(0.4), width: 1)),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.check_circle_outline_rounded,
+                          size: 12, color: AppColors.primary),
+                      const SizedBox(width: 6),
+                      Text(
+                        activeMuscleIds.length > 1
+                            ? '$totalSelected ejercicios · ${activeMuscleIds.length} grupos'
+                            : '$totalSelected ejercicios · toca otro músculo',
+                        style: const TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w600,
+                            color: AppColors.primary)),
+                    ]),
+                  )
+                : Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                        color: AppColors.surface.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.border, width: 0.5)),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.touch_app_rounded,
+                          size: 12, color: AppColors.primary),
+                      const SizedBox(width: 6),
+                      Text('Toca un grupo muscular',
+                          style: AppTextStyles.caption),
+                    ]),
+                  ),
           )),
 
           // ── Badge del músculo seleccionado ─────────────────────
@@ -503,7 +614,7 @@ class _AnatomyBody extends StatelessWidget {
 
       // Leyenda
       _MuscleLegend(isFront: isFront, onTap: onMuscleTap,
-          selected: selectedMuscleId),
+          selected: selectedMuscleId, activeMuscleIds: activeMuscleIds),
     ]);
   }
 }
@@ -713,48 +824,57 @@ String? _findMuscle(double lx, double ly, bool isFront) {
 // PAINTER: dibuja el overlay de músculos sobre la imagen
 // ─────────────────────────────────────────────────────────────────
 class _MuscleOverlayPainter extends CustomPainter {
-  final bool    isFront;
-  final String? selectedMuscleId;
-  final double  dispW, dispH;
+  final bool       isFront;
+  final String?    selectedMuscleId;
+  final Set<String> activeMuscleIds;
+  final double     dispW, dispH;
   const _MuscleOverlayPainter({required this.isFront,
-    required this.selectedMuscleId, required this.dispW, required this.dispH});
+    required this.selectedMuscleId, required this.activeMuscleIds,
+    required this.dispW, required this.dispH});
 
-  // Los paths están en espacio 270×470 → escalar a dispW×dispH
   static const double _srcW = 270.0;
   static const double _srcH = 470.0;
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Solo pintamos si hay un músculo seleccionado
-    if (selectedMuscleId == null) return;
-
-    final sx = size.width  / _srcW;
-    final sy = size.height / _srcH;
+    final sx    = size.width  / _srcW;
+    final sy    = size.height / _srcH;
     final paths = isFront ? _frontPaths() : _backPaths();
+    final m     = Matrix4.identity()..scale(sx, sy);
 
+    // Músculos con ejercicios ya seleccionados (highlight sutil)
+    for (final entry in paths.entries) {
+      if (entry.key == selectedMuscleId) continue;
+      if (!activeMuscleIds.contains(entry.key)) continue;
+      final muscle = getMuscleById(entry.key);
+      if (muscle == null) continue;
+      final scaledPath = entry.value.transform(m.storage);
+      canvas.drawPath(scaledPath, Paint()
+        ..color = muscle.color.withOpacity(0.20)
+        ..style = PaintingStyle.fill);
+      canvas.drawPath(scaledPath, Paint()
+        ..color = muscle.color.withOpacity(0.55)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2);
+    }
+
+    // Músculo seleccionado actualmente (highlight fuerte)
+    if (selectedMuscleId == null) return;
     final entry = paths.entries
         .where((e) => e.key == selectedMuscleId)
         .firstOrNull;
     if (entry == null) return;
-
     final muscle = getMuscleById(entry.key);
     if (muscle == null) return;
-
-    final color = muscle.color;
-    final m = Matrix4.identity()..scale(sx, sy);
+    final color      = muscle.color;
     final scaledPath = entry.value.transform(m.storage);
 
-    // Glow exterior suave
     canvas.drawPath(scaledPath, Paint()
       ..color = color.withOpacity(0.30)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14));
-
-    // Relleno suave del músculo seleccionado
     canvas.drawPath(scaledPath, Paint()
       ..color = color.withOpacity(0.35)
       ..style = PaintingStyle.fill);
-
-    // Borde sutil del músculo seleccionado
     canvas.drawPath(scaledPath, Paint()
       ..color = color.withOpacity(0.70)
       ..style = PaintingStyle.stroke
@@ -763,7 +883,9 @@ class _MuscleOverlayPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_MuscleOverlayPainter o) =>
-      o.isFront != isFront || o.selectedMuscleId != selectedMuscleId;
+      o.isFront != isFront ||
+      o.selectedMuscleId != selectedMuscleId ||
+      o.activeMuscleIds != activeMuscleIds;
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -773,17 +895,23 @@ class _ExercisePanel extends StatelessWidget {
   final MuscleGroup        muscle;
   final List<ExerciseItem> exercises;
   final Set<String>        selectedExIds;
+  final int                totalSelected;
+  final int                activeMuscles;
   final ValueChanged<String> onToggle;
   final VoidCallback       onBack;
 
   const _ExercisePanel({required this.muscle, required this.exercises,
-    required this.selectedExIds, required this.onToggle, required this.onBack});
+    required this.selectedExIds, required this.totalSelected,
+    required this.activeMuscles, required this.onToggle, required this.onBack});
 
   @override
   Widget build(BuildContext context) {
-    final sel   = selectedExIds.length;
+    // Cuántos de esta sección están seleccionados
+    final selHere = selectedExIds
+        .where((id) => exercises.any((e) => e.id == id))
+        .length;
     final total = exercises.length;
-    final pct   = total > 0 ? (sel / total * 100).round() : 0;
+    final pct   = total > 0 ? (selHere / total * 100).round() : 0;
 
     return Column(children: [
       // ── Header ────────────────────────────────────────────────
@@ -802,21 +930,42 @@ class _ExercisePanel extends StatelessWidget {
             children: [
               Text(muscle.name, style: AppTextStyles.headingSmall
                   .copyWith(color: muscle.color)),
-              Text('$total ejercicios · toca para previsualizar',
+              Text('$total ejercicios · toca para seleccionar',
                   style: AppTextStyles.caption),
             ])),
-          if (sel > 0)
+          if (selHere > 0)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: muscle.color.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: muscle.color.withOpacity(0.4), width: 1)),
-              child: Text('$sel/$total · $pct%',
+              child: Text('$selHere/$total · $pct%',
                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
                     color: muscle.color)),
             ),
         ])),
+
+      // ── Banner global de selección multi-músculo ──────────────
+      if (totalSelected > 0 && activeMuscles > 1)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.07),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.primary.withOpacity(0.25), width: 0.5),
+            ),
+            child: Row(children: [
+              const Icon(Icons.layers_rounded, size: 11, color: AppColors.primary),
+              const SizedBox(width: 6),
+              Text('$totalSelected ejercicios en $activeMuscles grupos musculares',
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600,
+                      color: AppColors.primary)),
+            ]),
+          ),
+        ),
       const SizedBox(height: 12),
 
       // ── Grid de ejercicios ────────────────────────────────────
@@ -970,11 +1119,12 @@ class _ExerciseCard extends StatelessWidget {
 // LEYENDA DE MÚSCULOS
 // ─────────────────────────────────────────────────────────────────
 class _MuscleLegend extends StatelessWidget {
-  final bool    isFront;
-  final String? selected;
+  final bool       isFront;
+  final String?    selected;
+  final Set<String> activeMuscleIds;
   final ValueChanged<String> onTap;
   const _MuscleLegend({required this.isFront, required this.selected,
-    required this.onTap});
+    required this.activeMuscleIds, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -987,27 +1137,44 @@ class _MuscleLegend extends StatelessWidget {
         itemCount: muscles.length,
         separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (_, i) {
-          final m   = muscles[i];
-          final sel = selected == m.id;
+          final m      = muscles[i];
+          final sel    = selected == m.id;
+          final active = activeMuscleIds.contains(m.id);
           return GestureDetector(
             onTap: () => onTap(m.id),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                  color: sel ? m.color.withOpacity(0.12) : Colors.transparent,
+                  color: sel
+                      ? m.color.withOpacity(0.15)
+                      : active
+                          ? m.color.withOpacity(0.08)
+                          : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                      color: sel ? m.color.withOpacity(0.5) : Colors.transparent,
+                      color: sel
+                          ? m.color.withOpacity(0.6)
+                          : active
+                              ? m.color.withOpacity(0.35)
+                              : Colors.transparent,
                       width: 0.5)),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Container(width: 8, height: 8,
-                    decoration: BoxDecoration(
-                        color: m.color, shape: BoxShape.circle)),
+                Stack(children: [
+                  Container(width: 8, height: 8,
+                      decoration: BoxDecoration(
+                          color: m.color, shape: BoxShape.circle)),
+                  if (active)
+                    Positioned(right: -1, top: -1,
+                      child: Container(width: 5, height: 5,
+                        decoration: const BoxDecoration(
+                            color: AppColors.primary, shape: BoxShape.circle)),
+                    ),
+                ]),
                 const SizedBox(width: 5),
                 Text(m.nameShort, style: AppTextStyles.caption.copyWith(
-                    color: sel ? m.color : null,
-                    fontWeight: sel ? FontWeight.w700 : null)),
+                    color: sel ? m.color : active ? m.color.withOpacity(0.8) : null,
+                    fontWeight: sel || active ? FontWeight.w700 : null)),
               ]),
             ),
           );
@@ -1097,12 +1264,31 @@ class _RoutineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final muscle = getMuscleById(routine.muscleId);
-    final color  = muscle?.color ?? AppColors.primary;
+    final isMulti  = routine.muscleId == 'custom';
+    final muscle   = getMuscleById(routine.muscleId);
+    final color    = muscle?.color ?? AppColors.primary;
+
+    // Para rutinas multi-músculo, obtén los colores únicos por músculo
+    final muscleColors = <String, Color>{};
+    if (isMulti) {
+      for (final ex in routine.exercises) {
+        if (!muscleColors.containsKey(ex.muscleId)) {
+          muscleColors[ex.muscleId] = getMuscleById(ex.muscleId)?.color ?? AppColors.primary;
+        }
+      }
+    }
+
     return DarkCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            BoxedIcon(icon: Icons.fitness_center_rounded, color: color, size: 42),
+            isMulti
+                ? Container(width: 42, height: 42,
+                    decoration: BoxDecoration(
+                        gradient: AppColors.primaryGradient,
+                        borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(Icons.layers_rounded,
+                        color: AppColors.background, size: 20))
+                : BoxedIcon(icon: Icons.fitness_center_rounded, color: color, size: 42),
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1116,14 +1302,20 @@ class _RoutineCard extends StatelessWidget {
           ]),
           const SizedBox(height: 10),
           Wrap(spacing: 6, runSpacing: 6,
-              children: routine.exercises.map((e) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                    color: color.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: color.withOpacity(0.2), width: 0.5)),
-                child: Text(e.name, style: AppTextStyles.caption.copyWith(color: color)),
-              )).toList()),
+              children: routine.exercises.map((e) {
+                final exColor = isMulti
+                    ? (muscleColors[e.muscleId] ?? AppColors.primary)
+                    : color;
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                      color: exColor.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: exColor.withOpacity(0.2), width: 0.5)),
+                  child: Text(e.name,
+                      style: AppTextStyles.caption.copyWith(color: exColor)),
+                );
+              }).toList()),
           const SizedBox(height: 12),
           // ── Botón Iniciar ─────────────────────────────────────
           GestureDetector(
@@ -1133,7 +1325,10 @@ class _RoutineCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                    colors: [color.withOpacity(0.15), color.withOpacity(0.08)],
+                    colors: isMulti
+                        ? [AppColors.primary.withOpacity(0.15),
+                            AppColors.accentBlue.withOpacity(0.08)]
+                        : [color.withOpacity(0.15), color.withOpacity(0.08)],
                     begin: Alignment.centerLeft, end: Alignment.centerRight),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: color.withOpacity(0.3), width: 0.8),
