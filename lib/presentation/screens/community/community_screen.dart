@@ -221,7 +221,7 @@ class _CustomTabBar extends StatelessWidget {
 
 // ─── Feed tab ─────────────────────────────────────────────────────────────────
 
-class _FeedTab extends StatelessWidget {
+class _FeedTab extends StatefulWidget {
   final String currentUserName;
   final String currentUserId;
   final String currentUserInitials;
@@ -235,22 +235,65 @@ class _FeedTab extends StatelessWidget {
   });
 
   @override
+  State<_FeedTab> createState() => _FeedTabState();
+}
+
+class _FeedTabState extends State<_FeedTab> {
+  final _scrollCtrl = ScrollController();
+  bool _storiesVisible = true;
+  double _lastOffset = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollCtrl.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final offset = _scrollCtrl.offset;
+    if (offset > _lastOffset && offset > 10 && _storiesVisible) {
+      setState(() => _storiesVisible = false);
+    } else if (offset < _lastOffset && !_storiesVisible) {
+      setState(() => _storiesVisible = true);
+    }
+    _lastOffset = offset;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // ── Fila de historias ──
-        Consumer<StoriesProvider>(
-          builder: (ctx, sp, _) => StoriesRow(
-            groups:                sp.groups,
-            isLoading:             sp.isLoading,
-            currentUserId:         currentUserId,
-            currentUserName:       currentUserName,
-            currentUserInitials:   currentUserInitials,
-            currentUserAvatarUrl:  currentUserAvatarUrl,
+        // ── Fila de historias (se oculta al hacer scroll hacia abajo) ──
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeInOut,
+          height: _storiesVisible ? 107 : 0,
+          child: ClipRect(
+            child: Consumer<StoriesProvider>(
+              builder: (ctx, sp, _) => Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  StoriesRow(
+                    groups:               sp.groups,
+                    isLoading:            sp.isLoading,
+                    currentUserId:        widget.currentUserId,
+                    currentUserName:      widget.currentUserName,
+                    currentUserInitials:  widget.currentUserInitials,
+                    currentUserAvatarUrl: widget.currentUserAvatarUrl,
+                  ),
+                  const Divider(height: 1, thickness: 0.5, color: AppColors.divider),
+                  const SizedBox(height: 4),
+                ],
+              ),
+            ),
           ),
         ),
-        const Divider(height: 1, thickness: 0.5, color: AppColors.divider),
-        const SizedBox(height: 4),
         // ── Posts ──
         Expanded(
           child: Consumer<CommunityProvider>(
@@ -286,6 +329,7 @@ class _FeedTab extends StatelessWidget {
                   await context.read<StoriesProvider>().load();
                 },
                 child: ListView.separated(
+                  controller: _scrollCtrl,
                   physics: const AlwaysScrollableScrollPhysics(
                       parent: BouncingScrollPhysics()),
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -293,8 +337,8 @@ class _FeedTab extends StatelessWidget {
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (_, i) => _PostCard(
                     post: provider.posts[i],
-                    currentUserName: currentUserName,
-                    currentUserId: currentUserId,
+                    currentUserName: widget.currentUserName,
+                    currentUserId: widget.currentUserId,
                   ),
                 ),
               );
