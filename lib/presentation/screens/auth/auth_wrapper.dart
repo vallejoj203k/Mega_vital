@@ -30,15 +30,18 @@ class _AuthWrapperState extends State<AuthWrapper> {
         auth.firebaseUser != null &&
         auth.firebaseUser!.uid != _lastCheckedUid) {
       _lastCheckedUid = auth.firebaseUser!.uid;
-      context.read<PremiumProvider>().checkStatus(
-        auth.firebaseUser!.uid,
-        auth.profile!.createdAt,
-      );
+      final uid = auth.firebaseUser!.uid;
+      final createdAt = auth.profile!.createdAt;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.read<PremiumProvider>().checkStatus(uid, createdAt);
+      });
     }
 
     if (auth.status == AuthStatus.unauthenticated) {
       _lastCheckedUid = null;
-      context.read<PremiumProvider>().clear();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.read<PremiumProvider>().clear();
+      });
     }
   }
 
