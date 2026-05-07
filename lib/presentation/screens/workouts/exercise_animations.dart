@@ -7,11 +7,12 @@
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
 
 // ── Supabase Storage ──────────────────────────────────────────────
 // Bucket público: exercise-animations
-// Sube el GIF con el nombre del ID: pectoral/pec1.gif, hombros/hom1.gif…
-// Sin cambios de código al agregar nuevos GIFs.
+// Sube el video con el nombre del ID: pectoral/pec1.mp4, hombros/hom1.mp4…
+// Sin cambios de código al agregar nuevos videos.
 const _kStorageBase =
     'https://ntxbjwmkxnewzzducfzz.supabase.co/storage/v1/object/public/exercise-animations';
 
@@ -30,50 +31,146 @@ const _kPrefixToFolder = <String, String>{
   'isq': 'isquiotibiales',
 };
 
-String? _gifUrl(String exerciseId) {
+String? _videoUrl(String exerciseId) {
   final prefix = exerciseId.replaceAll(RegExp(r'[0-9]'), '');
   final folder  = _kPrefixToFolder[prefix];
   if (folder == null) return null;
-  return '$_kStorageBase/$folder/$exerciseId.gif';
+  return '$_kStorageBase/$folder/$exerciseId.mp4';
 }
 
 // ── Widget principal ──────────────────────────────────────────────
-// Muestra el GIF animado desde Supabase Storage.
-// Mientras carga o si no existe → stickman como fallback.
-class ExerciseAnimationWidget extends StatelessWidget {
-  final String exerciseId;
-  final Color  color;
-  final double size;
+// Muestra el primer frame del video como miniatura estática.
+// El usuario toca para reproducir; tocar otro video pausa el actual.
+// activeVideoNotifier: notifier compartido entre todas las tarjetas
+// del mismo panel para garantizar que solo uno reproduzca a la vez.
+class ExerciseAnimationWidget extends StatefulWidget {
+  final String               exerciseId;
+  final Color                color;
+  final double               size;
+  final ValueNotifier<String?>? activeVideoNotifier;
 
   const ExerciseAnimationWidget({
     super.key,
     required this.exerciseId,
     required this.color,
     this.size = 120,
+    this.activeVideoNotifier,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final url      = _gifUrl(exerciseId);
-    final stickman = _StickmanWidget(
-      exerciseId: exerciseId,
-      color:      color,
-      size:       size,
-    );
-    if (url == null) return stickman;
+  State<ExerciseAnimationWidget> createState() => _ExerciseAnimationWidgetState();
+}
 
-    return SizedBox(
-      width:  size,
-      height: size * 1.15,
-      child: Image.network(
-        url,
-        width:           size,
-        height:          size * 1.15,
-        fit:             BoxFit.contain,
-        gaplessPlayback: true,
-        errorBuilder:    (_, __, ___) => stickman,
-        loadingBuilder:  (_, child, progress) =>
-            progress == null ? child : stickman,
+class _ExerciseAnimationWidgetState extends State<ExerciseAnimationWidget> {
+  VideoPlayerController? _controller;
+  bool _hasError  = false;
+  bool _isPlaying = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.activeVideoNotifier?.addListener(_onActiveChanged);
+    _initVideo();
+  }
+
+  @override
+  void dispose() {
+    widget.activeVideoNotifier?.removeListener(_onActiveChanged);
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  void _onActiveChanged() {
+    if (widget.activeVideoNotifier?.value != widget.exerciseId && _isPlaying) {
+      _controller?.pause();
+      if (mounted) setState(() => _isPlaying = false);
+    }
+  }
+
+  Future<void> _initVideo() async {
+    final url = _videoUrl(widget.exerciseId);
+    if (url == null) return;
+
+    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
+    try {
+      await controller.initialize();
+      if (!mounted) {
+        controller.dispose();
+        return;
+      }
+      controller.setLooping(true);
+      controller.setVolume(0);
+      // Queda pausado en el primer frame como miniatura
+      await controller.seekTo(Duration.zero);
+      setState(() => _controller = controller);
+    } catch (_) {
+      controller.dispose();
+      if (mounted) setState(() => _hasError = true);
+    }
+  }
+
+  void _togglePlay() {
+    final ctrl = _controller;
+    if (ctrl == null || !ctrl.value.isInitialized) return;
+
+    if (_isPlaying) {
+      ctrl.pause();
+      setState(() => _isPlaying = false);
+    } else {
+      widget.activeVideoNotifier?.value = widget.exerciseId;
+      ctrl.play();
+      setState(() => _isPlaying = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final stickman = _StickmanWidget(
+      exerciseId: widget.exerciseId,
+      color:      widget.color,
+      size:       widget.size,
+    );
+
+    final url = _videoUrl(widget.exerciseId);
+    if (url == null || _hasError) return stickman;
+
+    final ctrl = _controller;
+    if (ctrl == null || !ctrl.value.isInitialized) return stickman;
+
+    return GestureDetector(
+      onTap: _togglePlay,
+      child: SizedBox(
+        width:  widget.size,
+        height: widget.size * 1.15,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            ClipRect(
+              child: FittedBox(
+                fit: BoxFit.contain,
+                child: SizedBox(
+                  width:  ctrl.value.size.width,
+                  height: ctrl.value.size.height,
+                  child:  VideoPlayer(ctrl),
+                ),
+              ),
+            ),
+            if (!_isPlaying)
+              Container(
+                width:  widget.size * 0.38,
+                height: widget.size * 0.38,
+                decoration: BoxDecoration(
+                  color:  Colors.black.withOpacity(0.55),
+                  shape:  BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.play_arrow_rounded,
+                  color: widget.color,
+                  size:  widget.size * 0.24,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

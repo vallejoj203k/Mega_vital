@@ -769,7 +769,7 @@ class _MuscleOverlayPainter extends CustomPainter {
 // ─────────────────────────────────────────────────────────────────
 // PANEL DE EJERCICIOS — grid 2 columnas
 // ─────────────────────────────────────────────────────────────────
-class _ExercisePanel extends StatelessWidget {
+class _ExercisePanel extends StatefulWidget {
   final MuscleGroup        muscle;
   final List<ExerciseItem> exercises;
   final Set<String>        selectedExIds;
@@ -780,7 +780,25 @@ class _ExercisePanel extends StatelessWidget {
     required this.selectedExIds, required this.onToggle, required this.onBack});
 
   @override
+  State<_ExercisePanel> createState() => _ExercisePanelState();
+}
+
+class _ExercisePanelState extends State<_ExercisePanel> {
+  final ValueNotifier<String?> _activeVideo = ValueNotifier(null);
+
+  @override
+  void dispose() {
+    _activeVideo.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final muscle        = widget.muscle;
+    final exercises     = widget.exercises;
+    final selectedExIds = widget.selectedExIds;
+    final onToggle      = widget.onToggle;
+    final onBack        = widget.onBack;
     final sel   = selectedExIds.length;
     final total = exercises.length;
     final pct   = total > 0 ? (sel / total * 100).round() : 0;
@@ -831,10 +849,11 @@ class _ExercisePanel extends StatelessWidget {
         ),
         itemCount: exercises.length,
         itemBuilder: (_, i) => _ExerciseCard(
-          exercise:    exercises[i],
-          muscleColor: muscle.color,
-          selected:    selectedExIds.contains(exercises[i].id),
-          onToggle:    () => onToggle(exercises[i].id),
+          exercise:            exercises[i],
+          muscleColor:         muscle.color,
+          selected:            selectedExIds.contains(exercises[i].id),
+          onToggle:            () => onToggle(exercises[i].id),
+          activeVideoNotifier: _activeVideo,
         ),
       )),
     ]);
@@ -864,13 +883,15 @@ String _diffLabel(ExerciseDifficulty d) {
 // TARJETA DE EJERCICIO — estilo grid con animación siempre visible
 // ─────────────────────────────────────────────────────────────────
 class _ExerciseCard extends StatelessWidget {
-  final ExerciseItem exercise;
-  final Color        muscleColor;
-  final bool         selected;
-  final VoidCallback onToggle;
+  final ExerciseItem           exercise;
+  final Color                  muscleColor;
+  final bool                   selected;
+  final VoidCallback           onToggle;
+  final ValueNotifier<String?> activeVideoNotifier;
 
   const _ExerciseCard({required this.exercise, required this.muscleColor,
-    required this.selected, required this.onToggle});
+    required this.selected, required this.onToggle,
+    required this.activeVideoNotifier});
 
   @override
   Widget build(BuildContext context) {
@@ -914,9 +935,10 @@ class _ExerciseCard extends StatelessWidget {
               builder: (ctx, box) {
                 final sz = box.maxWidth * 0.68;
                 return ExerciseAnimationWidget(
-                  exerciseId: ex.id,
-                  color: col,
-                  size: sz,
+                  exerciseId:          ex.id,
+                  color:               col,
+                  size:                sz,
+                  activeVideoNotifier: activeVideoNotifier,
                 );
               },
             )),
