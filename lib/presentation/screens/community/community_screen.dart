@@ -238,20 +238,47 @@ class _FeedTab extends StatefulWidget {
   State<_FeedTab> createState() => _FeedTabState();
 }
 
-class _FeedTabState extends State<_FeedTab> {
-  bool _storiesVisible = true;
+class _FeedTabState extends State<_FeedTab>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _storiesCtrl;
+  late final Animation<double> _sizeFactor;
+  late final Animation<double> _fadeAnim;
+  late final Animation<Offset> _slideAnim;
 
-  // 98 (StoriesRow) + 1 (Divider) + 4 (SizedBox) = 103
-  static const double _storiesHeight = 103.0;
+  @override
+  void initState() {
+    super.initState();
+    _storiesCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+    );
+    // forward = ocultar, reverse = mostrar
+    _sizeFactor = Tween(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _storiesCtrl,
+          curve: Curves.easeInCubic, reverseCurve: Curves.easeOutCubic),
+    );
+    _fadeAnim = Tween(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _storiesCtrl,
+          curve: const Interval(0.0, 0.7, curve: Curves.easeIn),
+          reverseCurve: const Interval(0.3, 1.0, curve: Curves.easeOut)),
+    );
+    _slideAnim = Tween<Offset>(begin: Offset.zero, end: const Offset(0, -0.6))
+        .animate(CurvedAnimation(parent: _storiesCtrl,
+            curve: Curves.easeInCubic, reverseCurve: Curves.easeOutCubic));
+  }
+
+  @override
+  void dispose() {
+    _storiesCtrl.dispose();
+    super.dispose();
+  }
 
   void _onScrollUpdate(ScrollUpdateNotification n) {
     final delta = n.scrollDelta ?? 0;
-    // Ocultar al bajar (delta > 0) pasado los primeros 20px
-    if (delta > 1 && _storiesVisible && n.metrics.pixels > 20) {
-      setState(() => _storiesVisible = false);
-    // Mostrar al subir (delta < 0) solo si el desplazamiento es notable
-    } else if (delta < -3 && !_storiesVisible) {
-      setState(() => _storiesVisible = true);
+    if (delta > 1 && n.metrics.pixels > 20 && _storiesCtrl.isDismissed) {
+      _storiesCtrl.forward();
+    } else if (delta < -3 && _storiesCtrl.isCompleted) {
+      _storiesCtrl.reverse();
     }
   }
 
@@ -259,27 +286,30 @@ class _FeedTabState extends State<_FeedTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // ── Fila de historias (se oculta al hacer scroll hacia abajo) ──
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
-          height: _storiesVisible ? _storiesHeight : 0,
-          child: ClipRect(
-            child: Consumer<StoriesProvider>(
-              builder: (ctx, sp, _) => Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  StoriesRow(
-                    groups:               sp.groups,
-                    isLoading:            sp.isLoading,
-                    currentUserId:        widget.currentUserId,
-                    currentUserName:      widget.currentUserName,
-                    currentUserInitials:  widget.currentUserInitials,
-                    currentUserAvatarUrl: widget.currentUserAvatarUrl,
-                  ),
-                  const Divider(height: 1, thickness: 0.5, color: AppColors.divider),
-                  const SizedBox(height: 4),
-                ],
+        // ── Fila de historias (fade + slide + colapso al hacer scroll) ──
+        SizeTransition(
+          sizeFactor: _sizeFactor,
+          axisAlignment: -1,
+          child: SlideTransition(
+            position: _slideAnim,
+            child: FadeTransition(
+              opacity: _fadeAnim,
+              child: Consumer<StoriesProvider>(
+                builder: (ctx, sp, _) => Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    StoriesRow(
+                      groups:               sp.groups,
+                      isLoading:            sp.isLoading,
+                      currentUserId:        widget.currentUserId,
+                      currentUserName:      widget.currentUserName,
+                      currentUserInitials:  widget.currentUserInitials,
+                      currentUserAvatarUrl: widget.currentUserAvatarUrl,
+                    ),
+                    const Divider(height: 1, thickness: 0.5, color: AppColors.divider),
+                    const SizedBox(height: 4),
+                  ],
+                ),
               ),
             ),
           ),
