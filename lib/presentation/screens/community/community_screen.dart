@@ -239,30 +239,20 @@ class _FeedTab extends StatefulWidget {
 }
 
 class _FeedTabState extends State<_FeedTab> {
-  final _scrollCtrl = ScrollController();
   bool _storiesVisible = true;
-  double _lastOffset = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    _scrollCtrl.addListener(_onScroll);
-  }
+  // 98 (StoriesRow) + 1 (Divider) + 4 (SizedBox) = 103
+  static const double _storiesHeight = 103.0;
 
-  @override
-  void dispose() {
-    _scrollCtrl.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    final offset = _scrollCtrl.offset;
-    if (offset > _lastOffset && offset > 10 && _storiesVisible) {
+  void _onScrollUpdate(ScrollUpdateNotification n) {
+    final delta = n.scrollDelta ?? 0;
+    // Ocultar al bajar (delta > 0) pasado los primeros 20px
+    if (delta > 1 && _storiesVisible && n.metrics.pixels > 20) {
       setState(() => _storiesVisible = false);
-    } else if (offset < _lastOffset && !_storiesVisible) {
+    // Mostrar al subir (delta < 0) solo si el desplazamiento es notable
+    } else if (delta < -3 && !_storiesVisible) {
       setState(() => _storiesVisible = true);
     }
-    _lastOffset = offset;
   }
 
   @override
@@ -271,9 +261,9 @@ class _FeedTabState extends State<_FeedTab> {
       children: [
         // ── Fila de historias (se oculta al hacer scroll hacia abajo) ──
         AnimatedContainer(
-          duration: const Duration(milliseconds: 280),
+          duration: const Duration(milliseconds: 250),
           curve: Curves.easeInOut,
-          height: _storiesVisible ? 107 : 0,
+          height: _storiesVisible ? _storiesHeight : 0,
           child: ClipRect(
             child: Consumer<StoriesProvider>(
               builder: (ctx, sp, _) => Column(
@@ -296,53 +286,58 @@ class _FeedTabState extends State<_FeedTab> {
         ),
         // ── Posts ──
         Expanded(
-          child: Consumer<CommunityProvider>(
-            builder: (context, provider, _) {
-              if (provider.loadingPosts && provider.posts.isEmpty) {
-                return const Center(
-                  child: CircularProgressIndicator(color: AppColors.primary),
-                );
-              }
-              if (provider.posts.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.people_outline_rounded,
-                          size: 56, color: AppColors.textMuted),
-                      const SizedBox(height: 12),
-                      Text('Aún no hay publicaciones',
-                          style: AppTextStyles.bodyMedium
-                              .copyWith(color: AppColors.textMuted)),
-                      const SizedBox(height: 6),
-                      Text('¡Sé el primero en compartir algo!',
-                          style: AppTextStyles.caption),
-                    ],
-                  ),
-                );
-              }
-              return RefreshIndicator(
-                color: AppColors.primary,
-                backgroundColor: AppColors.surface,
-                onRefresh: () async {
-                  await provider.loadPosts();
-                  await context.read<StoriesProvider>().load();
-                },
-                child: ListView.separated(
-                  controller: _scrollCtrl,
-                  physics: const AlwaysScrollableScrollPhysics(
-                      parent: BouncingScrollPhysics()),
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: provider.posts.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => _PostCard(
-                    post: provider.posts[i],
-                    currentUserName: widget.currentUserName,
-                    currentUserId: widget.currentUserId,
-                  ),
-                ),
-              );
+          child: NotificationListener<ScrollUpdateNotification>(
+            onNotification: (n) {
+              _onScrollUpdate(n);
+              return false; // no consumir la notificación
             },
+            child: Consumer<CommunityProvider>(
+              builder: (context, provider, _) {
+                if (provider.loadingPosts && provider.posts.isEmpty) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  );
+                }
+                if (provider.posts.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.people_outline_rounded,
+                            size: 56, color: AppColors.textMuted),
+                        const SizedBox(height: 12),
+                        Text('Aún no hay publicaciones',
+                            style: AppTextStyles.bodyMedium
+                                .copyWith(color: AppColors.textMuted)),
+                        const SizedBox(height: 6),
+                        Text('¡Sé el primero en compartir algo!',
+                            style: AppTextStyles.caption),
+                      ],
+                    ),
+                  );
+                }
+                return RefreshIndicator(
+                  color: AppColors.primary,
+                  backgroundColor: AppColors.surface,
+                  onRefresh: () async {
+                    await provider.loadPosts();
+                    await context.read<StoriesProvider>().load();
+                  },
+                  child: ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics()),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: provider.posts.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) => _PostCard(
+                      post: provider.posts[i],
+                      currentUserName: widget.currentUserName,
+                      currentUserId: widget.currentUserId,
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ],
