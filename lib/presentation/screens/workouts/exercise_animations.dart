@@ -39,18 +39,22 @@ String? _videoUrl(String exerciseId) {
 }
 
 // ── Widget principal ──────────────────────────────────────────────
-// Reproduce el video MP4 desde Supabase Storage en loop y sin sonido.
-// Mientras carga o si no existe → stickman como fallback.
+// Muestra el primer frame del video como miniatura estática.
+// El usuario toca para reproducir; tocar otro video pausa el actual.
+// activeVideoNotifier: notifier compartido entre todas las tarjetas
+// del mismo panel para garantizar que solo uno reproduzca a la vez.
 class ExerciseAnimationWidget extends StatefulWidget {
-  final String exerciseId;
-  final Color  color;
-  final double size;
+  final String               exerciseId;
+  final Color                color;
+  final double               size;
+  final ValueNotifier<String?>? activeVideoNotifier;
 
   const ExerciseAnimationWidget({
     super.key,
     required this.exerciseId,
     required this.color,
     this.size = 120,
+    this.activeVideoNotifier,
   });
 
   @override
@@ -59,12 +63,28 @@ class ExerciseAnimationWidget extends StatefulWidget {
 
 class _ExerciseAnimationWidgetState extends State<ExerciseAnimationWidget> {
   VideoPlayerController? _controller;
-  bool _hasError = false;
+  bool _hasError  = false;
+  bool _isPlaying = false;
 
   @override
   void initState() {
     super.initState();
+    widget.activeVideoNotifier?.addListener(_onActiveChanged);
     _initVideo();
+  }
+
+  @override
+  void dispose() {
+    widget.activeVideoNotifier?.removeListener(_onActiveChanged);
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  void _onActiveChanged() {
+    if (widget.activeVideoNotifier?.value != widget.exerciseId && _isPlaying) {
+      _controller?.pause();
+      if (mounted) setState(() => _isPlaying = false);
+    }
   }
 
   Future<void> _initVideo() async {
@@ -80,7 +100,8 @@ class _ExerciseAnimationWidgetState extends State<ExerciseAnimationWidget> {
       }
       controller.setLooping(true);
       controller.setVolume(0);
-      controller.play();
+      // Queda pausado en el primer frame como miniatura
+      await controller.seekTo(Duration.zero);
       setState(() => _controller = controller);
     } catch (_) {
       controller.dispose();
@@ -88,10 +109,18 @@ class _ExerciseAnimationWidgetState extends State<ExerciseAnimationWidget> {
     }
   }
 
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
+  void _togglePlay() {
+    final ctrl = _controller;
+    if (ctrl == null || !ctrl.value.isInitialized) return;
+
+    if (_isPlaying) {
+      ctrl.pause();
+      setState(() => _isPlaying = false);
+    } else {
+      widget.activeVideoNotifier?.value = widget.exerciseId;
+      ctrl.play();
+      setState(() => _isPlaying = true);
+    }
   }
 
   @override
@@ -108,17 +137,39 @@ class _ExerciseAnimationWidgetState extends State<ExerciseAnimationWidget> {
     final ctrl = _controller;
     if (ctrl == null || !ctrl.value.isInitialized) return stickman;
 
-    return SizedBox(
-      width:  widget.size,
-      height: widget.size * 1.15,
-      child: ClipRect(
-        child: FittedBox(
-          fit: BoxFit.contain,
-          child: SizedBox(
-            width:  ctrl.value.size.width,
-            height: ctrl.value.size.height,
-            child:  VideoPlayer(ctrl),
-          ),
+    return GestureDetector(
+      onTap: _togglePlay,
+      child: SizedBox(
+        width:  widget.size,
+        height: widget.size * 1.15,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            ClipRect(
+              child: FittedBox(
+                fit: BoxFit.contain,
+                child: SizedBox(
+                  width:  ctrl.value.size.width,
+                  height: ctrl.value.size.height,
+                  child:  VideoPlayer(ctrl),
+                ),
+              ),
+            ),
+            if (!_isPlaying)
+              Container(
+                width:  widget.size * 0.38,
+                height: widget.size * 0.38,
+                decoration: BoxDecoration(
+                  color:  Colors.black.withOpacity(0.55),
+                  shape:  BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.play_arrow_rounded,
+                  color: widget.color,
+                  size:  widget.size * 0.24,
+                ),
+              ),
+          ],
         ),
       ),
     );
