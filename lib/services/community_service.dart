@@ -84,6 +84,36 @@ class CommunityPost {
   }
 }
 
+class LikerInfo {
+  final String userId;
+  final String userName;
+  final String userInitials;
+  final String? avatarUrl;
+
+  const LikerInfo({
+    required this.userId,
+    required this.userName,
+    required this.userInitials,
+    this.avatarUrl,
+  });
+
+  static String _initials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+  }
+
+  factory LikerInfo.fromProfile(Map<String, dynamic> p) {
+    final name = p['name'] as String? ?? 'Usuario';
+    return LikerInfo(
+      userId:       p['uid'] as String,
+      userName:     name,
+      userInitials: _initials(name),
+      avatarUrl:    p['avatar_url'] as String?,
+    );
+  }
+}
+
 class CommunityComment {
   final String id;
   final String userId;
@@ -334,6 +364,29 @@ class CommunityService {
       return true;
     } catch (_) {
       return false;
+    }
+  }
+
+  Future<List<LikerInfo>> fetchLikers(String postId) async {
+    try {
+      final likes = await _db
+          .from('post_likes')
+          .select('user_id')
+          .eq('post_id', postId);
+      final uids = (likes as List)
+          .map((l) => l['user_id'] as String)
+          .toList();
+      if (uids.isEmpty) return [];
+      final profiles = await _db
+          .from('user_profiles')
+          .select('uid, name, avatar_url')
+          .inFilter('uid', uids);
+      return [
+        for (final p in profiles as List)
+          LikerInfo.fromProfile(p as Map<String, dynamic>),
+      ];
+    } catch (_) {
+      return [];
     }
   }
 

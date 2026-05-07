@@ -383,6 +383,15 @@ class _PostCard extends StatelessWidget {
     );
   }
 
+  void _showLikers(BuildContext context, CommunityPost post) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _LikersSheet(post: post),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.read<CommunityProvider>();
@@ -518,14 +527,36 @@ class _PostCard extends StatelessWidget {
           // Actions
           Row(
             children: [
-              _ActionButton(
-                icon: post.likedByMe
-                    ? Icons.favorite_rounded
-                    : Icons.favorite_border_rounded,
-                label: '${post.likesCount}',
-                color:
-                    post.likedByMe ? AppColors.error : AppColors.textMuted,
+              // ── Likes: corazón (toggle) + número (ver quién dio like) ──
+              GestureDetector(
                 onTap: () => provider.toggleLike(post.id),
+                child: Icon(
+                  post.likedByMe
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  size: 18,
+                  color: post.likedByMe ? AppColors.error : AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(width: 5),
+              GestureDetector(
+                onTap: post.likesCount > 0
+                    ? () => _showLikers(context, post)
+                    : () => provider.toggleLike(post.id),
+                child: Text(
+                  '${post.likesCount}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: post.likedByMe ? AppColors.error : AppColors.textMuted,
+                    decoration: post.likesCount > 0
+                        ? TextDecoration.underline
+                        : TextDecoration.none,
+                    decorationColor: post.likedByMe
+                        ? AppColors.error
+                        : AppColors.textMuted,
+                  ),
+                ),
               ),
               const SizedBox(width: 20),
               _ActionButton(
@@ -943,6 +974,135 @@ class _PublishSheetState extends State<_PublishSheet> {
 }
 
 // ─── Comments sheet ───────────────────────────────────────────────────────────
+
+// ─── Likers sheet ─────────────────────────────────────────────────────────────
+
+class _LikersSheet extends StatelessWidget {
+  final CommunityPost post;
+  const _LikersSheet({required this.post});
+
+  static final _service = CommunityService();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          Container(
+            width: 40, height: 4,
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Title
+          Row(children: [
+            const Icon(Icons.favorite_rounded, color: AppColors.error, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              '${post.likesCount} ${post.likesCount == 1 ? 'like' : 'likes'}',
+              style: AppTextStyles.headingSmall,
+            ),
+          ]),
+          const SizedBox(height: 16),
+          // List
+          FutureBuilder<List<LikerInfo>>(
+            future: _service.fetchLikers(post.id),
+            builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                        color: AppColors.primary, strokeWidth: 2),
+                  ),
+                );
+              }
+              final likers = snap.data ?? [];
+              if (likers.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  child: Center(
+                    child: Text('Nadie ha dado like aún',
+                        style: AppTextStyles.bodyMedium
+                            .copyWith(color: AppColors.textMuted)),
+                  ),
+                );
+              }
+              return ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.5,
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: 24),
+                  itemCount: likers.length,
+                  separatorBuilder: (_, __) =>
+                      const Divider(height: 1, color: AppColors.divider),
+                  itemBuilder: (_, i) {
+                    final liker = likers[i];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Row(children: [
+                        // Avatar
+                        _LikerAvatar(liker: liker),
+                        const SizedBox(width: 12),
+                        // Nombre
+                        Expanded(
+                          child: Text(liker.userName,
+                              style: AppTextStyles.labelLarge),
+                        ),
+                        // Corazón decorativo
+                        const Icon(Icons.favorite_rounded,
+                            color: AppColors.error, size: 14),
+                      ]),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LikerAvatar extends StatelessWidget {
+  final LikerInfo liker;
+  const _LikerAvatar({required this.liker});
+
+  @override
+  Widget build(BuildContext context) {
+    if (liker.avatarUrl != null && liker.avatarUrl!.isNotEmpty) {
+      return CircleAvatar(
+        radius: 20,
+        backgroundImage: NetworkImage(liker.avatarUrl!),
+        backgroundColor: AppColors.surfaceVariant,
+      );
+    }
+    return CircleAvatar(
+      radius: 20,
+      backgroundColor: AppColors.primary.withOpacity(0.15),
+      child: Text(liker.userInitials,
+          style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary)),
+    );
+  }
+}
+
+// ─── Comments sheet ────────────────────────────────────────────────────────────
 
 class _CommentsSheet extends StatefulWidget {
   final CommunityPost post;
