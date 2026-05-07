@@ -446,6 +446,8 @@ class _Step0 extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           _LoginPrompt(),
+          const SizedBox(height: 12),
+          _NotAUserButton(),
           const SizedBox(height: 24),
 
           // Bloque de contacto
@@ -1220,6 +1222,25 @@ class _LoginPrompt extends StatelessWidget {
                 style: AppTextStyles.neonLabel,
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NotAUserButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pop(),
+      child: Center(
+        child: Text(
+          'No soy usuario',
+          style: AppTextStyles.bodySmall.copyWith(
+            color: AppColors.textMuted,
+            decoration: TextDecoration.underline,
+            decorationColor: AppColors.textMuted,
           ),
         ),
       ),
