@@ -72,7 +72,7 @@ workflows:
       cocoapods: default
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.example.gymApp  # Cambia esto por tu bundle ID real
+        bundle_identifier: com.vallejoj.megavital  # Cambia esto por tu bundle ID real
       vars:
         APP_STORE_CONNECT_KEY_IDENTIFIER: $APP_STORE_CONNECT_KEY_IDENTIFIER
         APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
