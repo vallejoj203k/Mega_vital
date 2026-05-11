@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/auth_provider.dart';
 import 'register_screen.dart';
+import 'not_member_screen.dart';
 
 // ─── Landing / Welcome screen ────────────────────────────────────────────────
 
@@ -59,6 +60,38 @@ class _LoginScreenState extends State<LoginScreen>
               CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
           child: child,
         ),
+      ),
+    );
+  }
+
+  void _goToNotMember() {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, a1, a2) => const NotMemberScreen(),
+        transitionsBuilder: (_, anim, __, child) => SlideTransition(
+          position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+              .animate(
+              CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  void _showAccountTypeSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _AccountTypeSheet(
+        onMember: () {
+          Navigator.pop(context);
+          _goToRegister();
+        },
+        onNotMember: () {
+          Navigator.pop(context);
+          _goToNotMember();
+        },
       ),
     );
   }
@@ -169,7 +202,7 @@ class _LoginScreenState extends State<LoginScreen>
                       Expanded(
                         child: _GreenButton(
                           label: 'Crear cuenta',
-                          onTap: _goToRegister,
+                          onTap: _showAccountTypeSheet,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -618,6 +651,133 @@ class _LoginSheetState extends State<_LoginSheet> {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Account type bottom sheet ───────────────────────────────────────────────
+
+class _AccountTypeSheet extends StatelessWidget {
+  final VoidCallback onMember;
+  final VoidCallback onNotMember;
+
+  const _AccountTypeSheet({
+    required this.onMember,
+    required this.onNotMember,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            '¿Ya eres miembro?',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Selecciona una opción para continuar.',
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 28),
+
+          // Miembro del gimnasio
+          GestureDetector(
+            onTap: onMember,
+            child: Container(
+              width: double.infinity,
+              height: 58,
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.3),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Icon(Icons.fitness_center_rounded,
+                      color: AppColors.background, size: 20),
+                  SizedBox(width: 10),
+                  Text(
+                    'Miembro del gimnasio',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.background,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Aún no soy miembro
+          GestureDetector(
+            onTap: onNotMember,
+            child: Container(
+              width: double.infinity,
+              height: 58,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border, width: 0.5),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Icon(Icons.person_add_alt_1_rounded,
+                      color: AppColors.textSecondary, size: 20),
+                  SizedBox(width: 10),
+                  Text(
+                    'Aún no soy miembro',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
