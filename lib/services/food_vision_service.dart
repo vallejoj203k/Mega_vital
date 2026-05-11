@@ -36,14 +36,37 @@ class VisionFoodItem {
   double get carbs    => double.parse((carbsPer100g   * estimatedWeightG / 100).toStringAsFixed(1));
   double get fat      => double.parse((fatPer100g     * estimatedWeightG / 100).toStringAsFixed(1));
 
-  factory VisionFoodItem.fromMap(Map<String, dynamic> m) => VisionFoodItem(
-    name:             m['name']                ?? 'Alimento',
-    estimatedWeightG: (m['estimated_weight_g'] ?? 100) as int,
-    caloriesPer100g:  (m['calories_per_100g']  ?? 0)   as int,
-    proteinPer100g:   (m['protein_per_100g']   ?? 0.0).toDouble(),
-    carbsPer100g:     (m['carbs_per_100g']     ?? 0.0).toDouble(),
-    fatPer100g:       (m['fat_per_100g']       ?? 0.0).toDouble(),
-  );
+  factory VisionFoodItem.fromMap(Map<String, dynamic> m) {
+    final weight   = (m['estimated_weight_g'] as num?)?.round() ?? 100;
+    final cal100   = (m['calories_per_100g']  as num?)?.round() ?? 0;
+    final prot100  = (m['protein_per_100g']   as num?)?.toDouble() ?? 0.0;
+    final carb100  = (m['carbs_per_100g']     as num?)?.toDouble() ?? 0.0;
+    final fat100   = (m['fat_per_100g']       as num?)?.toDouble() ?? 0.0;
+
+    // Clamp values to physiologically plausible ranges
+    final safeWeight  = weight.clamp(5, 2000);
+    final safeCal     = cal100.clamp(0, 900);
+    final safeProt    = prot100.clamp(0.0, 100.0);
+    final safeCarb    = carb100.clamp(0.0, 100.0);
+    final safeFat     = fat100.clamp(0.0, 100.0);
+
+    // If macros imply significantly different calories, trust the macro-derived value
+    final macroCal = (safeProt * 4 + safeCarb * 4 + safeFat * 9).round();
+    final resolvedCal = (safeCal > 0 && macroCal > 0)
+        ? ((safeCal - macroCal).abs() / macroCal > 0.25 ? macroCal : safeCal)
+        : (safeCal > 0 ? safeCal : macroCal);
+
+    return VisionFoodItem(
+      name:             (m['name'] as String?)?.trim().isNotEmpty == true
+                            ? m['name'] as String
+                            : 'Alimento',
+      estimatedWeightG: safeWeight,
+      caloriesPer100g:  resolvedCal,
+      proteinPer100g:   safeProt,
+      carbsPer100g:     safeCarb,
+      fatPer100g:       safeFat,
+    );
+  }
 }
 
 // ── Resultado del análisis ─────────────────────────────────────────
@@ -75,7 +98,7 @@ class FoodVisionService {
   static const _groqModel = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
   static const _prompt = '''
-Analiza la imagen de comida. Identifica CADA alimento visible.
+Eres un nutricionista experto analizando una foto de comida. Identifica CADA alimento visible y estima su valor nutricional con precisión.
 
 Devuelve ÚNICAMENTE un JSON válido con este formato exacto (sin texto adicional, sin markdown):
 {
@@ -92,11 +115,36 @@ Devuelve ÚNICAMENTE un JSON válido con este formato exacto (sin texto adiciona
   "notes": "Observación breve sobre la porción"
 }
 
-Reglas:
-- estimated_weight_g: peso estimado de ESA PORCIÓN visible en la foto
-- calories_per_100g: calorías por cada 100g del alimento
-- Nombres en español (arepa, pollo, arroz, café, huevo, etc.)
-- Sé específico: "pechuga de pollo a la plancha" no solo "carne"
+REGLAS CRÍTICAS:
+1. estimated_weight_g: peso de ESA PORCIÓN visible. Guía de porciones típicas:
+   - Un filete/pechuga individual: 120-200g
+   - Una taza de arroz/pasta cocida: 150-200g
+   - Un huevo entero: 50-60g
+   - Una arepa mediana: 80-120g
+   - Un vaso de jugo/leche: 200-250g
+   - Una papa mediana: 130-180g
+
+2. calories_per_100g: usa valores de referencia reales por 100g:
+   - Pechuga de pollo a la plancha: ~165 kcal
+   - Arroz blanco cocido: ~130 kcal
+   - Carne de res magra: ~170-200 kcal
+   - Huevo entero: ~155 kcal
+   - Aguacate: ~160 kcal
+   - Arepa de maíz: ~175-200 kcal
+   - Papa cocida: ~87 kcal
+   - Frijoles/lentejas cocidos: ~120-130 kcal
+   - Pan blanco: ~265 kcal
+   - Aceite/mantequilla: ~700-900 kcal
+   - Frutas frescas: ~40-80 kcal
+   - Verduras crudas: ~15-40 kcal
+
+3. COHERENCIA DE MACROS (OBLIGATORIO): Las calorías deben ser coherentes con los macros.
+   Verifica: (protein_per_100g × 4) + (carbs_per_100g × 4) + (fat_per_100g × 9) ≈ calories_per_100g (±15%)
+   Si no cuadra, ajusta los macros antes de responder.
+
+4. Nombres en español, específicos: "pechuga de pollo a la plancha" no solo "pollo".
+
+5. NUNCA inventes alimentos que no se vean claramente en la foto.
 ''';
 
   // ── Punto de entrada público ───────────────────────────────────
