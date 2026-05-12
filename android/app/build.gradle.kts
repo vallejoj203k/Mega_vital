@@ -1,8 +1,17 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Load key.properties if it exists (local builds)
+val keyPropertiesFile = rootProject.file("key.properties")
+val keyProperties = Properties()
+if (keyPropertiesFile.exists()) {
+    keyPropertiesFile.inputStream().use { keyProperties.load(it) }
 }
 
 android {
@@ -21,16 +30,22 @@ android {
 
     signingConfigs {
         create("release") {
-            val keystoreFile = System.getenv("CM_KEYSTORE_PATH")
-            val keystorePassword = System.getenv("CM_KEYSTORE_PASSWORD")
-            val keyAlias = System.getenv("CM_KEY_ALIAS")
-            val keyPassword = System.getenv("CM_KEY_PASSWORD")
+            // CI (Codemagic) takes priority via env vars; fallback to key.properties for local builds
+            val ciKeystoreFile = System.getenv("CM_KEYSTORE_PATH")
+            val ciKeystorePassword = System.getenv("CM_KEYSTORE_PASSWORD")
+            val ciKeyAlias = System.getenv("CM_KEY_ALIAS")
+            val ciKeyPassword = System.getenv("CM_KEY_PASSWORD")
 
-            if (keystoreFile != null && keystorePassword != null && keyAlias != null && keyPassword != null) {
-                storeFile = file(keystoreFile)
-                storePassword = keystorePassword
-                this.keyAlias = keyAlias
-                this.keyPassword = keyPassword
+            if (ciKeystoreFile != null && ciKeystorePassword != null && ciKeyAlias != null && ciKeyPassword != null) {
+                storeFile = file(ciKeystoreFile)
+                storePassword = ciKeystorePassword
+                this.keyAlias = ciKeyAlias
+                this.keyPassword = ciKeyPassword
+            } else if (keyPropertiesFile.exists()) {
+                storeFile = file(keyProperties["storeFile"] as String)
+                storePassword = keyProperties["storePassword"] as String
+                this.keyAlias = keyProperties["keyAlias"] as String
+                this.keyPassword = keyProperties["keyPassword"] as String
             }
         }
     }
@@ -45,8 +60,8 @@ android {
 
     buildTypes {
         release {
-            val hasKeystore = System.getenv("CM_KEYSTORE_PATH") != null
-            signingConfig = if (hasKeystore) {
+            val hasReleaseSigning = System.getenv("CM_KEYSTORE_PATH") != null || keyPropertiesFile.exists()
+            signingConfig = if (hasReleaseSigning) {
                 signingConfigs.getByName("release")
             } else {
                 signingConfigs.getByName("debug")
