@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/constants/app_theme_colors.dart';
 import '../../../core/mock/mock_data.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/nav_provider.dart';
@@ -382,9 +383,9 @@ class _HomeScreenState extends State<HomeScreen>
 class _LoadingHome extends StatelessWidget {
   const _LoadingHome();
   @override
-  Widget build(BuildContext context) => const Scaffold(
-    backgroundColor: AppColors.background,
-    body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AppThemeColors.of(context).background,
+    body: const Center(child: CircularProgressIndicator(color: AppColors.primary)),
   );
 }
 
@@ -392,34 +393,36 @@ class _ErrorHome extends StatelessWidget {
   final VoidCallback onRetry;
   const _ErrorHome({required this.onRetry});
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: AppColors.background,
-    body: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      const Icon(Icons.cloud_off_rounded, color: AppColors.textMuted, size: 48),
-      const SizedBox(height: 16),
-      Text('No se pudo cargar tu perfil',
-          style: AppTextStyles.headingSmall),
-      const SizedBox(height: 8),
-      Text('Verifica tu conexión y vuelve a intentarlo.',
-          style: AppTextStyles.bodyMedium
-              .copyWith(color: AppColors.textSecondary),
-          textAlign: TextAlign.center),
-      const SizedBox(height: 24),
-      GestureDetector(
-        onTap: onRetry,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          decoration: BoxDecoration(
-            gradient: AppColors.primaryGradient,
-            borderRadius: BorderRadius.circular(12),
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return Scaffold(
+      backgroundColor: tc.background,
+      body: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.cloud_off_rounded, color: tc.textMuted, size: 48),
+        const SizedBox(height: 16),
+        Text('No se pudo cargar tu perfil',
+            style: AppTextStyles.headingSmallOf(context)),
+        const SizedBox(height: 8),
+        Text('Verifica tu conexión y vuelve a intentarlo.',
+            style: AppTextStyles.bodyMediumOf(context),
+            textAlign: TextAlign.center),
+        const SizedBox(height: 24),
+        GestureDetector(
+          onTap: onRetry,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text('Reintentar',
+                style: AppTextStyles.labelLargeOf(context)
+                    .copyWith(color: tc.background)),
           ),
-          child: Text('Reintentar',
-              style: AppTextStyles.labelLarge
-                  .copyWith(color: AppColors.background)),
         ),
-      ),
-    ])),
-  );
+      ])),
+    );
+  }
 }
 
 // ── Top bar ───────────────────────────────────────────────────────
@@ -436,6 +439,7 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
     final isDark = themeProvider.isDark;
+    final tc = AppThemeColors.of(context);
     return Row(children: [
       InitialsAvatar(initials: iniciales, photoUrl: photoUrl),
       const SizedBox(width: 12),
@@ -445,13 +449,13 @@ class _TopBar extends StatelessWidget {
             Icon(saludoIcon, size: 12, color: AppColors.accentOrange),
             const SizedBox(width: 4),
             Text(saludo, style: AppTextStyles.bodySmall
-                .copyWith(color: AppColors.textSecondary)),
+                .copyWith(color: tc.textSecondary)),
           ]),
-          Text(nombre, style: AppTextStyles.headingSmall,
+          Text(nombre, style: AppTextStyles.headingSmallOf(context),
               overflow: TextOverflow.ellipsis),
           const SizedBox(height: 1),
           Text(fecha, style: AppTextStyles.caption
-              .copyWith(color: AppColors.textMuted, fontSize: 11)),
+              .copyWith(color: tc.textMuted, fontSize: 11)),
         ],
       )),
       StreakBadge(days: streak),
@@ -485,11 +489,11 @@ class _TopBar extends StatelessWidget {
       GestureDetector(
         onTap: () {},
         child: Container(width: 40, height: 40,
-            decoration: BoxDecoration(color: AppColors.surfaceVariant,
+            decoration: BoxDecoration(color: tc.surfaceVariant,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border, width: 0.5)),
-            child: const Icon(Icons.notifications_outlined,
-                color: AppColors.textSecondary, size: 20)),
+                border: Border.all(color: tc.border, width: 0.5)),
+            child: Icon(Icons.notifications_outlined,
+                color: tc.textSecondary, size: 20)),
       ),
     ]);
   }
@@ -505,7 +509,9 @@ class _WelcomeCard extends StatelessWidget {
   String get _primerNombre => nombre.trim().split(' ').first;
 
   @override
-  Widget build(BuildContext context) => DarkCard(
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return DarkCard(
     padding: const EdgeInsets.all(20),
     gradient: const LinearGradient(
         colors: [Color(0xFF0F2318), Color(0xFF0A1A10)],
@@ -518,7 +524,7 @@ class _WelcomeCard extends StatelessWidget {
           const SizedBox(height: 6),
           RichText(text: TextSpan(children: [
             TextSpan(text: 'Hola, $_primerNombre\n',
-                style: AppTextStyles.headingLarge.copyWith(height: 1.3)),
+                style: AppTextStyles.headingLargeOf(context).copyWith(height: 1.3)),
             TextSpan(text: '¡A darle hoy!',
                 style: AppTextStyles.headingMedium
                     .copyWith(color: AppColors.primary, height: 1.3)),

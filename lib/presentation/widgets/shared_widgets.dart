@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
+import '../../core/constants/app_theme_colors.dart';
 
 // ─── Tarjeta oscura base ─────────────────────────────────────
 class DarkCard extends StatelessWidget {
@@ -17,14 +18,15 @@ class DarkCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: padding ?? const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: gradient ?? AppColors.cardGradient,
+          gradient: gradient ?? tc.cardGradient,
           borderRadius: BorderRadius.circular(borderRadius),
-          border: Border.all(color: borderColor ?? AppColors.border, width: 0.5),
+          border: Border.all(color: borderColor ?? tc.border, width: 0.5),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
         ),
         child: child,
@@ -46,10 +48,11 @@ class NeonProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     return LayoutBuilder(builder: (context, constraints) {
       return Stack(children: [
         Container(height: height, decoration: BoxDecoration(
-          color: backgroundColor ?? AppColors.border,
+          color: backgroundColor ?? tc.border,
           borderRadius: BorderRadius.circular(height),
         )),
         AnimatedContainer(
@@ -108,7 +111,7 @@ class SectionHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: AppTextStyles.headingMedium),
+        Text(title, style: AppTextStyles.headingMediumOf(context)),
         if (actionLabel != null)
           GestureDetector(onTap: onAction,
             child: Text(actionLabel!, style: AppTextStyles.neonLabel)),
