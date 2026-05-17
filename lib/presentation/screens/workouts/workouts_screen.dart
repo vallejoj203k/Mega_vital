@@ -1,18 +1,11 @@
 // lib/presentation/screens/workouts/workouts_screen.dart
-// ─────────────────────────────────────────────────────────────────
-// Pantalla de entrenamientos con imágenes anatómicas reales.
-// - Cuerpo humano PNG de alta calidad (frente/espalda)
-// - Regiones musculares táctiles superpuestas
-// - Animación suave: cuerpo desaparece → lista de ejercicios aparece
-// - Ejercicios con animación de movimiento
-// ─────────────────────────────────────────────────────────────────
-
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/constants/app_theme_colors.dart';
 import '../../../core/data/muscle_data.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/workout_log_provider.dart';
@@ -41,7 +34,6 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
   List<SavedRoutine> _routines = [];
   late TabController _tabCtrl;
 
-  // Animaciones
   late AnimationController _bodyCtrl;
   late AnimationController _listCtrl;
   late Animation<double>   _bodyFade;
@@ -120,6 +112,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
 
   void _showSaveDialog() {
     if (_selectedExIds.isEmpty) return;
+    final tc = AppThemeColors.of(context);
     final muscle  = getMuscleById(_selectedMuscleId ?? '');
     final nameCtrl = TextEditingController(text: 'Rutina ${muscle?.name ?? ""}');
     final exList   = _selectedExIds
@@ -131,9 +124,10 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: tc.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Guardar rutina', style: AppTextStyles.headingSmall),
+        title: Text('Guardar rutina',
+            style: AppTextStyles.headingSmall.copyWith(color: tc.textPrimary)),
         content: SizedBox(
           width: double.maxFinite,
           child: SingleChildScrollView(
@@ -141,16 +135,16 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
               TextField(
                 controller: nameCtrl,
                 autofocus: true,
-                style: AppTextStyles.bodyLarge,
+                style: AppTextStyles.bodyLarge.copyWith(color: tc.textPrimary),
                 cursorColor: AppColors.primary,
                 decoration: InputDecoration(
                   labelText: 'Nombre de la rutina',
-                  labelStyle: AppTextStyles.bodyMedium,
-                  filled: true, fillColor: AppColors.surfaceVariant,
+                  labelStyle: AppTextStyles.bodyMedium.copyWith(color: tc.textSecondary),
+                  filled: true, fillColor: tc.surfaceVariant,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
+                      borderSide: BorderSide(color: tc.border, width: 0.5)),
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
+                      borderSide: BorderSide(color: tc.border, width: 0.5)),
                   focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -160,18 +154,17 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text('Peso por ejercicio (opcional)',
-                    style: AppTextStyles.caption
-                        .copyWith(color: AppColors.textMuted)),
+                    style: AppTextStyles.caption.copyWith(color: tc.textMuted)),
               ),
               const SizedBox(height: 8),
               ...exList.map((ex) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(children: [
-                  Icon(ex.icon, size: 14, color: AppColors.textMuted),
+                  Icon(ex.icon, size: 14, color: tc.textMuted),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(ex.name,
-                        style: AppTextStyles.caption,
+                        style: AppTextStyles.caption.copyWith(color: tc.textPrimary),
                         overflow: TextOverflow.ellipsis),
                   ),
                   const SizedBox(width: 8),
@@ -180,21 +173,21 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
                     child: TextField(
                       controller: weightCtrls[ex.id],
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      style: AppTextStyles.caption.copyWith(color: AppColors.textPrimary),
+                      style: AppTextStyles.caption.copyWith(color: tc.textPrimary),
                       cursorColor: AppColors.primary,
                       textAlign: TextAlign.center,
                       decoration: InputDecoration(
                         hintText: '0',
-                        hintStyle: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                        hintStyle: AppTextStyles.caption.copyWith(color: tc.textMuted),
                         suffixText: 'kg',
-                        suffixStyle: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                        suffixStyle: AppTextStyles.caption.copyWith(color: tc.textMuted),
                         filled: true,
-                        fillColor: AppColors.surfaceVariant,
+                        fillColor: tc.surfaceVariant,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
+                            borderSide: BorderSide(color: tc.border, width: 0.5)),
                         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
+                            borderSide: BorderSide(color: tc.border, width: 0.5)),
                         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8),
                             borderSide: const BorderSide(color: AppColors.primary, width: 1)),
                       ),
@@ -208,7 +201,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+            child: Text('Cancelar', style: TextStyle(color: tc.textSecondary)),
           ),
           TextButton(
             onPressed: () async {
@@ -234,7 +227,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
                 setState(() => _selectedExIds.clear());
               }
             },
-            child: Text('Guardar',
+            child: const Text('Guardar',
                 style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
           ),
         ],
@@ -245,6 +238,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final tc = AppThemeColors.of(context);
     final muscle    = _selectedMuscleId != null ? getMuscleById(_selectedMuscleId!) : null;
     final exercises = _selectedMuscleId != null
         ? exercisesForMuscle(_selectedMuscleId!) : <ExerciseItem>[];
@@ -253,20 +247,21 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
         context.watch<AuthProvider>().profile?.isMale ?? false;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: tc.background,
       body: SafeArea(child: Column(children: [
         // ── Header ────────────────────────────────────────────────
         Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             child: Row(children: [
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Entrenamientos', style: AppTextStyles.displayMedium),
+                Text('Entrenamientos',
+                    style: AppTextStyles.displayMedium.copyWith(color: tc.textPrimary)),
                 AnimatedSwitcher(duration: const Duration(milliseconds: 200),
                     child: Text(
                       key: ValueKey(_selectedMuscleId),
                       _selectedMuscleId == null ? 'Toca un músculo para ver ejercicios'
                           : muscle?.name ?? '',
                       style: AppTextStyles.bodyMedium.copyWith(
-                          color: muscle?.color ?? AppColors.textSecondary),
+                          color: muscle?.color ?? tc.textSecondary),
                     )),
               ])),
               if (_selectedExIds.isNotEmpty)
@@ -281,13 +276,12 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
                           color: AppColors.primary.withOpacity(0.3), blurRadius: 8)],
                     ),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.save_rounded,
-                          color: AppColors.background, size: 14),
+                      Icon(Icons.save_rounded, color: tc.background, size: 14),
                       const SizedBox(width: 6),
                       Text('Guardar ${_selectedExIds.length}',
-                          style: const TextStyle(fontSize: 12,
+                          style: TextStyle(fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.background)),
+                              color: tc.background)),
                     ]),
                   ),
                 ),
@@ -305,7 +299,6 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
           children: [
             // ── Tab Cuerpo ────────────────────────────────────────
             Stack(children: [
-              // Cuerpo anatómico
               FadeTransition(opacity: _bodyFade,
                 child: ScaleTransition(scale: _bodyScale,
                   child: _AnatomyBody(
@@ -317,7 +310,6 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
                   ),
                 ),
               ),
-              // Lista de ejercicios
               if (_selectedMuscleId != null)
                 FadeTransition(opacity: _listFade,
                   child: SlideTransition(position: _listSlide,
@@ -361,20 +353,18 @@ class _AnatomyBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Músculo activo (si lo hay)
+    final tc = AppThemeColors.of(context);
     final muscle = selectedMuscleId != null
         ? getMuscleById(selectedMuscleId!) : null;
 
     return Column(children: [
-      // Barra superior: vista + voltear
       Padding(padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(children: [
-            // Badge frontal/posterior
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: tc.surface,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 0.5),
               ),
@@ -392,22 +382,20 @@ class _AnatomyBody extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                   decoration: BoxDecoration(
-                      color: AppColors.surfaceVariant,
+                      color: tc.surfaceVariant,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.border, width: 0.5)),
+                      border: Border.all(color: tc.border, width: 0.5)),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.flip_rounded,
-                        size: 13, color: AppColors.textSecondary),
+                    Icon(Icons.flip_rounded, size: 13, color: tc.textSecondary),
                     const SizedBox(width: 6),
-                    Text('Voltear', style: AppTextStyles.caption),
+                    Text('Voltear',
+                        style: AppTextStyles.caption.copyWith(color: tc.textSecondary)),
                   ]),
                 )),
           ])),
       const SizedBox(height: 8),
 
-      // Imagen del cuerpo + overlay de regiones
       Expanded(child: LayoutBuilder(builder: (ctx, constraints) {
-        // La imagen es ~270×470, mantenemos esa proporción
         const imgW = 270.0;
         const imgH = 470.0;
         final aspect = imgW / imgH;
@@ -422,7 +410,6 @@ class _AnatomyBody extends StatelessWidget {
         }
 
         return Stack(alignment: Alignment.center, children: [
-          // ── Imagen PNG anatómica (varía según género del perfil) ──
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 350),
             child: Image.asset(
@@ -440,11 +427,9 @@ class _AnatomyBody extends StatelessWidget {
             ),
           ),
 
-          // ── Overlay de regiones musculares ─────────────────────
           SizedBox(width: dispW, height: dispH,
             child: GestureDetector(
               onTapDown: (d) {
-                // Convertir tap a coordenadas de imagen (imgW × imgH)
                 final lx = d.localPosition.dx / dispW * imgW;
                 final ly = d.localPosition.dy / dispH * imgH;
                 final id = _findMuscle(lx, ly, isFront);
@@ -454,34 +439,31 @@ class _AnatomyBody extends StatelessWidget {
                 painter: _MuscleOverlayPainter(
                   isFront:          isFront,
                   selectedMuscleId: selectedMuscleId,
-                  // Pasa el tamaño real para escalar los paths
                   dispW: dispW, dispH: dispH,
                 ),
               ),
             ),
           ),
 
-          // ── Hint ───────────────────────────────────────────────
           Positioned(bottom: 4, child: AnimatedOpacity(
             opacity: selectedMuscleId == null ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 200),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                  color: AppColors.surface.withOpacity(0.9),
+                  color: tc.surface.withOpacity(0.9),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.border, width: 0.5)),
+                  border: Border.all(color: tc.border, width: 0.5)),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 const Icon(Icons.touch_app_rounded,
                     size: 12, color: AppColors.primary),
                 const SizedBox(width: 6),
                 Text('Toca un grupo muscular',
-                    style: AppTextStyles.caption),
+                    style: AppTextStyles.caption.copyWith(color: tc.textSecondary)),
               ]),
             ),
           )),
 
-          // ── Badge del músculo seleccionado ─────────────────────
           if (muscle != null)
             Positioned(bottom: 4, child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -490,8 +472,7 @@ class _AnatomyBody extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: muscle.color.withOpacity(0.5), width: 1)),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.fitness_center_rounded,
-                    size: 12, color: muscle.color),
+                Icon(Icons.fitness_center_rounded, size: 12, color: muscle.color),
                 const SizedBox(width: 6),
                 Text(muscle.name, style: TextStyle(
                     fontSize: 12, fontWeight: FontWeight.w700,
@@ -501,205 +482,90 @@ class _AnatomyBody extends StatelessWidget {
         ]);
       })),
 
-      // Leyenda
-      _MuscleLegend(isFront: isFront, onTap: onMuscleTap,
-          selected: selectedMuscleId),
+      _MuscleLegend(isFront: isFront, onTap: onMuscleTap, selected: selectedMuscleId),
     ]);
   }
 }
 
 // ─────────────────────────────────────────────────────────────────
 // PATHS CALIBRADOS A LA IMAGEN PNG (espacio 270×470)
-// Referencia visual: boxes de colores sobre figura anatómica
 // ─────────────────────────────────────────────────────────────────
 
-// FRENTE ──────────────────────────────────────────────────────────
-
-// PECHO
 Path _imgPecho() => Path()
-  ..moveTo(113, 101)
-  ..lineTo(177, 98)
-  ..lineTo(186, 147)
-  ..lineTo(109, 149)..close();
+  ..moveTo(113, 101)..lineTo(177, 98)..lineTo(186, 147)..lineTo(109, 149)..close();
 
-// HOMBROS
 Path _imgHombros() {
   final p = Path();
-  // Izquierda
-  p.moveTo(85, 84);
-  p.lineTo(118, 84);
-  p.lineTo(105, 120);
-  p.lineTo(59, 138);
-  p.close();
-  // Derecha
-  p.moveTo(178, 84);
-  p.lineTo(218, 92);
-  p.lineTo(229, 141);
-  p.lineTo(187, 114);
-  p.close();
+  p.moveTo(85, 84); p.lineTo(118, 84); p.lineTo(105, 120); p.lineTo(59, 138); p.close();
+  p.moveTo(178, 84); p.lineTo(218, 92); p.lineTo(229, 141); p.lineTo(187, 114); p.close();
   return p;
 }
 
-// BÍCEPS
 Path _imgBiceps() {
   final p = Path();
-  // Izquierda
-  p.moveTo(70, 142);
-  p.lineTo(109, 122);
-  p.lineTo(102, 170);
-  p.lineTo(66, 170);
-  p.close();
-  // Derecha
-  p.moveTo(182, 117);
-  p.lineTo(218, 136);
-  p.lineTo(227, 165);
-  p.lineTo(194, 177);
-  p.close();
+  p.moveTo(70, 142); p.lineTo(109, 122); p.lineTo(102, 170); p.lineTo(66, 170); p.close();
+  p.moveTo(182, 117); p.lineTo(218, 136); p.lineTo(227, 165); p.lineTo(194, 177); p.close();
   return p;
 }
 
-// ABDOMEN
 Path _imgAbdomen() => Path()
-  ..moveTo(114, 152)
-  ..lineTo(178, 151)
-  ..lineTo(173, 226)
-  ..lineTo(116, 222)..close();
+  ..moveTo(114, 152)..lineTo(178, 151)..lineTo(173, 226)..lineTo(116, 222)..close();
 
-
-// CUÁDRICEPS
 Path _imgCuadriceps() {
   final p = Path();
-  // Izquierda
-  p.moveTo(95, 200);
-  p.lineTo(150, 252);
-  p.lineTo(133, 334);
-  p.lineTo(89, 318);
-  p.close();
-  // Derecha
-  p.moveTo(150, 252);
-  p.lineTo(193, 199);
-  p.lineTo(210, 310);
-  p.lineTo(156, 339);
-  p.close();
+  p.moveTo(95, 200); p.lineTo(150, 252); p.lineTo(133, 334); p.lineTo(89, 318); p.close();
+  p.moveTo(150, 252); p.lineTo(193, 199); p.lineTo(210, 310); p.lineTo(156, 339); p.close();
   return p;
 }
 
-// GEMELOS
 Path _imgGemelos() {
   final p = Path();
-  // Izquierda
-  p.moveTo(101, 323);
-  p.lineTo(127, 347);
-  p.lineTo(115, 424);
-  p.lineTo(89, 424);
-  p.close();
-  // Derecha
-  p.moveTo(164, 344);
-  p.lineTo(205, 320);
-  p.lineTo(201, 429);
-  p.lineTo(173, 427);
-  p.close();
+  p.moveTo(101, 323); p.lineTo(127, 347); p.lineTo(115, 424); p.lineTo(89, 424); p.close();
+  p.moveTo(164, 344); p.lineTo(205, 320); p.lineTo(201, 429); p.lineTo(173, 427); p.close();
   return p;
 }
 
-// ESPALDA ─────────────────────────────────────────────────────────
-
-// ESPALDA ALTA
 Path _imgEspaldaAlta() => Path()
-  ..moveTo(111, 70)
-  ..lineTo(185, 70)
-  ..lineTo(188, 116)
-  ..lineTo(101, 121)..close();
+  ..moveTo(111, 70)..lineTo(185, 70)..lineTo(188, 116)..lineTo(101, 121)..close();
 
-// DORSALES
 Path _imgDorsales() {
   final p = Path();
-  // izq
-  p.moveTo(98, 125);
-  p.lineTo(143, 123);
-  p.lineTo(140, 153);
-  p.lineTo(99, 158);
-  p.close();
-  // der
-  p.moveTo(151, 124);
-  p.lineTo(186, 121);
-  p.lineTo(187, 152);
-  p.lineTo(149, 152);
-  p.close();
+  p.moveTo(98, 125); p.lineTo(143, 123); p.lineTo(140, 153); p.lineTo(99, 158); p.close();
+  p.moveTo(151, 124); p.lineTo(186, 121); p.lineTo(187, 152); p.lineTo(149, 152); p.close();
   return p;
 }
 
-// TRÍCEPS
 Path _imgTriceps() {
   final p = Path();
-  // izq
-  p.moveTo(83, 113);
-  p.lineTo(103, 111);
-  p.lineTo(93, 172);
-  p.lineTo(57, 177);
-  p.close();
-  // der
-  p.moveTo(188, 113);
-  p.lineTo(215, 115);
-  p.lineTo(224, 175);
-  p.lineTo(197, 195);
-  p.close();
+  p.moveTo(83, 113); p.lineTo(103, 111); p.lineTo(93, 172); p.lineTo(57, 177); p.close();
+  p.moveTo(188, 113); p.lineTo(215, 115); p.lineTo(224, 175); p.lineTo(197, 195); p.close();
   return p;
 }
 
-// LUMBAR
 Path _imgLumbar() => Path()
-  ..moveTo(101, 162)
-  ..lineTo(186, 159)
-  ..lineTo(191, 198)
-  ..lineTo(98, 199)..close();
+  ..moveTo(101, 162)..lineTo(186, 159)..lineTo(191, 198)..lineTo(98, 199)..close();
 
-// GLÚTEOS
 Path _imgGluteos() => Path()
-  ..moveTo(97, 202)
-  ..lineTo(198, 201)
-  ..lineTo(196, 243)
-  ..lineTo(93, 253)..close();
+  ..moveTo(97, 202)..lineTo(198, 201)..lineTo(196, 243)..lineTo(93, 253)..close();
 
-// ISQUIOTIBIALES
 Path _imgIsquiotibiales() {
   final p = Path();
-  // izq
-  p.moveTo(85, 263);
-  p.lineTo(143, 256);
-  p.lineTo(130, 337);
-  p.lineTo(93, 325);
-  p.close();
-  // der
-  p.moveTo(151, 251);
-  p.lineTo(202, 249);
-  p.lineTo(203, 337);
-  p.lineTo(152, 325);
-  p.close();
+  p.moveTo(85, 263); p.lineTo(143, 256); p.lineTo(130, 337); p.lineTo(93, 325); p.close();
+  p.moveTo(151, 251); p.lineTo(202, 249); p.lineTo(203, 337); p.lineTo(152, 325); p.close();
   return p;
 }
 
-// Mapa de paths para cada músculo en espacio 270×470
 Map<String, Path> _frontPaths() => {
-  'pecho':      _imgPecho(),
-  'hombros':    _imgHombros(),
-  'biceps':     _imgBiceps(),
-  'abs':        _imgAbdomen(),
-  'cuadriceps': _imgCuadriceps(),
-  'gemelos':    _imgGemelos(),
+  'pecho': _imgPecho(), 'hombros': _imgHombros(), 'biceps': _imgBiceps(),
+  'abs': _imgAbdomen(), 'cuadriceps': _imgCuadriceps(), 'gemelos': _imgGemelos(),
 };
 
 Map<String, Path> _backPaths() => {
-  'espalda':  _imgEspaldaAlta(),
-  'dorsales': _imgDorsales(),
-  'triceps':  _imgTriceps(),
-  'lumbar':   _imgLumbar(),
-  'gluteos':  _imgGluteos(),
-  'isquio':   _imgIsquiotibiales(),
-  'gemelos':  _imgGemelos(),
+  'espalda': _imgEspaldaAlta(), 'dorsales': _imgDorsales(), 'triceps': _imgTriceps(),
+  'lumbar': _imgLumbar(), 'gluteos': _imgGluteos(), 'isquio': _imgIsquiotibiales(),
+  'gemelos': _imgGemelos(),
 };
 
-// Detecta músculo en coordenadas de imagen (270×470)
 String? _findMuscle(double lx, double ly, bool isFront) {
   final paths = isFront ? _frontPaths() : _backPaths();
   final pt = Offset(lx, ly);
@@ -710,7 +576,7 @@ String? _findMuscle(double lx, double ly, bool isFront) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// PAINTER: dibuja el overlay de músculos sobre la imagen
+// PAINTER
 // ─────────────────────────────────────────────────────────────────
 class _MuscleOverlayPainter extends CustomPainter {
   final bool    isFront;
@@ -719,42 +585,28 @@ class _MuscleOverlayPainter extends CustomPainter {
   const _MuscleOverlayPainter({required this.isFront,
     required this.selectedMuscleId, required this.dispW, required this.dispH});
 
-  // Los paths están en espacio 270×470 → escalar a dispW×dispH
   static const double _srcW = 270.0;
   static const double _srcH = 470.0;
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Solo pintamos si hay un músculo seleccionado
     if (selectedMuscleId == null) return;
-
     final sx = size.width  / _srcW;
     final sy = size.height / _srcH;
     final paths = isFront ? _frontPaths() : _backPaths();
-
-    final entry = paths.entries
-        .where((e) => e.key == selectedMuscleId)
-        .firstOrNull;
+    final entry = paths.entries.where((e) => e.key == selectedMuscleId).firstOrNull;
     if (entry == null) return;
-
     final muscle = getMuscleById(entry.key);
     if (muscle == null) return;
-
     final color = muscle.color;
     final m = Matrix4.identity()..scale(sx, sy);
     final scaledPath = entry.value.transform(m.storage);
-
-    // Glow exterior suave
     canvas.drawPath(scaledPath, Paint()
       ..color = color.withOpacity(0.30)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14));
-
-    // Relleno suave del músculo seleccionado
     canvas.drawPath(scaledPath, Paint()
       ..color = color.withOpacity(0.35)
       ..style = PaintingStyle.fill);
-
-    // Borde sutil del músculo seleccionado
     canvas.drawPath(scaledPath, Paint()
       ..color = color.withOpacity(0.70)
       ..style = PaintingStyle.stroke
@@ -767,7 +619,7 @@ class _MuscleOverlayPainter extends CustomPainter {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// PANEL DE EJERCICIOS — grid 2 columnas
+// PANEL DE EJERCICIOS
 // ─────────────────────────────────────────────────────────────────
 class _ExercisePanel extends StatefulWidget {
   final MuscleGroup        muscle;
@@ -787,13 +639,11 @@ class _ExercisePanelState extends State<_ExercisePanel> {
   final ValueNotifier<String?> _activeVideo = ValueNotifier(null);
 
   @override
-  void dispose() {
-    _activeVideo.dispose();
-    super.dispose();
-  }
+  void dispose() { _activeVideo.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
+    final tc            = AppThemeColors.of(context);
     final muscle        = widget.muscle;
     final exercises     = widget.exercises;
     final selectedExIds = widget.selectedExIds;
@@ -804,13 +654,12 @@ class _ExercisePanelState extends State<_ExercisePanel> {
     final pct   = total > 0 ? (sel / total * 100).round() : 0;
 
     return Column(children: [
-      // ── Header ────────────────────────────────────────────────
       Padding(padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           GestureDetector(onTap: onBack,
             child: Container(width: 36, height: 36,
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: tc.surface,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: muscle.color.withOpacity(0.3), width: 0.5)),
               child: Icon(Icons.arrow_back_ios_new_rounded,
@@ -821,7 +670,7 @@ class _ExercisePanelState extends State<_ExercisePanel> {
               Text(muscle.name, style: AppTextStyles.headingSmall
                   .copyWith(color: muscle.color)),
               Text('$total ejercicios · toca para previsualizar',
-                  style: AppTextStyles.caption),
+                  style: AppTextStyles.caption.copyWith(color: tc.textSecondary)),
             ])),
           if (sel > 0)
             Container(
@@ -837,15 +686,12 @@ class _ExercisePanelState extends State<_ExercisePanel> {
         ])),
       const SizedBox(height: 12),
 
-      // ── Grid de ejercicios ────────────────────────────────────
       Expanded(child: GridView.builder(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
         physics: const BouncingScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount:   2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing:  12,
-          childAspectRatio: 0.72,
+          crossAxisCount: 2, crossAxisSpacing: 12,
+          mainAxisSpacing: 12, childAspectRatio: 0.72,
         ),
         itemCount: exercises.length,
         itemBuilder: (_, i) => _ExerciseCard(
@@ -880,7 +726,7 @@ String _diffLabel(ExerciseDifficulty d) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// TARJETA DE EJERCICIO — estilo grid con animación siempre visible
+// TARJETA DE EJERCICIO
 // ─────────────────────────────────────────────────────────────────
 class _ExerciseCard extends StatelessWidget {
   final ExerciseItem           exercise;
@@ -895,6 +741,7 @@ class _ExerciseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc  = AppThemeColors.of(context);
     final ex  = exercise;
     final col = muscleColor;
     final dc  = _diffColor(ex.difficulty);
@@ -904,12 +751,10 @@ class _ExerciseCard extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         decoration: BoxDecoration(
-          color: selected
-              ? col.withOpacity(0.10)
-              : AppColors.surface,
+          color: selected ? col.withOpacity(0.10) : tc.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: selected ? col.withOpacity(0.5) : AppColors.border,
+            color: selected ? col.withOpacity(0.5) : tc.border,
             width: selected ? 1.5 : 0.5,
           ),
           boxShadow: selected
@@ -917,9 +762,7 @@ class _ExerciseCard extends StatelessWidget {
               : null,
         ),
         child: Stack(children: [
-          // ── Contenido principal ──────────────────────────────
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // Dificultad
             Padding(padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
               child: Row(children: [
                 Container(width: 7, height: 7,
@@ -930,7 +773,6 @@ class _ExerciseCard extends StatelessWidget {
                       color: dc, letterSpacing: 0.6)),
               ])),
 
-            // Animación + botón play
             Expanded(child: LayoutBuilder(
               builder: (ctx, box) {
                 final sz = box.maxWidth * 0.68;
@@ -943,45 +785,36 @@ class _ExerciseCard extends StatelessWidget {
               },
             )),
 
-            // Nombre
             Padding(padding: const EdgeInsets.fromLTRB(10, 4, 10, 2),
               child: Text(ex.name,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                    color: Colors.white),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                    color: tc.textPrimary),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis)),
 
-            // Series · Reps
             Padding(padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
               child: Row(children: [
-                Icon(Icons.repeat_rounded, size: 10,
-                    color: col.withOpacity(0.75)),
+                Icon(Icons.repeat_rounded, size: 10, color: col.withOpacity(0.75)),
                 const SizedBox(width: 3),
-                Text(ex.sets, style: TextStyle(
-                    fontSize: 10, fontWeight: FontWeight.w600,
+                Text(ex.sets, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600,
                     color: col.withOpacity(0.85))),
                 const SizedBox(width: 10),
-                Icon(Icons.bolt_rounded, size: 10,
-                    color: col.withOpacity(0.75)),
+                Icon(Icons.bolt_rounded, size: 10, color: col.withOpacity(0.75)),
                 const SizedBox(width: 2),
-                Expanded(child: Text(ex.reps, style: TextStyle(
-                    fontSize: 10, fontWeight: FontWeight.w600,
-                    color: col.withOpacity(0.85)),
+                Expanded(child: Text(ex.reps, style: TextStyle(fontSize: 10,
+                    fontWeight: FontWeight.w600, color: col.withOpacity(0.85)),
                     overflow: TextOverflow.ellipsis)),
               ])),
           ]),
 
-          // ── Checkmark (top-right) ────────────────────────────
           if (selected)
             Positioned(top: 8, right: 8,
               child: Container(width: 22, height: 22,
                 decoration: BoxDecoration(
                   color: col, shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(
-                    color: col.withOpacity(0.4), blurRadius: 6)],
+                  boxShadow: [BoxShadow(color: col.withOpacity(0.4), blurRadius: 6)],
                 ),
-                child: const Icon(Icons.check_rounded,
-                    color: Colors.black, size: 13))),
+                child: const Icon(Icons.check_rounded, color: Colors.black, size: 13))),
         ]),
       ),
     );
@@ -1000,6 +833,7 @@ class _MuscleLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     final muscles = kMuscleGroups.where((m) => m.isFront == isFront).toList();
     return SizedBox(height: 38,
       child: ListView.separated(
@@ -1024,11 +858,10 @@ class _MuscleLegend extends StatelessWidget {
                       width: 0.5)),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Container(width: 8, height: 8,
-                    decoration: BoxDecoration(
-                        color: m.color, shape: BoxShape.circle)),
+                    decoration: BoxDecoration(color: m.color, shape: BoxShape.circle)),
                 const SizedBox(width: 5),
                 Text(m.nameShort, style: AppTextStyles.caption.copyWith(
-                    color: sel ? m.color : null,
+                    color: sel ? m.color : tc.textSecondary,
                     fontWeight: sel ? FontWeight.w700 : null)),
               ]),
             ),
@@ -1049,18 +882,18 @@ class _RoutinesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     if (routines.isEmpty) return Center(child: Column(
         mainAxisAlignment: MainAxisAlignment.center, children: [
       Container(width: 72, height: 72,
-          decoration: BoxDecoration(color: AppColors.surfaceVariant,
-              shape: BoxShape.circle),
-          child: const Icon(Icons.fitness_center_rounded,
-              color: AppColors.textMuted, size: 32)),
+          decoration: BoxDecoration(color: tc.surfaceVariant, shape: BoxShape.circle),
+          child: Icon(Icons.fitness_center_rounded, color: tc.textMuted, size: 32)),
       const SizedBox(height: 16),
-      Text('Sin rutinas guardadas', style: AppTextStyles.headingSmall),
+      Text('Sin rutinas guardadas',
+          style: AppTextStyles.headingSmall.copyWith(color: tc.textPrimary)),
       const SizedBox(height: 8),
       Text('Selecciona ejercicios y guárdalos como rutina',
-          style: AppTextStyles.bodyMedium),
+          style: AppTextStyles.bodyMedium.copyWith(color: tc.textSecondary)),
     ]));
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 80),
@@ -1079,28 +912,26 @@ class _RoutineCard extends StatelessWidget {
 
   Future<void> _startWorkout(BuildContext context) async {
     HapticFeedback.mediumImpact();
+    final tc = AppThemeColors.of(context);
     final provider = context.read<WorkoutLogProvider>();
     if (provider.hasActiveSession) {
       final resume = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
-          backgroundColor: AppColors.surface,
+          backgroundColor: tc.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text('Entrenamiento en curso',
-              style: AppTextStyles.headingSmall),
-          content: Text(
-              'Ya tienes un entrenamiento activo. ¿Quieres retomarlo?',
-              style: AppTextStyles.bodyMedium),
+              style: AppTextStyles.headingSmall.copyWith(color: tc.textPrimary)),
+          content: Text('Ya tienes un entrenamiento activo. ¿Quieres retomarlo?',
+              style: AppTextStyles.bodyMedium.copyWith(color: tc.textSecondary)),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: Text('Cancelar',
-                    style: TextStyle(color: AppColors.textSecondary))),
+                child: Text('Cancelar', style: TextStyle(color: tc.textSecondary))),
             TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: Text('Retomar',
-                    style: TextStyle(color: AppColors.primary,
-                        fontWeight: FontWeight.w700))),
+                child: const Text('Retomar',
+                    style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700))),
           ],
         ),
       );
@@ -1119,6 +950,7 @@ class _RoutineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc     = AppThemeColors.of(context);
     final muscle = getMuscleById(routine.muscleId);
     final color  = muscle?.color ?? AppColors.primary;
     return DarkCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
@@ -1128,13 +960,13 @@ class _RoutineCard extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(routine.name, style: AppTextStyles.labelLarge),
+                  Text(routine.name,
+                      style: AppTextStyles.labelLarge.copyWith(color: tc.textPrimary)),
                   Text('${routine.exercises.length} ejercicios · ${routine.muscleName}',
-                      style: AppTextStyles.caption),
+                      style: AppTextStyles.caption.copyWith(color: tc.textSecondary)),
                 ])),
             GestureDetector(onTap: onDelete,
-                child: const Icon(Icons.delete_outline_rounded,
-                    color: AppColors.textMuted, size: 20)),
+                child: Icon(Icons.delete_outline_rounded, color: tc.textMuted, size: 20)),
           ]),
           const SizedBox(height: 10),
           Wrap(spacing: 6, runSpacing: 6,
@@ -1144,10 +976,10 @@ class _RoutineCard extends StatelessWidget {
                     color: color.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: color.withOpacity(0.2), width: 0.5)),
-                child: Text(e.name, style: AppTextStyles.caption.copyWith(color: color)),
+                child: Text(e.name,
+                    style: AppTextStyles.caption.copyWith(color: color)),
               )).toList()),
           const SizedBox(height: 12),
-          // ── Botón Iniciar ─────────────────────────────────────
           GestureDetector(
             onTap: () => _startWorkout(context),
             child: Container(
@@ -1160,21 +992,22 @@ class _RoutineCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: color.withOpacity(0.3), width: 0.8),
               ),
-              child: Row(mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.play_arrow_rounded, color: color, size: 18),
-                    const SizedBox(width: 6),
-                    Text('Iniciar entrenamiento',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
-                            color: color)),
-                  ]),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(Icons.play_arrow_rounded, color: color, size: 18),
+                const SizedBox(width: 6),
+                Text('Iniciar entrenamiento',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+                        color: color)),
+              ]),
             ),
           ),
         ]));
   }
 }
 
-// ── Tab de Historial (integrado) ──────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// TAB HISTORIAL
+// ─────────────────────────────────────────────────────────────────
 class _HistorialTab extends StatefulWidget {
   const _HistorialTab();
   @override
@@ -1205,6 +1038,7 @@ class _HistorialTabState extends State<_HistorialTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final tc        = AppThemeColors.of(context);
     final provider  = context.watch<WorkoutLogProvider>();
     final completed = provider.history.where((s) => s.isCompleted).toList();
 
@@ -1218,34 +1052,31 @@ class _HistorialTabState extends State<_HistorialTab>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(width: 72, height: 72,
-              decoration: const BoxDecoration(
-                  color: AppColors.surfaceVariant, shape: BoxShape.circle),
-              child: const Icon(Icons.history_rounded,
-                  color: AppColors.textMuted, size: 34)),
+              decoration: BoxDecoration(color: tc.surfaceVariant, shape: BoxShape.circle),
+              child: Icon(Icons.history_rounded, color: tc.textMuted, size: 34)),
           const SizedBox(height: 16),
           Text('Sin entrenamientos aún',
-              style: AppTextStyles.headingSmall),
+              style: AppTextStyles.headingSmall.copyWith(color: tc.textPrimary)),
           const SizedBox(height: 8),
           Text('Inicia una rutina para registrar\ntu progreso aquí',
-              style: AppTextStyles.bodyMedium, textAlign: TextAlign.center),
+              style: AppTextStyles.bodyMedium.copyWith(color: tc.textSecondary),
+              textAlign: TextAlign.center),
         ],
       ));
     }
 
-    // Totales rápidos
     final totalSeries = completed.fold(0, (s, e) => s + e.totalDoneSets);
     final totalVol    = completed.fold(0.0, (s, e) => s + e.totalVolume);
 
     return Column(children: [
-      // Resumen compacto
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: tc.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border, width: 0.5)),
+              border: Border.all(color: tc.border, width: 0.5)),
           child: Row(children: [
             _MiniStat('${completed.length}', 'Sesiones', AppColors.primary),
             _VertDiv(),
@@ -1260,14 +1091,13 @@ class _HistorialTabState extends State<_HistorialTab>
         ),
       ),
 
-      // Lista de sesiones
       Expanded(child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 80),
         physics: const BouncingScrollPhysics(),
         itemCount: completed.length,
         separatorBuilder: (_, __) => const SizedBox(height: 10),
         itemBuilder: (ctx, i) {
-          final session  = completed[i];
+          final session    = completed[i];
           final isExpanded = _expandedIds.contains(session.id);
 
           return Dismissible(
@@ -1279,24 +1109,23 @@ class _HistorialTabState extends State<_HistorialTab>
               decoration: BoxDecoration(
                   color: AppColors.error.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(14)),
-              child: const Icon(Icons.delete_outline_rounded,
-                  color: AppColors.error),
+              child: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
             ),
             confirmDismiss: (_) async {
               final ok = await showDialog<bool>(
                 context: ctx,
                 builder: (_) => AlertDialog(
-                  backgroundColor: AppColors.surface,
+                  backgroundColor: tc.surface,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20)),
                   title: Text('¿Eliminar sesión?',
-                      style: AppTextStyles.headingSmall),
+                      style: AppTextStyles.headingSmall.copyWith(color: tc.textPrimary)),
                   content: Text('Esta acción no se puede deshacer.',
-                      style: AppTextStyles.bodyMedium),
+                      style: AppTextStyles.bodyMedium.copyWith(color: tc.textSecondary)),
                   actions: [
                     TextButton(onPressed: () => Navigator.pop(ctx, false),
                         child: Text('Cancelar',
-                            style: TextStyle(color: AppColors.textSecondary))),
+                            style: TextStyle(color: tc.textSecondary))),
                     TextButton(onPressed: () => Navigator.pop(ctx, true),
                         child: Text('Eliminar',
                             style: TextStyle(color: AppColors.error,
@@ -1317,71 +1146,66 @@ class _HistorialTabState extends State<_HistorialTab>
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: tc.surface,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                         color: isExpanded
                             ? AppColors.primary.withOpacity(0.35)
-                            : AppColors.border,
+                            : tc.border,
                         width: isExpanded ? 1.5 : 0.5)),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Encabezado
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-                        child: Row(children: [
-                          Container(width: 38, height: 38,
-                              decoration: BoxDecoration(
-                                  color: AppColors.primary.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                      color: AppColors.primary.withOpacity(0.25),
-                                      width: 0.5)),
-                              child: const Icon(Icons.fitness_center_rounded,
-                                  color: AppColors.primary, size: 18)),
-                          const SizedBox(width: 10),
-                          Expanded(child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(session.name, style: AppTextStyles.labelLarge,
-                                    overflow: TextOverflow.ellipsis),
-                                Text(_formatDate(session.date),
-                                    style: AppTextStyles.caption),
-                              ])),
-                          Icon(isExpanded
-                              ? Icons.expand_less_rounded
-                              : Icons.expand_more_rounded,
-                              color: AppColors.textMuted, size: 20),
-                        ]),
-                      ),
-
-                      // Chips resumen
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-                        child: Wrap(spacing: 6, runSpacing: 6, children: [
-                          _HistChip(Icons.timer_rounded,
-                              _formatDuration(session.durationMinutes),
-                              AppColors.accentBlue),
-                          _HistChip(Icons.fitness_center_rounded,
-                              '${session.completedExercises} ejercicios',
-                              AppColors.accentPurple),
-                          _HistChip(Icons.repeat_rounded,
-                              '${session.totalDoneSets} series',
-                              AppColors.primary),
-                          if (session.totalVolume > 0)
-                            _HistChip(Icons.bar_chart_rounded,
-                                session.totalVolume >= 1000
-                                    ? '${(session.totalVolume/1000).toStringAsFixed(1)}t'
-                                    : '${session.totalVolume.toStringAsFixed(0)} kg',
-                                AppColors.accentOrange),
-                        ]),
-                      ),
-
-                      // Detalle expandible
-                      if (isExpanded)
-                        _InlineSessionDetail(session: session),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+                    child: Row(children: [
+                      Container(width: 38, height: 38,
+                          decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                  color: AppColors.primary.withOpacity(0.25),
+                                  width: 0.5)),
+                          child: const Icon(Icons.fitness_center_rounded,
+                              color: AppColors.primary, size: 18)),
+                      const SizedBox(width: 10),
+                      Expanded(child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(session.name,
+                                style: AppTextStyles.labelLarge.copyWith(color: tc.textPrimary),
+                                overflow: TextOverflow.ellipsis),
+                            Text(_formatDate(session.date),
+                                style: AppTextStyles.caption.copyWith(color: tc.textSecondary)),
+                          ])),
+                      Icon(isExpanded
+                          ? Icons.expand_less_rounded
+                          : Icons.expand_more_rounded,
+                          color: tc.textMuted, size: 20),
                     ]),
+                  ),
+
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                    child: Wrap(spacing: 6, runSpacing: 6, children: [
+                      _HistChip(Icons.timer_rounded,
+                          _formatDuration(session.durationMinutes),
+                          AppColors.accentBlue),
+                      _HistChip(Icons.fitness_center_rounded,
+                          '${session.completedExercises} ejercicios',
+                          AppColors.accentPurple),
+                      _HistChip(Icons.repeat_rounded,
+                          '${session.totalDoneSets} series',
+                          AppColors.primary),
+                      if (session.totalVolume > 0)
+                        _HistChip(Icons.bar_chart_rounded,
+                            session.totalVolume >= 1000
+                                ? '${(session.totalVolume/1000).toStringAsFixed(1)}t'
+                                : '${session.totalVolume.toStringAsFixed(0)} kg',
+                            AppColors.accentOrange),
+                    ]),
+                  ),
+
+                  if (isExpanded) _InlineSessionDetail(session: session),
+                ]),
               ),
             ),
           );
@@ -1396,17 +1220,22 @@ class _MiniStat extends StatelessWidget {
   final Color color;
   const _MiniStat(this.value, this.label, this.color);
   @override
-  Widget build(BuildContext context) => Expanded(child: Column(children: [
-    Text(value, style: AppTextStyles.headingMedium.copyWith(color: color)),
-    Text(label, style: AppTextStyles.caption),
-  ]));
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return Expanded(child: Column(children: [
+      Text(value, style: AppTextStyles.headingMedium.copyWith(color: color)),
+      Text(label, style: AppTextStyles.caption.copyWith(color: tc.textSecondary)),
+    ]));
+  }
 }
 
 class _VertDiv extends StatelessWidget {
   @override
-  Widget build(BuildContext context) =>
-      Container(width: 0.5, height: 28, color: AppColors.border,
-          margin: const EdgeInsets.symmetric(horizontal: 4));
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return Container(width: 0.5, height: 28, color: tc.border,
+        margin: const EdgeInsets.symmetric(horizontal: 4));
+  }
 }
 
 class _HistChip extends StatelessWidget {
@@ -1447,18 +1276,20 @@ class _InlineSessionDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc     = AppThemeColors.of(context);
     final exDone = session.exercises.where((e) => e.doneSets > 0).toList();
     if (exDone.isEmpty) {
       return Padding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-          child: Text('Sin series completadas', style: AppTextStyles.caption));
+          child: Text('Sin series completadas',
+              style: AppTextStyles.caption.copyWith(color: tc.textSecondary)));
     }
     return Container(
       margin: const EdgeInsets.fromLTRB(14, 0, 14, 12),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-          color: AppColors.surfaceVariant,
+          color: tc.surfaceVariant,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.border, width: 0.5)),
+          border: Border.all(color: tc.border, width: 0.5)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: exDone.map((ex) => Padding(
@@ -1466,11 +1297,11 @@ class _InlineSessionDetail extends StatelessWidget {
           child: Row(children: [
             Expanded(child: Text(ex.exerciseName,
                 style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textPrimary, fontSize: 11),
+                    color: tc.textPrimary, fontSize: 11),
                 overflow: TextOverflow.ellipsis)),
             Text('${ex.doneSets} series  ·  ${_bestSet(ex)}',
                 style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textSecondary, fontSize: 10)),
+                    color: tc.textSecondary, fontSize: 10)),
           ]),
         )).toList(),
       ),
@@ -1478,31 +1309,37 @@ class _InlineSessionDetail extends StatelessWidget {
   }
 }
 
-// ── TabBar ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// TAB BAR
+// ─────────────────────────────────────────────────────────────────
 class _WorkoutTabBar extends StatelessWidget {
   final TabController controller;
   const _WorkoutTabBar({required this.controller});
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    child: Container(height: 40,
-        decoration: BoxDecoration(color: AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border, width: 0.5)),
-        child: TabBar(controller: controller,
-          indicator: BoxDecoration(gradient: AppColors.primaryGradient,
-              borderRadius: BorderRadius.circular(10)),
-          indicatorSize: TabBarIndicatorSize.tab,
-          indicatorPadding: const EdgeInsets.all(4),
-          labelColor: AppColors.background,
-          unselectedLabelColor: AppColors.textSecondary,
-          labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-          dividerColor: Colors.transparent,
-          tabs: const [
-            Tab(text: 'Cuerpo'),
-            Tab(text: 'Rutinas'),
-            Tab(text: 'Historial'),
-          ],
-        )),
-  );
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(height: 40,
+          decoration: BoxDecoration(
+              color: tc.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: tc.border, width: 0.5)),
+          child: TabBar(controller: controller,
+            indicator: BoxDecoration(gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.circular(10)),
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicatorPadding: const EdgeInsets.all(4),
+            labelColor: AppColors.background,
+            unselectedLabelColor: tc.textSecondary,
+            labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            dividerColor: Colors.transparent,
+            tabs: const [
+              Tab(text: 'Cuerpo'),
+              Tab(text: 'Rutinas'),
+              Tab(text: 'Historial'),
+            ],
+          )),
+    );
+  }
 }
