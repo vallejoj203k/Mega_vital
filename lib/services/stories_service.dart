@@ -70,6 +70,26 @@ class UserStoriesGroup {
   }
 }
 
+class StoryViewer {
+  final String userId;
+  final String userName;
+  final String? avatarUrl;
+  final DateTime viewedAt;
+
+  const StoryViewer({
+    required this.userId,
+    required this.userName,
+    this.avatarUrl,
+    required this.viewedAt,
+  });
+
+  String get initials {
+    final parts = userName.trim().split(' ');
+    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    return userName.isNotEmpty ? userName[0].toUpperCase() : '?';
+  }
+}
+
 class StoriesService {
   static const _bucket = 'stories';
 
@@ -212,6 +232,52 @@ class StoriesService {
       };
     } catch (_) {
       return {};
+    }
+  }
+
+  Future<List<StoryViewer>> fetchViewers(String storyId) async {
+    final uid = _uid;
+    if (uid == null) return [];
+    try {
+      final views = await _db
+          .from('story_views')
+          .select('viewer_id, created_at')
+          .eq('story_id', storyId);
+
+      if ((views as List).isEmpty) return [];
+
+      final viewerIds = views
+          .map((r) => r['viewer_id'] as String)
+          .where((id) => id != uid)
+          .toList();
+
+      if (viewerIds.isEmpty) return [];
+
+      final profiles = await _db
+          .from('user_profiles')
+          .select('uid, name, avatar_url')
+          .inFilter('uid', viewerIds);
+
+      final profileMap = {
+        for (final p in (profiles as List)) p['uid'] as String: p,
+      };
+
+      return views
+          .where((r) => (r['viewer_id'] as String) != uid)
+          .map((r) {
+            final vid = r['viewer_id'] as String;
+            final p   = profileMap[vid];
+            return StoryViewer(
+              userId:    vid,
+              userName:  p?['name'] as String? ?? 'Usuario',
+              avatarUrl: p?['avatar_url'] as String?,
+              viewedAt:  DateTime.tryParse(r['created_at'] as String? ?? '') ??
+                         DateTime.now(),
+            );
+          })
+          .toList();
+    } catch (_) {
+      return [];
     }
   }
 
