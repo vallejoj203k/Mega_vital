@@ -19,6 +19,8 @@ dependencies:
   url_launcher: ^6.3.0
   video_player: ^2.8.0
   video_compress: ^3.1.2
+  share_plus: ^10.0.0
+  path_provider: ^2.1.4
 
 dev_dependencies:
   flutter_test:
@@ -35,6 +37,7 @@ flutter:
     - assets/images/frontal_masculino.png
     - assets/images/trasero_masculino.png
     - assets/images/instructors/
+    - assets/images/app_icon.png
     # Videos en Supabase Storage (bucket: exercise-animations) — no se bundlean en la app
     # - assets/animations/exercises/hombros/
     # - assets/animations/exercises/biceps/
