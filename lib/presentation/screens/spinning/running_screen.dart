@@ -206,6 +206,13 @@ class _RunningScreenState extends State<RunningScreen>
   }
 
   Future<void> _loadBookings() async {
+    // Reset to avoid accumulating stale state on re-loads
+    for (final cls in _classes) {
+      cls.bookedSpots = 0;
+      cls.reservedSeats.clear();
+    }
+    _myBookings.clear();
+
     try {
       final rows = await _supabase
           .from('running_bookings')
@@ -344,6 +351,7 @@ class _RunningScreenState extends State<RunningScreen>
         'class_id': cls.id,
         'treadmill_index': result,
       });
+      await _loadBookings();
     } catch (e) {
       debugPrint('running_bookings insert error: $e');
       if (!mounted) return;
@@ -410,6 +418,7 @@ class _RunningScreenState extends State<RunningScreen>
       if (userId == null) return;
       await _supabase.from('running_bookings').delete()
           .eq('user_id', userId).eq('class_id', cls.id);
+      await _loadBookings();
     } catch (_) {
       if (!mounted || spot == null) return;
       setState(() {

@@ -202,6 +202,13 @@ class _SpinningScreenState extends State<SpinningScreen>
   }
 
   Future<void> _loadBookings() async {
+    // Reset to avoid accumulating stale state on re-loads
+    for (final cls in _classes) {
+      cls.bookedSpots = 0;
+      cls.reservedSeats.clear();
+    }
+    _myBookings.clear();
+
     try {
       final rows = await _supabase
           .from('spinning_bookings')
@@ -340,6 +347,7 @@ class _SpinningScreenState extends State<SpinningScreen>
         'class_id': cls.id,
         'seat_index': result,
       });
+      await _loadBookings();
     } catch (e) {
       debugPrint('spinning_bookings insert error: $e');
       if (!mounted) return;
@@ -406,6 +414,7 @@ class _SpinningScreenState extends State<SpinningScreen>
       if (userId == null) return;
       await _supabase.from('spinning_bookings').delete()
           .eq('user_id', userId).eq('class_id', cls.id);
+      await _loadBookings();
     } catch (_) {
       if (!mounted || seat == null) return;
       setState(() {
