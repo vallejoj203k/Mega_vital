@@ -1,13 +1,16 @@
 // lib/presentation/screens/admin/admin_panel_screen.dart
-// Panel de administración con dos secciones:
+// Panel de administración con tres secciones:
 //   1. Códigos premium (mensual / trimestral / anual)
 //   2. Códigos de registro + notificaciones al dueño
+//   3. Lista de todos los usuarios
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/constants/app_theme_colors.dart';
 import '../../../core/providers/premium_provider.dart';
 import '../../../services/registration_code_service.dart';
 
@@ -142,7 +145,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -169,6 +172,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
           tabs: const [
             Tab(text: 'Premium'),
             Tab(text: 'Acceso'),
+            Tab(text: 'Usuarios'),
           ],
         ),
       ),
@@ -177,6 +181,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
         children: const [
           _PremiumTab(),
           _AccessTab(),
+          _UsersTab(),
         ],
       ),
     );
@@ -733,6 +738,438 @@ class _AccessTabState extends State<_AccessTab> {
         const SliverToBoxAdapter(child: SizedBox(height: 100)),
       ],
     );
+  }
+}
+
+// ── Modelo de usuario admin ───────────────────────────────────────
+class AdminUserInfo {
+  final String uid;
+  final String name;
+  final String email;
+  final String goal;
+  final double weight;
+  final double height;
+  final int age;
+  final int streak;
+  final int totalWorkouts;
+  final DateTime? createdAt;
+  final String? avatarUrl;
+  final String? gender;
+  final bool isPremium;
+  final String? premiumType;
+  final DateTime? premiumExpiresAt;
+
+  const AdminUserInfo({
+    required this.uid,
+    required this.name,
+    required this.email,
+    required this.goal,
+    required this.weight,
+    required this.height,
+    required this.age,
+    required this.streak,
+    required this.totalWorkouts,
+    this.createdAt,
+    this.avatarUrl,
+    this.gender,
+    required this.isPremium,
+    this.premiumType,
+    this.premiumExpiresAt,
+  });
+
+  factory AdminUserInfo.fromMap(Map<String, dynamic> m) => AdminUserInfo(
+        uid:              m['uid'] as String,
+        name:             m['name'] as String? ?? '',
+        email:            m['email'] as String? ?? '',
+        goal:             m['goal'] as String? ?? '',
+        weight:           (m['weight'] as num?)?.toDouble() ?? 0,
+        height:           (m['height'] as num?)?.toDouble() ?? 0,
+        age:              m['age'] as int? ?? 0,
+        streak:           m['streak'] as int? ?? 0,
+        totalWorkouts:    m['total_workouts'] as int? ?? 0,
+        createdAt:        m['created_at'] != null
+                            ? DateTime.tryParse(m['created_at'] as String)
+                            : null,
+        avatarUrl:        m['avatar_url'] as String?,
+        gender:           m['gender'] as String?,
+        isPremium:        m['is_premium'] as bool? ?? false,
+        premiumType:      m['premium_type'] as String?,
+        premiumExpiresAt: m['premium_expires_at'] != null
+                            ? DateTime.tryParse(m['premium_expires_at'] as String)
+                            : null,
+      );
+
+  String get initials {
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+  }
+}
+
+// ── Pestaña de usuarios ───────────────────────────────────────────
+class _UsersTab extends StatefulWidget {
+  const _UsersTab();
+
+  @override
+  State<_UsersTab> createState() => _UsersTabState();
+}
+
+class _UsersTabState extends State<_UsersTab> {
+  final _db = Supabase.instance.client;
+  final _search = TextEditingController();
+
+  bool _loading = true;
+  String? _error;
+  List<AdminUserInfo> _all = [];
+  List<AdminUserInfo> _filtered = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _search.addListener(_filter);
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final rows = await _db.rpc('admin_list_users') as List;
+      _all = rows.map((r) => AdminUserInfo.fromMap(r as Map<String, dynamic>)).toList();
+      _filter();
+    } catch (e) {
+      _error = 'No se pudo cargar la lista de usuarios.\n'
+               'Asegúrate de haber ejecutado el SQL de admin_list_users() en Supabase.';
+    }
+    if (mounted) setState(() => _loading = false);
+  }
+
+  void _filter() {
+    final q = _search.text.toLowerCase().trim();
+    setState(() {
+      _filtered = q.isEmpty
+          ? List.from(_all)
+          : _all.where((u) =>
+              u.name.toLowerCase().contains(q) ||
+              u.email.toLowerCase().contains(q)).toList();
+    });
+  }
+
+  String _fmt(DateTime? dt) {
+    if (dt == null) return '-';
+    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        // ── Encabezado + buscador ─────────────────────────────────
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Text('Usuarios registrados',
+                      style: AppTextStyles.headingSmallOf(context)),
+                  const Spacer(),
+                  if (!_loading)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text('${_all.length} total',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary)),
+                    ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: _load,
+                    child: Icon(Icons.refresh_rounded,
+                        color: tc.textMuted, size: 20),
+                  ),
+                ]),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _search,
+                  style: AppTextStyles.bodyLargeOf(context),
+                  decoration: InputDecoration(
+                    hintText: 'Buscar por nombre o email…',
+                    hintStyle: AppTextStyles.bodyLargeOf(context)
+                        .copyWith(color: tc.textMuted),
+                    prefixIcon: Icon(Icons.search_rounded,
+                        color: tc.textMuted, size: 20),
+                    suffixIcon: _search.text.isNotEmpty
+                        ? GestureDetector(
+                            onTap: () { _search.clear(); _filter(); },
+                            child: Icon(Icons.close, color: tc.textMuted, size: 18))
+                        : null,
+                    filled: true,
+                    fillColor: tc.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                  ),
+                ),
+                const SizedBox(height: 4),
+              ],
+            ),
+          ),
+        ),
+
+        // ── Estado de carga / error / vacío ───────────────────────
+        if (_loading)
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.all(48),
+              child: Center(
+                  child: CircularProgressIndicator(color: AppColors.primary)),
+            ),
+          )
+        else if (_error != null)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.error.withOpacity(0.3)),
+                ),
+                child: Column(children: [
+                  const Icon(Icons.error_outline_rounded,
+                      color: AppColors.error, size: 32),
+                  const SizedBox(height: 10),
+                  Text(_error!,
+                      style: TextStyle(color: tc.textSecondary, fontSize: 13),
+                      textAlign: TextAlign.center),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: _load,
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                        foregroundColor: Colors.white),
+                    child: const Text('Reintentar'),
+                  ),
+                ]),
+              ),
+            ),
+          )
+        else if (_filtered.isEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(40),
+              child: Center(
+                child: Text(
+                  _search.text.isEmpty
+                      ? 'No hay usuarios registrados.'
+                      : 'Sin resultados para "${_search.text}".',
+                  style: AppTextStyles.bodyMediumOf(context),
+                ),
+              ),
+            ),
+          )
+        else
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (_, i) => _UserTile(user: _filtered[i], fmt: _fmt),
+              childCount: _filtered.length,
+            ),
+          ),
+
+        const SliverToBoxAdapter(child: SizedBox(height: 100)),
+      ],
+    );
+  }
+}
+
+// ── Tile de usuario ───────────────────────────────────────────────
+class _UserTile extends StatelessWidget {
+  final AdminUserInfo user;
+  final String Function(DateTime?) fmt;
+  const _UserTile({required this.user, required this.fmt});
+
+  @override
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    final hasPhoto = user.avatarUrl != null && user.avatarUrl!.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: tc.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: user.isPremium
+                ? AppColors.accentOrange.withOpacity(0.4)
+                : tc.border,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Cabecera: avatar + nombre + premium badge ──────────
+            Row(children: [
+              Container(
+                width: 44, height: 44,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primary.withOpacity(0.12),
+                ),
+                alignment: Alignment.center,
+                child: hasPhoto
+                    ? Image.network(user.avatarUrl!,
+                        width: 44, height: 44, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _initials(user))
+                    : _initials(user),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text(user.name,
+                      style: AppTextStyles.labelLargeOf(context),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 2),
+                  Text(user.email,
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: tc.textSecondary,
+                          fontWeight: FontWeight.w400),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                ]),
+              ),
+              if (user.isPremium)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentOrange.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: AppColors.accentOrange.withOpacity(0.4)),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.star_rounded,
+                        color: AppColors.accentOrange, size: 11),
+                    const SizedBox(width: 3),
+                    Text(
+                      user.premiumType ?? 'Premium',
+                      style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.accentOrange),
+                    ),
+                  ]),
+                ),
+            ]),
+
+            const SizedBox(height: 12),
+            Divider(color: tc.divider, height: 1),
+            const SizedBox(height: 10),
+
+            // ── Stats en fila ──────────────────────────────────────
+            Row(children: [
+              _Stat(icon: Icons.fitness_center_rounded,
+                  label: '${user.totalWorkouts} entrenos',
+                  color: AppColors.primary),
+              const SizedBox(width: 16),
+              _Stat(icon: Icons.local_fire_department_rounded,
+                  label: '${user.streak} días',
+                  color: AppColors.accentOrange),
+              const SizedBox(width: 16),
+              _Stat(icon: Icons.monitor_weight_outlined,
+                  label: '${user.weight.toStringAsFixed(0)} kg',
+                  color: AppColors.accentBlue),
+            ]),
+
+            const SizedBox(height: 8),
+
+            // ── Info secundaria ────────────────────────────────────
+            Row(children: [
+              Icon(Icons.flag_outlined, size: 12, color: tc.textMuted),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(user.goal,
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: tc.textSecondary,
+                        fontWeight: FontWeight.w500),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ),
+              Icon(Icons.calendar_today_outlined,
+                  size: 11, color: tc.textMuted),
+              const SizedBox(width: 4),
+              Text('Desde ${fmt(user.createdAt)}',
+                  style: TextStyle(fontSize: 11, color: tc.textMuted)),
+            ]),
+
+            if (user.isPremium && user.premiumExpiresAt != null) ...[
+              const SizedBox(height: 4),
+              Row(children: [
+                const Icon(Icons.schedule_rounded,
+                    size: 11, color: AppColors.accentOrange),
+                const SizedBox(width: 4),
+                Text('Premium hasta ${fmt(user.premiumExpiresAt)}',
+                    style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.accentOrange,
+                        fontWeight: FontWeight.w600)),
+              ]),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _initials(AdminUserInfo u) => Text(u.initials,
+      style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          color: AppColors.primary));
+}
+
+class _Stat extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  const _Stat({required this.icon, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: 13, color: color),
+      const SizedBox(width: 4),
+      Text(label,
+          style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+    ]);
   }
 }
 

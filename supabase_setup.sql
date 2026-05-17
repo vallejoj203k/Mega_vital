@@ -1412,3 +1412,64 @@ DROP POLICY IF EXISTS "exercise_animations_select" ON storage.objects;
 CREATE POLICY "exercise_animations_select"
   ON storage.objects FOR SELECT TO public
   USING (bucket_id = 'exercise-animations');
+
+-- ─── Admin: listar todos los usuarios ────────────────────────────────────────
+-- Función SECURITY DEFINER que permite al admin ver todos los perfiles
+-- junto con su estado premium activo.
+
+DROP FUNCTION IF EXISTS public.admin_list_users();
+
+CREATE OR REPLACE FUNCTION public.admin_list_users()
+RETURNS TABLE (
+  uid              TEXT,
+  name             TEXT,
+  email            TEXT,
+  goal             TEXT,
+  weight           DOUBLE PRECISION,
+  height           DOUBLE PRECISION,
+  age              INTEGER,
+  streak           INTEGER,
+  total_workouts   INTEGER,
+  created_at       TIMESTAMPTZ,
+  avatar_url       TEXT,
+  gender           TEXT,
+  is_premium       BOOLEAN,
+  premium_type     TEXT,
+  premium_expires_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    p.uid,
+    p.name,
+    p.email,
+    p.goal,
+    p.weight,
+    p.height,
+    p.age,
+    p.streak,
+    p.total_workouts,
+    p.created_at,
+    p.avatar_url,
+    p.gender,
+    (ps.id IS NOT NULL)            AS is_premium,
+    ps.type                        AS premium_type,
+    ps.expires_at                  AS premium_expires_at
+  FROM user_profiles p
+  LEFT JOIN LATERAL (
+    SELECT id, type, expires_at
+    FROM premium_subscriptions
+    WHERE user_id::text = p.uid
+      AND expires_at > NOW()
+    ORDER BY expires_at DESC
+    LIMIT 1
+  ) ps ON true
+  ORDER BY p.created_at DESC;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.admin_list_users() TO authenticated;
