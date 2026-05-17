@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/constants/app_theme_colors.dart';
 import 'seat_selection_screen.dart';
 
 // ── Models ─────────────────────────────────────────────
@@ -98,7 +99,7 @@ List<SpinClass> _buildClasses() => [
     name: 'Morning Power',
     description: 'La sesión más exigente del día. Activa el metabolismo desde temprano con tabatas y sprints guiados por instructora certificada. Para los que hacen la diferencia antes que el resto despierte.',
     features: ['Bicicleta Keiser M3+', 'Monitor cardíaco', 'Protocolo HIIT'],
-    instructor: _instructors[0], // Verónica
+    instructor: _instructors[0],
     level: SpinLevel.avanzado,
     time: '05:00 AM',
     days: 'Lun · Mar · Mié · Jue · Vie',
@@ -113,7 +114,7 @@ List<SpinClass> _buildClasses() => [
     name: 'Evening Burn',
     description: 'La sesión perfecta para desconectarte del trabajo. Cardio de precisión con música en vivo y retroalimentación en tiempo real. Quema calórica sostenida de inicio a fin.',
     features: ['Bicicleta Keiser M3', 'Monitor cardíaco', 'Música en vivo'],
-    instructor: _instructors[1], // Julio
+    instructor: _instructors[1],
     level: SpinLevel.intermedio,
     time: '06:00 PM',
     days: 'Lun · Mar · Mié · Jue · Vie',
@@ -128,7 +129,7 @@ List<SpinClass> _buildClasses() => [
     name: 'Night Storm',
     description: 'Cierra el día con todo. Intervalos de alta intensidad guiados por instructora certificada para maximizar la quema calórica y desafiar tus límites cada sesión.',
     features: ['Bicicleta Keiser M3+', 'Potenciómetro watt', 'Métricas en tiempo real'],
-    instructor: _instructors[0], // Verónica
+    instructor: _instructors[0],
     level: SpinLevel.avanzado,
     time: '07:00 PM',
     days: 'Lun · Mar · Mié · Jue · Vie',
@@ -143,7 +144,7 @@ List<SpinClass> _buildClasses() => [
     name: 'Saturday Ride',
     description: 'Arranca el fin de semana con energía. Sesión de ciclismo indoor para todos los niveles con ritmo progresivo y ambiente motivador. El mejor plan para el sábado.',
     features: ['Bicicleta Keiser M3', 'Monitor cardíaco', 'Todos los niveles'],
-    instructor: _instructors[1], // Julio
+    instructor: _instructors[1],
     level: SpinLevel.intermedio,
     time: '09:00 AM',
     days: 'Sáb',
@@ -174,7 +175,7 @@ class _SpinningScreenState extends State<SpinningScreen>
 
   late TabController _tabController;
   late List<SpinClass> _classes;
-  final Map<String, int> _myBookings = {}; // classId → seatIndex
+  final Map<String, int> _myBookings = {};
   bool _loading = true;
 
   @override
@@ -192,8 +193,6 @@ class _SpinningScreenState extends State<SpinningScreen>
     _realtimeChannel?.unsubscribe();
     super.dispose();
   }
-
-  // ── Supabase helpers ────────────────────────────────────
 
   SpinClass? _classById(String id) {
     for (final c in _classes) {
@@ -281,23 +280,17 @@ class _SpinningScreenState extends State<SpinningScreen>
 
   Color _levelColor(SpinLevel l) {
     switch (l) {
-      case SpinLevel.basico:
-        return AppColors.primary;
-      case SpinLevel.intermedio:
-        return AppColors.accentOrange;
-      case SpinLevel.avanzado:
-        return AppColors.accentPurple;
+      case SpinLevel.basico:      return AppColors.primary;
+      case SpinLevel.intermedio:  return AppColors.accentOrange;
+      case SpinLevel.avanzado:    return AppColors.accentPurple;
     }
   }
 
   String _levelLabel(SpinLevel l) {
     switch (l) {
-      case SpinLevel.basico:
-        return 'Iniciación Pro';
-      case SpinLevel.intermedio:
-        return 'Intermedio Pro';
-      case SpinLevel.avanzado:
-        return 'Alto Rendimiento';
+      case SpinLevel.basico:      return 'Iniciación Pro';
+      case SpinLevel.intermedio:  return 'Intermedio Pro';
+      case SpinLevel.avanzado:    return 'Alto Rendimiento';
     }
   }
 
@@ -312,16 +305,12 @@ class _SpinningScreenState extends State<SpinningScreen>
     final result = await Navigator.push<int>(
       context,
       MaterialPageRoute(
-        builder: (_) => SeatSelectionScreen(
-          spinClass: cls,
-          currentSeat: oldSeat,
-        ),
+        builder: (_) => SeatSelectionScreen(spinClass: cls, currentSeat: oldSeat),
       ),
     );
 
     if (!mounted || result == null || result == oldSeat) return;
 
-    // Optimistic update
     setState(() {
       if (oldSeat != null && cls.reservedSeats.remove(oldSeat)) cls.bookedSpots--;
       if (cls.reservedSeats.add(result)) cls.bookedSpots++;
@@ -339,16 +328,12 @@ class _SpinningScreenState extends State<SpinningScreen>
           : 'Puesto $label reservado en ${cls.name}',
     );
 
-    // Persist to Supabase
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) return;
       if (oldSeat != null) {
-        await _supabase
-            .from('spinning_bookings')
-            .delete()
-            .eq('user_id', userId)
-            .eq('class_id', cls.id);
+        await _supabase.from('spinning_bookings').delete()
+            .eq('user_id', userId).eq('class_id', cls.id);
       }
       await _supabase.from('spinning_bookings').insert({
         'user_id': userId,
@@ -357,7 +342,6 @@ class _SpinningScreenState extends State<SpinningScreen>
       });
     } catch (e) {
       debugPrint('spinning_bookings insert error: $e');
-      // Revert on error
       if (!mounted) return;
       setState(() {
         if (cls.reservedSeats.remove(result)) cls.bookedSpots--;
@@ -377,31 +361,27 @@ class _SpinningScreenState extends State<SpinningScreen>
   }
 
   void _cancelBooking(SpinClass cls) async {
+    final tc = AppThemeColors.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: tc.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text(
-          'Cancelar reserva',
-          style: TextStyle(
-              color: AppColors.textPrimary, fontWeight: FontWeight.w700),
-        ),
+        title: Text('Cancelar reserva',
+            style: TextStyle(color: tc.textPrimary, fontWeight: FontWeight.w700)),
         content: Text(
           '¿Seguro que quieres cancelar tu puesto en ${cls.name}?',
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          style: TextStyle(color: tc.textSecondary, fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('No',
-                style: TextStyle(color: AppColors.textSecondary)),
+            child: Text('No', style: TextStyle(color: tc.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Sí, cancelar',
-                style: TextStyle(
-                    color: AppColors.error, fontWeight: FontWeight.w700)),
+                style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -409,8 +389,6 @@ class _SpinningScreenState extends State<SpinningScreen>
     if (confirmed != true || !mounted) return;
 
     final seat = _myBookings[cls.id];
-
-    // Optimistic update
     setState(() {
       if (seat != null && cls.reservedSeats.remove(seat)) cls.bookedSpots--;
       _myBookings.remove(cls.id);
@@ -423,17 +401,12 @@ class _SpinningScreenState extends State<SpinningScreen>
       text: 'Reserva cancelada en ${cls.name}',
     );
 
-    // Delete from Supabase
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) return;
-      await _supabase
-          .from('spinning_bookings')
-          .delete()
-          .eq('user_id', userId)
-          .eq('class_id', cls.id);
+      await _supabase.from('spinning_bookings').delete()
+          .eq('user_id', userId).eq('class_id', cls.id);
     } catch (_) {
-      // Revert on error
       if (!mounted || seat == null) return;
       setState(() {
         if (cls.reservedSeats.add(seat)) cls.bookedSpots++;
@@ -447,24 +420,17 @@ class _SpinningScreenState extends State<SpinningScreen>
     }
   }
 
-  void _showSnackBar({
-    required IconData icon,
-    required Color iconColor,
-    required String text,
-  }) {
+  void _showSnackBar({required IconData icon, required Color iconColor, required String text}) {
     if (!mounted) return;
+    final tc = AppThemeColors.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            Icon(icon, color: iconColor, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(text, style: const TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-        backgroundColor: AppColors.surface,
+        content: Row(children: [
+          Icon(icon, color: iconColor, size: 20),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: TextStyle(color: tc.textPrimary))),
+        ]),
+        backgroundColor: tc.surface,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
@@ -475,22 +441,19 @@ class _SpinningScreenState extends State<SpinningScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final tc = AppThemeColors.of(context);
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: tc.background,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            _buildHeader(),
-            _buildTabBar(),
+            _buildHeader(tc),
+            _buildTabBar(tc),
             Expanded(
               child: _loading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                        strokeWidth: 2.5,
-                      ),
-                    )
+                  ? const Center(child: CircularProgressIndicator(
+                      color: AppColors.primary, strokeWidth: 2.5))
                   : TabBarView(
                       controller: _tabController,
                       children: [
@@ -524,7 +487,7 @@ class _SpinningScreenState extends State<SpinningScreen>
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(AppThemeColors tc) {
     final availableClasses = _classes.where((c) => c.availableSpots > 0).length;
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
@@ -532,10 +495,7 @@ class _SpinningScreenState extends State<SpinningScreen>
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppColors.accentOrange.withOpacity(0.18),
-            AppColors.background,
-          ],
+          colors: [AppColors.accentOrange.withOpacity(0.18), tc.background],
         ),
       ),
       child: Column(
@@ -549,131 +509,95 @@ class _SpinningScreenState extends State<SpinningScreen>
                 decoration: BoxDecoration(
                   gradient: AppColors.burnGradient,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.accentOrange.withOpacity(0.5),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
+                  boxShadow: [BoxShadow(
+                    color: AppColors.accentOrange.withOpacity(0.5),
+                    blurRadius: 16, offset: const Offset(0, 6),
+                  )],
                 ),
-                child: const Icon(Icons.directions_bike_rounded,
-                    color: Colors.white, size: 28),
+                child: const Icon(Icons.directions_bike_rounded, color: Colors.white, size: 28),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text('Spinning', style: AppTextStyles.displayMedium),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            gradient: AppColors.burnGradient,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Text(
-                            'PRO',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
+                    Row(children: [
+                      Text('Spinning',
+                          style: AppTextStyles.displayMedium.copyWith(color: tc.textPrimary)),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          gradient: AppColors.burnGradient,
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                      ],
-                    ),
+                        child: const Text('PRO', style: TextStyle(
+                            fontSize: 10, fontWeight: FontWeight.w800,
+                            color: Colors.white, letterSpacing: 1.2)),
+                      ),
+                    ]),
                     const SizedBox(height: 2),
-                    Text(
-                      'Sesiones certificadas con instructores profesionales',
-                      style: AppTextStyles.bodySmall
-                          .copyWith(color: AppColors.textSecondary),
-                    ),
+                    Text('Sesiones certificadas con instructores profesionales',
+                        style: AppTextStyles.bodySmall.copyWith(color: tc.textSecondary)),
                   ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 14),
-          // Fila de credenciales profesionales
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AppColors.accentOrange.withOpacity(0.07),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: AppColors.accentOrange.withOpacity(0.2), width: 0.5),
+              border: Border.all(color: AppColors.accentOrange.withOpacity(0.2), width: 0.5),
             ),
-            child: Row(
-              children: [
-                _CredBadge(icon: Icons.verified_rounded, label: 'Instructores Certificados', color: AppColors.accentOrange),
-                const SizedBox(width: 10),
-                _CredBadge(icon: Icons.monitor_heart_rounded, label: 'Monitor Cardíaco', color: AppColors.error),
-                const SizedBox(width: 10),
-                _CredBadge(icon: Icons.bike_scooter_rounded, label: 'Keiser M3', color: AppColors.accentBlue),
-              ],
-            ),
+            child: Row(children: [
+              _CredBadge(icon: Icons.verified_rounded, label: 'Instructores Certificados', color: AppColors.accentOrange),
+              const SizedBox(width: 10),
+              _CredBadge(icon: Icons.monitor_heart_rounded, label: 'Monitor Cardíaco', color: AppColors.error),
+              const SizedBox(width: 10),
+              _CredBadge(icon: Icons.bike_scooter_rounded, label: 'Keiser M3', color: AppColors.accentBlue),
+            ]),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              _StatChip(
-                icon: Icons.calendar_today_rounded,
-                label: '$availableClasses clases disponibles',
-                color: AppColors.accentOrange,
-              ),
-              const SizedBox(width: 10),
-              _StatChip(
-                icon: Icons.local_fire_department_rounded,
-                label: '400–800 kcal',
-                color: AppColors.accentPurple,
-              ),
-              const SizedBox(width: 10),
-              _StatChip(
-                icon: Icons.timer_rounded,
-                label: '60 min',
-                color: AppColors.accentBlue,
-              ),
-            ],
-          ),
+          Row(children: [
+            _StatChip(icon: Icons.calendar_today_rounded,
+                label: '$availableClasses clases disponibles', color: AppColors.accentOrange),
+            const SizedBox(width: 10),
+            _StatChip(icon: Icons.local_fire_department_rounded,
+                label: '400–800 kcal', color: AppColors.accentPurple),
+            const SizedBox(width: 10),
+            _StatChip(icon: Icons.timer_rounded, label: '60 min', color: AppColors.accentBlue),
+          ]),
         ],
       ),
     );
   }
 
-  Widget _buildTabBar() {
+  Widget _buildTabBar(AppThemeColors tc) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: tc.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border, width: 0.5),
+        border: Border.all(color: tc.border, width: 0.5),
       ),
       child: TabBar(
         controller: _tabController,
         indicator: BoxDecoration(
           gradient: AppColors.burnGradient,
           borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.accentOrange.withOpacity(0.4),
-              blurRadius: 8,
-            ),
-          ],
+          boxShadow: [BoxShadow(
+            color: AppColors.accentOrange.withOpacity(0.4), blurRadius: 8)],
         ),
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         labelColor: Colors.white,
-        unselectedLabelColor: AppColors.textSecondary,
-        labelStyle: const TextStyle(
-            fontSize: 13, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: const TextStyle(
-            fontSize: 13, fontWeight: FontWeight.w400),
+        unselectedLabelColor: tc.textSecondary,
+        labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
         tabs: const [
           Tab(text: 'Horarios'),
           Tab(text: 'Entrenadores'),
@@ -684,7 +608,7 @@ class _SpinningScreenState extends State<SpinningScreen>
   }
 }
 
-// ── Cred Badge (profesional) ───────────────────────────
+// ── Cred Badge ─────────────────────────────────────────
 
 class _CredBadge extends StatelessWidget {
   final IconData icon;
@@ -693,23 +617,15 @@ class _CredBadge extends StatelessWidget {
   const _CredBadge({required this.icon, required this.label, required this.color});
 
   @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Row(
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              label,
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Expanded(
+    child: Row(children: [
+      Icon(icon, size: 12, color: color),
+      const SizedBox(width: 4),
+      Flexible(child: Text(label,
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
+          overflow: TextOverflow.ellipsis)),
+    ]),
+  );
 }
 
 // ── Stat Chip ──────────────────────────────────────────
@@ -718,35 +634,22 @@ class _StatChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-
-  const _StatChip(
-      {required this.icon, required this.label, required this.color});
+  const _StatChip({required this.icon, required this.label, required this.color});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3), width: 0.5),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: color),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-                fontSize: 11,
-                color: color,
-                fontWeight: FontWeight.w600),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.12),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: color.withOpacity(0.3), width: 0.5),
+    ),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: 13, color: color),
+      const SizedBox(width: 5),
+      Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+    ]),
+  );
 }
 
 // ── Schedule Tab ───────────────────────────────────────
@@ -761,13 +664,9 @@ class _ScheduleTab extends StatelessWidget {
   final void Function(SpinClass) onCancel;
 
   const _ScheduleTab({
-    required this.classes,
-    required this.myBookings,
-    required this.levelColor,
-    required this.levelLabel,
-    required this.onBook,
-    required this.onChangeSeat,
-    required this.onCancel,
+    required this.classes, required this.myBookings,
+    required this.levelColor, required this.levelLabel,
+    required this.onBook, required this.onChangeSeat, required this.onCancel,
   });
 
   @override
@@ -785,8 +684,7 @@ class _ScheduleTab extends StatelessWidget {
           levelColor: levelColor,
           levelLabel: levelLabel,
           onBook: () => onBook(cls),
-          onChangeSeat:
-              bookedSeat != null ? () => onChangeSeat(cls, bookedSeat) : null,
+          onChangeSeat: bookedSeat != null ? () => onChangeSeat(cls, bookedSeat) : null,
           onCancel: bookedSeat != null ? () => onCancel(cls) : null,
         );
       },
@@ -807,328 +705,195 @@ class _ClassCard extends StatelessWidget {
   final VoidCallback? onCancel;
 
   const _ClassCard({
-    required this.cls,
-    required this.isBooked,
-    this.bookedSeat,
-    required this.levelColor,
-    required this.levelLabel,
-    required this.onBook,
-    this.onChangeSeat,
-    this.onCancel,
+    required this.cls, required this.isBooked, this.bookedSeat,
+    required this.levelColor, required this.levelLabel,
+    required this.onBook, this.onChangeSeat, this.onCancel,
   });
 
   @override
   Widget build(BuildContext context) {
+    final tc    = AppThemeColors.of(context);
     final color = levelColor(cls.level);
     final isFull = cls.availableSpots == 0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: tc.surface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isBooked
-              ? color.withOpacity(0.5)
-              : AppColors.border,
+          color: isBooked ? color.withOpacity(0.5) : tc.border,
           width: isBooked ? 1.5 : 0.5,
         ),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-          if (isBooked)
-            BoxShadow(
-              color: color.withOpacity(0.1),
-              blurRadius: 16,
-            ),
+          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 4)),
+          if (isBooked) BoxShadow(color: color.withOpacity(0.1), blurRadius: 16),
         ],
       ),
-      child: Column(
-        children: [
-          // ── Hero image area ──
-          ClipRRect(
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(18)),
-            child: Stack(
-              children: [
-                _ClassHeroImage(level: cls.level, color: color),
-                // Gradient overlay
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          AppColors.surface.withOpacity(0.95),
-                        ],
-                        stops: const [0.3, 1.0],
-                      ),
-                    ),
-                  ),
+      child: Column(children: [
+        // ── Hero image ──
+        ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+          child: Stack(children: [
+            _ClassHeroImage(level: cls.level, color: color, surface: tc.surface),
+            Positioned.fill(child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, tc.surface.withOpacity(0.95)],
+                  stops: const [0.3, 1.0],
                 ),
-                // Level badge
-                Positioned(
-                  top: 12,
-                  left: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                          color: color.withOpacity(0.6), width: 1),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(_levelIcon(cls.level),
-                            size: 12, color: color),
+              ),
+            )),
+            Positioned(top: 12, left: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: color.withOpacity(0.6), width: 1),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(_levelIcon(cls.level), size: 12, color: color),
+                  const SizedBox(width: 4),
+                  Text(levelLabel(cls.level),
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+                ]),
+              )),
+            Positioned(top: 12, right: 12,
+              child: isBooked
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: color.withOpacity(0.6), width: 1),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.event_seat_rounded, size: 12, color: color),
                         const SizedBox(width: 4),
-                        Text(
-                          levelLabel(cls.level),
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: color),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                // Certified badge
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: isBooked
-                      ? Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: color.withOpacity(0.6), width: 1),
-                          ),
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Icon(Icons.event_seat_rounded, size: 12, color: color),
-                            const SizedBox(width: 4),
-                            Text(
-                              bookedSeat != null
-                                  ? 'Bici ${_seatFromIndex(bookedSeat!)}'
-                                  : 'Reservado',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
-                            ),
-                          ]),
-                        )
-                      : Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.45),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: AppColors.accentOrange.withOpacity(0.5), width: 0.5),
-                          ),
-                          child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                            Icon(Icons.verified_rounded, size: 11, color: AppColors.accentOrange),
-                            SizedBox(width: 4),
-                            Text('CERTIFICADA', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.accentOrange, letterSpacing: 0.8)),
-                          ]),
-                        ),
-                ),
-                // Class name over image
-                Positioned(
-                  bottom: 12,
-                  left: 14,
-                  right: 14,
-                  child: Text(
-                    cls.name,
-                    style: AppTextStyles.headingLarge,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // ── Info section ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Descripción profesional
-                Text(
-                  cls.description,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                    height: 1.45,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                // Features del equipamiento
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: cls.features.map((f) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentOrange.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.accentOrange.withOpacity(0.25), width: 0.5),
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.check_circle_outline_rounded, size: 10, color: AppColors.accentOrange),
-                      const SizedBox(width: 4),
-                      Text(f, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.accentOrange)),
-                    ]),
-                  )).toList(),
-                ),
-                const SizedBox(height: 10),
-                // Divisor
-                Container(height: 0.5, color: AppColors.border),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    _InfoPill(
-                      icon: Icons.access_time_rounded,
-                      label: cls.time,
-                      color: AppColors.accentBlue,
-                    ),
-                    _InfoPill(
-                      icon: Icons.local_fire_department_rounded,
-                      label: '${cls.caloriesMin}–${cls.caloriesMax} kcal',
-                      color: AppColors.accentOrange,
-                    ),
-                    _InfoPill(
-                      icon: Icons.timer_rounded,
-                      label: '${cls.durationMinutes} min',
-                      color: AppColors.accentPurple,
-                    ),
-                    _InfoPill(
-                      icon: Icons.people_rounded,
-                      label: isFull
-                          ? 'Sin cupos'
-                          : '${cls.availableSpots}/${cls.totalSpots} cupos',
-                      color: isFull
-                          ? AppColors.error
-                          : cls.availableSpots <= 3
-                              ? AppColors.warning
-                              : AppColors.primary,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    const Icon(Icons.calendar_today_rounded,
-                        size: 15, color: AppColors.textSecondary),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        cls.days,
-                        style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary),
+                        Text(bookedSeat != null ? 'Bici ${_seatFromIndex(bookedSeat!)}' : 'Reservado',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+                      ]))
+                  : Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.45),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.accentOrange.withOpacity(0.5), width: 0.5),
                       ),
-                    ),
-                    // Spots indicator
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          isFull
-                              ? 'Lleno'
-                              : '${cls.availableSpots} lugares',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: isFull
-                                ? AppColors.error
-                                : AppColors.primary,
-                          ),
-                        ),
-                        _SpotsBar(
-                          total: cls.totalSpots,
-                          booked: cls.bookedSpots,
-                        ),
-                      ],
-                    ),
-                  ],
+                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.verified_rounded, size: 11, color: AppColors.accentOrange),
+                        SizedBox(width: 4),
+                        Text('CERTIFICADA', style: TextStyle(
+                            fontSize: 9, fontWeight: FontWeight.w800,
+                            color: AppColors.accentOrange, letterSpacing: 0.8)),
+                      ]))),
+            Positioned(bottom: 12, left: 14, right: 14,
+              child: Text(cls.name,
+                  style: AppTextStyles.headingLarge.copyWith(color: Colors.white))),
+          ]),
+        ),
+
+        // ── Info section ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(cls.description,
+                style: TextStyle(fontSize: 12, color: tc.textSecondary, height: 1.45)),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6, runSpacing: 6,
+              children: cls.features.map((f) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.accentOrange.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.accentOrange.withOpacity(0.25), width: 0.5),
                 ),
-                const SizedBox(height: 12),
-                // Booked seat info row
-                if (isBooked && bookedSeat != null) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 9),
-                    margin: const EdgeInsets.only(bottom: 8),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                          color: color.withOpacity(0.2), width: 0.5),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.event_seat_rounded,
-                            size: 14, color: color),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Tu puesto reservado:',
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary),
-                        ),
-                        const Spacer(),
-                        Text(
-                          'Bici ${_seatFromIndex(bookedSeat!)}',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: color,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                // Book button
-                SizedBox(
-                  width: double.infinity,
-                  height: 46,
-                  child: isBooked
-                      ? _BookedActions(
-                          color: color,
-                          onChangeSeat: onChangeSeat ?? () {},
-                          onCancel: onCancel ?? () {},
-                        )
-                      : isFull
-                          ? _FullButton()
-                          : _BookButton(
-                              color: color, onTap: onBook),
-                ),
-              ],
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.check_circle_outline_rounded, size: 10, color: AppColors.accentOrange),
+                  const SizedBox(width: 4),
+                  Text(f, style: const TextStyle(
+                      fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.accentOrange)),
+                ]),
+              )).toList(),
             ),
-          ),
-        ],
-      ),
+            const SizedBox(height: 10),
+            Container(height: 0.5, color: tc.border),
+            const SizedBox(height: 10),
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              _InfoPill(icon: Icons.access_time_rounded, label: cls.time, color: AppColors.accentBlue),
+              _InfoPill(icon: Icons.local_fire_department_rounded,
+                  label: '${cls.caloriesMin}–${cls.caloriesMax} kcal', color: AppColors.accentOrange),
+              _InfoPill(icon: Icons.timer_rounded,
+                  label: '${cls.durationMinutes} min', color: AppColors.accentPurple),
+              _InfoPill(
+                icon: Icons.people_rounded,
+                label: isFull ? 'Sin cupos' : '${cls.availableSpots}/${cls.totalSpots} cupos',
+                color: isFull ? AppColors.error
+                    : cls.availableSpots <= 3 ? AppColors.warning : AppColors.primary,
+              ),
+            ]),
+            const SizedBox(height: 10),
+            Row(children: [
+              Icon(Icons.calendar_today_rounded, size: 15, color: tc.textSecondary),
+              const SizedBox(width: 8),
+              Expanded(child: Text(cls.days,
+                  style: TextStyle(fontSize: 12, color: tc.textSecondary))),
+              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Text(
+                  isFull ? 'Lleno' : '${cls.availableSpots} lugares',
+                  style: TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w700,
+                      color: isFull ? AppColors.error : AppColors.primary),
+                ),
+                _SpotsBar(total: cls.totalSpots, booked: cls.bookedSpots, border: tc.border),
+              ]),
+            ]),
+            const SizedBox(height: 12),
+            if (isBooked && bookedSeat != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: color.withOpacity(0.2), width: 0.5),
+                ),
+                child: Row(children: [
+                  Icon(Icons.event_seat_rounded, size: 14, color: color),
+                  const SizedBox(width: 8),
+                  Text('Tu puesto reservado:',
+                      style: TextStyle(fontSize: 12, color: tc.textSecondary)),
+                  const Spacer(),
+                  Text('Bici ${_seatFromIndex(bookedSeat!)}',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: color)),
+                ]),
+              ),
+            ],
+            SizedBox(
+              width: double.infinity, height: 46,
+              child: isBooked
+                  ? _BookedActions(
+                      color: color,
+                      onChangeSeat: onChangeSeat ?? () {},
+                      onCancel: onCancel ?? () {},
+                    )
+                  : isFull ? _FullButton() : _BookButton(color: color, onTap: onBook),
+            ),
+          ]),
+        ),
+      ]),
     );
   }
 
   IconData _levelIcon(SpinLevel l) {
     switch (l) {
-      case SpinLevel.basico:
-        return Icons.signal_cellular_alt_1_bar_rounded;
-      case SpinLevel.intermedio:
-        return Icons.signal_cellular_alt_2_bar_rounded;
-      case SpinLevel.avanzado:
-        return Icons.signal_cellular_alt_rounded;
+      case SpinLevel.basico:      return Icons.signal_cellular_alt_1_bar_rounded;
+      case SpinLevel.intermedio:  return Icons.signal_cellular_alt_2_bar_rounded;
+      case SpinLevel.avanzado:    return Icons.signal_cellular_alt_rounded;
     }
   }
 
@@ -1143,51 +908,26 @@ class _ClassCard extends StatelessWidget {
 class _ClassHeroImage extends StatelessWidget {
   final SpinLevel level;
   final Color color;
-
-  const _ClassHeroImage({required this.level, required this.color});
+  final Color surface;
+  const _ClassHeroImage({required this.level, required this.color, required this.surface});
 
   @override
   Widget build(BuildContext context) {
-    final icons = [
-      Icons.directions_bike_rounded,
-      Icons.electric_bolt_rounded,
-      Icons.whatshot_rounded,
-    ];
-    final idx = level.index;
-
+    final icons = [Icons.directions_bike_rounded, Icons.electric_bolt_rounded, Icons.whatshot_rounded];
     return Container(
       height: 150,
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            color.withOpacity(0.3),
-            AppColors.surface,
-          ],
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: [color.withOpacity(0.3), surface],
         ),
       ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -20,
-            top: -20,
-            child: Icon(
-              icons[idx],
-              size: 160,
-              color: color.withOpacity(0.08),
-            ),
-          ),
-          Center(
-            child: Icon(
-              Icons.directions_bike_rounded,
-              size: 64,
-              color: color.withOpacity(0.5),
-            ),
-          ),
-        ],
-      ),
+      child: Stack(children: [
+        Positioned(right: -20, top: -20,
+            child: Icon(icons[level.index], size: 160, color: color.withOpacity(0.08))),
+        Center(child: Icon(Icons.directions_bike_rounded, size: 64, color: color.withOpacity(0.5))),
+      ]),
     );
   }
 }
@@ -1196,68 +936,42 @@ class _InfoPill extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-
-  const _InfoPill(
-      {required this.icon, required this.label, required this.color});
+  const _InfoPill({required this.icon, required this.label, required this.color});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.2), width: 0.5),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 11, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-                fontSize: 11,
-                color: color,
-                fontWeight: FontWeight.w600),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: color.withOpacity(0.2), width: 0.5),
+    ),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: 11, color: color),
+      const SizedBox(width: 4),
+      Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+    ]),
+  );
 }
 
 class _SpotsBar extends StatelessWidget {
-  final int total;
-  final int booked;
-
-  const _SpotsBar({required this.total, required this.booked});
+  final int total, booked;
+  final Color border;
+  const _SpotsBar({required this.total, required this.booked, required this.border});
 
   @override
   Widget build(BuildContext context) {
     final ratio = booked / total;
-    final color = ratio >= 0.9
-        ? AppColors.error
-        : ratio >= 0.7
-            ? AppColors.warning
-            : AppColors.primary;
+    final color = ratio >= 0.9 ? AppColors.error
+        : ratio >= 0.7 ? AppColors.warning : AppColors.primary;
     return Container(
       margin: const EdgeInsets.only(top: 4),
-      width: 80,
-      height: 4,
-      decoration: BoxDecoration(
-        color: AppColors.border,
-        borderRadius: BorderRadius.circular(2),
-      ),
+      width: 80, height: 4,
+      decoration: BoxDecoration(color: border, borderRadius: BorderRadius.circular(2)),
       child: FractionallySizedBox(
         widthFactor: ratio.clamp(0.0, 1.0),
         alignment: Alignment.centerLeft,
-        child: Container(
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
+        child: Container(decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
       ),
     );
   }
@@ -1266,151 +980,87 @@ class _SpotsBar extends StatelessWidget {
 class _BookButton extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
-
   const _BookButton({required this.color, required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [color, color.withOpacity(0.7)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.4),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color, color.withOpacity(0.7)],
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
         ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.event_seat_rounded, size: 18, color: Colors.white),
-            SizedBox(width: 8),
-            Text(
-              'Elegir Puesto',
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white),
-            ),
-          ],
-        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: color.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))],
       ),
-    );
-  }
+      child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(Icons.event_seat_rounded, size: 18, color: Colors.white),
+        SizedBox(width: 8),
+        Text('Elegir Puesto', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+      ]),
+    ),
+  );
 }
 
 class _BookedActions extends StatelessWidget {
   final Color color;
   final VoidCallback onChangeSeat;
   final VoidCallback onCancel;
-
-  const _BookedActions({
-    required this.color,
-    required this.onChangeSeat,
-    required this.onCancel,
-  });
+  const _BookedActions({required this.color, required this.onChangeSeat, required this.onCancel});
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: onChangeSeat,
-            child: Container(
-              height: 46,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: color.withOpacity(0.4), width: 1),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.swap_horiz_rounded, size: 16, color: color),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Cambiar lugar',
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: color),
-                  ),
-                ],
-              ),
-            ),
-          ),
+  Widget build(BuildContext context) => Row(children: [
+    Expanded(child: GestureDetector(
+      onTap: onChangeSeat,
+      child: Container(
+        height: 46,
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.4), width: 1),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: GestureDetector(
-            onTap: onCancel,
-            child: Container(
-              height: 46,
-              decoration: BoxDecoration(
-                color: AppColors.error.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: AppColors.error.withOpacity(0.3), width: 1),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.cancel_outlined,
-                      size: 16, color: AppColors.error),
-                  SizedBox(width: 6),
-                  Text(
-                    'Cancelar',
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.error),
-                  ),
-                ],
-              ),
-            ),
-          ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.swap_horiz_rounded, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text('Cambiar lugar', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+        ]),
+      ),
+    )),
+    const SizedBox(width: 8),
+    Expanded(child: GestureDetector(
+      onTap: onCancel,
+      child: Container(
+        height: 46,
+        decoration: BoxDecoration(
+          color: AppColors.error.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.error.withOpacity(0.3), width: 1),
         ),
-      ],
-    );
-  }
+        child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.cancel_outlined, size: 16, color: AppColors.error),
+          SizedBox(width: 6),
+          Text('Cancelar', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.error)),
+        ]),
+      ),
+    )),
+  ]);
 }
 
 class _FullButton extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.error.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border:
-            Border.all(color: AppColors.error.withOpacity(0.3), width: 1),
-      ),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.block_rounded, size: 18, color: AppColors.error),
-          SizedBox(width: 8),
-          Text(
-            'Clase llena',
-            style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppColors.error),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+      color: AppColors.error.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: AppColors.error.withOpacity(0.3), width: 1),
+    ),
+    child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Icon(Icons.block_rounded, size: 18, color: AppColors.error),
+      SizedBox(width: 8),
+      Text('Clase llena', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.error)),
+    ]),
+  );
 }
 
 // ── Instructors Tab ────────────────────────────────────
@@ -1420,13 +1070,11 @@ class _InstructorsTab extends StatelessWidget {
   const _InstructorsTab({required this.instructors});
 
   @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
-      itemCount: instructors.length,
-      itemBuilder: (_, i) => _InstructorCard(inst: instructors[i]),
-    );
-  }
+  Widget build(BuildContext context) => ListView.builder(
+    padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+    itemCount: instructors.length,
+    itemBuilder: (_, i) => _InstructorCard(inst: instructors[i]),
+  );
 }
 
 class _InstructorCard extends StatelessWidget {
@@ -1435,251 +1083,137 @@ class _InstructorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: tc.surface,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: inst.color.withOpacity(0.35), width: 1),
         boxShadow: [
-          BoxShadow(
-            color: inst.color.withOpacity(0.12),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.35),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: inst.color.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, 6)),
+          BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4)),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Foto de perfil ──────────────────────────────────
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-            child: Stack(
-              children: [
-                // Foto real o placeholder
-                SizedBox(
-                  height: 240,
-                  width: double.infinity,
-                  child: Image.asset(
-                    inst.photoAsset,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            inst.color.withOpacity(0.35),
-                            AppColors.surface,
-                          ],
-                        ),
-                      ),
-                      child: Center(
-                        child: Icon(Icons.person_rounded,
-                            size: 96, color: inst.color.withOpacity(0.4)),
-                      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+          child: Stack(children: [
+            SizedBox(
+              height: 240, width: double.infinity,
+              child: Image.asset(inst.photoAsset, fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft, end: Alignment.bottomRight,
+                      colors: [inst.color.withOpacity(0.35), tc.surface],
                     ),
                   ),
-                ),
-                // Degradado inferior para legibilidad del nombre
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.75),
-                        ],
-                        stops: const [0.45, 1.0],
-                      ),
-                    ),
-                  ),
-                ),
-                // Nombre + certificado sobre la foto
-                Positioned(
-                  bottom: 14,
-                  left: 16,
-                  right: 16,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              inst.name,
-                              style: const TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              inst.specialty,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: inst.color,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: inst.color.withOpacity(0.6), width: 1),
-                        ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(Icons.verified_rounded, size: 13, color: inst.color),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Certificado/a',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: inst.color,
-                            ),
-                          ),
-                        ]),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                  child: Center(child: Icon(Icons.person_rounded,
+                      size: 96, color: inst.color.withOpacity(0.4))),
+                )),
             ),
-          ),
-
-          // ── Estadísticas ────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              color: inst.color.withOpacity(0.07),
-              border: Border(
-                top: BorderSide(color: inst.color.withOpacity(0.2), width: 0.5),
-                bottom: BorderSide(color: inst.color.withOpacity(0.2), width: 0.5),
+            Positioned.fill(child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, Colors.black.withOpacity(0.75)],
+                  stops: const [0.45, 1.0],
+                ),
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _StatColumn(
-                  icon: Icons.star_rounded,
-                  value: inst.rating.toStringAsFixed(1),
-                  label: 'Calificación',
-                  color: AppColors.warning,
+            )),
+            Positioned(bottom: 14, left: 16, right: 16,
+              child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(inst.name, style: const TextStyle(
+                      fontSize: 26, fontWeight: FontWeight.w800,
+                      color: Colors.white, letterSpacing: 0.3)),
+                  const SizedBox(height: 3),
+                  Text(inst.specialty, style: TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w500, color: inst.color)),
+                ])),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: inst.color.withOpacity(0.6), width: 1),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.verified_rounded, size: 13, color: inst.color),
+                    const SizedBox(width: 4),
+                    Text('Certificado/a', style: TextStyle(
+                        fontSize: 11, fontWeight: FontWeight.w700, color: inst.color)),
+                  ]),
                 ),
-                Container(width: 0.5, height: 36, color: inst.color.withOpacity(0.3)),
-                _StatColumn(
-                  icon: Icons.directions_bike_rounded,
-                  value: '${inst.totalClasses}',
-                  label: 'Clases impartidas',
-                  color: inst.color,
-                ),
-                Container(width: 0.5, height: 36, color: inst.color.withOpacity(0.3)),
-                _StatColumn(
-                  icon: Icons.workspace_premium_rounded,
-                  value: '5+',
-                  label: 'Años de exp.',
-                  color: AppColors.primary,
-                ),
-              ],
-            ),
-          ),
+              ])),
+          ]),
+        ),
 
-          // ── Presentación profesional ─────────────────────────
-          Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  Container(
-                    width: 3,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: inst.color,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Perfil profesional',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                ]),
-                const SizedBox(height: 10),
-                Text(
-                  inst.bio,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                    height: 1.6,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                // Chips de especialidad
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _SpecChip(label: 'Ciclismo Indoor', color: inst.color),
-                    _SpecChip(label: 'HIIT Profesional', color: inst.color),
-                    _SpecChip(label: 'Cardio de Precisión', color: inst.color),
-                  ],
-                ),
-              ],
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: inst.color.withOpacity(0.07),
+            border: Border(
+              top: BorderSide(color: inst.color.withOpacity(0.2), width: 0.5),
+              bottom: BorderSide(color: inst.color.withOpacity(0.2), width: 0.5),
             ),
           ),
-        ],
-      ),
+          child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+            _StatColumn(icon: Icons.star_rounded,
+                value: inst.rating.toStringAsFixed(1), label: 'Calificación', color: AppColors.warning),
+            Container(width: 0.5, height: 36, color: inst.color.withOpacity(0.3)),
+            _StatColumn(icon: Icons.directions_bike_rounded,
+                value: '${inst.totalClasses}', label: 'Clases impartidas', color: inst.color),
+            Container(width: 0.5, height: 36, color: inst.color.withOpacity(0.3)),
+            _StatColumn(icon: Icons.workspace_premium_rounded,
+                value: '5+', label: 'Años de exp.', color: AppColors.primary),
+          ]),
+        ),
+
+        Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(width: 3, height: 18,
+                  decoration: BoxDecoration(color: inst.color, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(width: 8),
+              Text('Perfil profesional', style: TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w700,
+                  color: tc.textPrimary, letterSpacing: 0.3)),
+            ]),
+            const SizedBox(height: 10),
+            Text(inst.bio, style: TextStyle(
+                fontSize: 13, color: tc.textSecondary, height: 1.6)),
+            const SizedBox(height: 14),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              _SpecChip(label: 'Ciclismo Indoor', color: inst.color),
+              _SpecChip(label: 'HIIT Profesional', color: inst.color),
+              _SpecChip(label: 'Cardio de Precisión', color: inst.color),
+            ]),
+          ]),
+        ),
+      ]),
     );
   }
 }
 
 class _StatColumn extends StatelessWidget {
   final IconData icon;
-  final String value;
-  final String label;
+  final String value, label;
   final Color color;
   const _StatColumn({required this.icon, required this.value, required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 18, color: color),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
-        ),
-      ],
-    );
+    final tc = AppThemeColors.of(context);
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: 18, color: color),
+      const SizedBox(height: 4),
+      Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
+      const SizedBox(height: 2),
+      Text(label, style: TextStyle(fontSize: 10, color: tc.textMuted)),
+    ]);
   }
 }
 
@@ -1689,39 +1223,15 @@ class _SpecChip extends StatelessWidget {
   const _SpecChip({required this.label, required this.color});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3), width: 0.5),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
-      ),
-    );
-  }
-}
-
-class _MiniStat extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final Color color;
-  const _MiniStat({required this.icon, required this.value, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 13, color: color),
-        const SizedBox(width: 4),
-        Text(value, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: color.withOpacity(0.3), width: 0.5),
+    ),
+    child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+  );
 }
 
 // ── My Bookings Tab ────────────────────────────────────
@@ -1736,200 +1246,117 @@ class _MyBookingsTab extends StatelessWidget {
   final void Function(SpinClass) onCancel;
 
   const _MyBookingsTab({
-    required this.classes,
-    required this.myBookings,
-    required this.levelColor,
-    required this.levelLabel,
-    required this.seatLabel,
-    required this.onChangeSeat,
-    required this.onCancel,
+    required this.classes, required this.myBookings,
+    required this.levelColor, required this.levelLabel, required this.seatLabel,
+    required this.onChangeSeat, required this.onCancel,
   });
 
   @override
   Widget build(BuildContext context) {
-    final booked =
-        classes.where((c) => myBookings.containsKey(c.id)).toList();
+    final tc = AppThemeColors.of(context);
+    final booked = classes.where((c) => myBookings.containsKey(c.id)).toList();
+
     if (booked.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.event_seat_outlined,
-              size: 64,
-              color: AppColors.textMuted,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Sin reservas aún',
-              style: AppTextStyles.headingMedium
-                  .copyWith(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Ve a Horarios y reserva tu puesto',
-              style: AppTextStyles.bodyMedium
-                  .copyWith(color: AppColors.textMuted),
-            ),
-          ],
-        ),
-      );
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.event_seat_outlined, size: 64, color: tc.textMuted),
+        const SizedBox(height: 16),
+        Text('Sin reservas aún',
+            style: AppTextStyles.headingMedium.copyWith(color: tc.textSecondary)),
+        const SizedBox(height: 8),
+        Text('Ve a Horarios y reserva tu puesto',
+            style: AppTextStyles.bodyMedium.copyWith(color: tc.textMuted)),
+      ]));
     }
+
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
       itemCount: booked.length,
       itemBuilder: (context, i) {
-        final cls = booked[i];
+        final cls   = booked[i];
         final color = levelColor(cls.level);
-        final seat = myBookings[cls.id]!;
+        final seat  = myBookings[cls.id]!;
         final label = seatLabel(seat);
+
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: tc.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: color.withOpacity(0.4), width: 1),
           ),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.directions_bike_rounded,
-                        color: color, size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(cls.name, style: AppTextStyles.headingSmall),
-                        const SizedBox(height: 2),
-                        Text(
-                          cls.time,
-                          style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary),
-                        ),
-                        Text(
-                          cls.days,
-                          style: const TextStyle(
-                              fontSize: 11, color: AppColors.textMuted),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          levelLabel(cls.level),
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: color,
-                              fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Bici $label',
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: color),
-                      ),
-                      Text(
-                        '${cls.caloriesMin}–${cls.caloriesMax} kcal',
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.textSecondary),
-                      ),
-                    ],
-                  ),
-                ],
+          child: Column(children: [
+            Row(children: [
+              Container(
+                width: 48, height: 48,
+                decoration: BoxDecoration(
+                    color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                child: Icon(Icons.directions_bike_rounded, color: color, size: 24),
               ),
-              const SizedBox(height: 12),
-              Container(height: 0.5, color: AppColors.border),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => onChangeSeat(cls, seat),
-                      child: Container(
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                              color: color.withOpacity(0.35), width: 1),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.swap_horiz_rounded,
-                                size: 15, color: color),
-                            const SizedBox(width: 5),
-                            Text(
-                              'Cambiar lugar',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: color),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(cls.name,
+                    style: AppTextStyles.headingSmall.copyWith(color: tc.textPrimary)),
+                const SizedBox(height: 2),
+                Text(cls.time, style: TextStyle(fontSize: 12, color: tc.textSecondary)),
+                Text(cls.days, style: TextStyle(fontSize: 11, color: tc.textMuted)),
+              ])),
+              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                      color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+                  child: Text(levelLabel(cls.level),
+                      style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(height: 4),
+                Text('Bici $label',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color)),
+                Text('${cls.caloriesMin}–${cls.caloriesMax} kcal',
+                    style: TextStyle(fontSize: 11, color: tc.textSecondary)),
+              ]),
+            ]),
+            const SizedBox(height: 12),
+            Container(height: 0.5, color: tc.border),
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(child: GestureDetector(
+                onTap: () => onChangeSeat(cls, seat),
+                child: Container(
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: color.withOpacity(0.35), width: 1),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => onCancel(cls),
-                      child: Container(
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: AppColors.error.withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                              color: AppColors.error.withOpacity(0.25),
-                              width: 1),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.cancel_outlined,
-                                size: 15, color: AppColors.error),
-                            SizedBox(width: 5),
-                            Text(
-                              'Cancelar',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.error),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(Icons.swap_horiz_rounded, size: 15, color: color),
+                    const SizedBox(width: 5),
+                    Text('Cambiar lugar',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+                  ]),
+                ),
+              )),
+              const SizedBox(width: 8),
+              Expanded(child: GestureDetector(
+                onTap: () => onCancel(cls),
+                child: Container(
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.error.withOpacity(0.25), width: 1),
                   ),
-                ],
-              ),
-            ],
-          ),
+                  child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(Icons.cancel_outlined, size: 15, color: AppColors.error),
+                    SizedBox(width: 5),
+                    Text('Cancelar', style: TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.error)),
+                  ]),
+                ),
+              )),
+            ]),
+          ]),
         );
       },
     );
