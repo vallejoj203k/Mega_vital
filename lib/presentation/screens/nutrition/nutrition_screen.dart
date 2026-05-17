@@ -1,9 +1,4 @@
 // lib/presentation/screens/nutrition/nutrition_screen.dart
-// ─────────────────────────────────────────────────────────────────
-// Pantalla de Nutrición conectada a datos reales.
-// Lee del NutritionProvider y muestra metas calculadas con
-// FitnessCalculator según los datos del usuario logueado.
-// ─────────────────────────────────────────────────────────────────
 
 import 'dart:async';
 import 'dart:math' as math;
@@ -11,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/constants/app_theme_colors.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/nutrition_provider.dart';
 import '../../../core/providers/premium_provider.dart';
@@ -40,6 +36,7 @@ class _NutritionScreenState extends State<NutritionScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final tc = AppThemeColors.of(context);
 
     if (!context.watch<PremiumProvider>().hasAccess) {
       return const PremiumLockedWidget(
@@ -52,7 +49,6 @@ class _NutritionScreenState extends State<NutritionScreen>
     final auth      = context.watch<AuthProvider>();
     final profile   = auth.profile;
 
-    // Metas calculadas con datos reales del usuario + nivel de intensidad
     final nivel = profile?.nutritionLevel ?? 1;
     final calc = profile != null
         ? FitnessCalculator(
@@ -65,7 +61,6 @@ class _NutritionScreenState extends State<NutritionScreen>
     final metaCarbs = calc?.metaCarbos    ?? 250.0;
     final metaFat   = calc?.metaGrasas    ?? 60.0;
 
-    // Kcal para cada nivel (para el preview en el selector)
     final levelCalories = profile != null
         ? List<int>.generate(4, (i) => FitnessCalculator(
               weight: profile.weight, height: profile.height,
@@ -74,7 +69,7 @@ class _NutritionScreenState extends State<NutritionScreen>
         : [2000, 2150, 2300, 2500];
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: tc.background,
       floatingActionButton: _AddFab(
         onTap: () => _showAddFoodSheet(context, nutrition),
       ),
@@ -84,7 +79,6 @@ class _NutritionScreenState extends State<NutritionScreen>
             : CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            // ── Header con fecha y nav ──
             SliverToBoxAdapter(child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: _DateHeader(nutrition: nutrition),
@@ -92,7 +86,6 @@ class _NutritionScreenState extends State<NutritionScreen>
 
             const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-            // ── Selector de nivel de intensidad calórica ──
             SliverToBoxAdapter(child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
               child: _LevelSelector(
@@ -106,7 +99,6 @@ class _NutritionScreenState extends State<NutritionScreen>
 
             const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
-            // ── Anillo calórico con metas reales ──
             SliverToBoxAdapter(child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: _CalorieRing(
@@ -118,7 +110,6 @@ class _NutritionScreenState extends State<NutritionScreen>
 
             const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
-            // ── Macros con metas reales ──
             SliverToBoxAdapter(child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: _MacrosRow(
@@ -133,7 +124,6 @@ class _NutritionScreenState extends State<NutritionScreen>
 
             const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
-            // ── Lista de comidas agrupadas ──
             SliverToBoxAdapter(child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: SectionHeader(
@@ -167,7 +157,6 @@ class _NutritionScreenState extends State<NutritionScreen>
                 }).toList(),
               )),
 
-            // ── Botón "Agregar otra comida" (visible cuando ya hay entradas) ──
             if (nutrition.log.entries.isNotEmpty)
               SliverToBoxAdapter(child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -176,7 +165,7 @@ class _NutritionScreenState extends State<NutritionScreen>
                   child: Container(
                     height: 50,
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceVariant,
+                      color: tc.surfaceVariant,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                           color: AppColors.primary.withOpacity(0.4), width: 1),
@@ -213,15 +202,16 @@ class _NutritionScreenState extends State<NutritionScreen>
   }
 
   void _confirmClear(BuildContext ctx, NutritionProvider nutrition) {
+    final tc = AppThemeColors.of(ctx);
     showDialog(context: ctx, builder: (_) => AlertDialog(
-      backgroundColor: AppColors.surface,
+      backgroundColor: tc.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('¿Limpiar el día?', style: AppTextStyles.headingSmall),
+      title: Text('¿Limpiar el día?', style: AppTextStyles.headingSmallOf(ctx)),
       content: Text('Se eliminarán todos los alimentos de hoy.',
-          style: AppTextStyles.bodyMedium),
+          style: AppTextStyles.bodyMediumOf(ctx)),
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancelar', style: TextStyle(color: AppColors.textSecondary))),
+            child: Text('Cancelar', style: TextStyle(color: tc.textSecondary))),
         TextButton(onPressed: () { Navigator.pop(ctx); nutrition.clearDay(); },
             child: Text('Limpiar', style: TextStyle(color: AppColors.error))),
       ],
@@ -256,7 +246,6 @@ class _NutritionScreenState extends State<NutritionScreen>
 // WIDGETS
 // ─────────────────────────────────────────────────────────────────
 
-// ── Header con fecha + navegación ────────────────────────────────
 class _DateHeader extends StatelessWidget {
   final NutritionProvider nutrition;
   const _DateHeader({required this.nutrition});
@@ -274,15 +263,13 @@ class _DateHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(children: [
     Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Nutrición', style: AppTextStyles.displayMedium),
-      Text(_label, style: AppTextStyles.bodyMedium),
+      Text('Nutrición', style: AppTextStyles.displayMediumOf(context)),
+      Text(_label, style: AppTextStyles.bodyMediumOf(context)),
     ]),
     const Spacer(),
-    // Navegar fecha anterior
     _NavBtn(icon: Icons.chevron_left_rounded,
         onTap: () => nutrition.previousDay()),
     const SizedBox(width: 4),
-    // Navegar fecha siguiente (solo si no es hoy)
     _NavBtn(
       icon: Icons.chevron_right_rounded,
       onTap: nutrition.isToday ? null : () => nutrition.nextDay(),
@@ -298,20 +285,23 @@ class _NavBtn extends StatelessWidget {
   const _NavBtn({required this.icon, this.onTap, this.disabled = false});
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: 36, height: 36,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border, width: 0.5),
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36, height: 36,
+        decoration: BoxDecoration(
+          color: tc.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: tc.border, width: 0.5),
+        ),
+        child: Icon(icon,
+            color: disabled ? tc.textMuted : tc.textSecondary,
+            size: 20),
       ),
-      child: Icon(icon,
-          color: disabled ? AppColors.textMuted : AppColors.textSecondary,
-          size: 20),
-    ),
-  );
+    );
+  }
 }
 
 // ── Anillo calórico ───────────────────────────────────────────────
@@ -336,6 +326,7 @@ class _CalorieRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc  = AppThemeColors.of(context);
     final pct       = (consumed / goal).clamp(0.0, 1.0);
     final remaining = goal - consumed;
     final over      = consumed > goal;
@@ -348,20 +339,19 @@ class _CalorieRing extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(children: [
-          // Anillo
           SizedBox(width: 120, height: 120,
             child: Stack(alignment: Alignment.center, children: [
               CustomPaint(size: const Size(120, 120),
-                  painter: _RingPainter(progress: pct, over: over)),
+                  painter: _RingPainter(progress: pct, over: over, borderColor: tc.border)),
               Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Text('$consumed', style: AppTextStyles.statNumber.copyWith(fontSize: 24)),
-                Text('kcal', style: AppTextStyles.caption),
+                Text('$consumed', style: AppTextStyles.statNumberOf(context).copyWith(fontSize: 24)),
+                Text('kcal', style: AppTextStyles.captionOf(context)),
               ]),
             ]),
           ),
           const SizedBox(width: 20),
           Expanded(child: Column(children: [
-            _CalRow('Objetivo',   '$goal kcal',          AppColors.textSecondary),
+            _CalRow('Objetivo',   '$goal kcal',          tc.textSecondary),
             const SizedBox(height: 10),
             _CalRow('Consumidas', '$consumed kcal',       AppColors.primary),
             const SizedBox(height: 10),
@@ -379,9 +369,8 @@ class _CalorieRing extends StatelessWidget {
           ])),
         ]),
 
-        // ── Desglose por comida ────────────────────────────────
         if (activeMeals.isNotEmpty) ...[
-          const Divider(height: 20, thickness: 0.5),
+          Divider(height: 20, thickness: 0.5, color: tc.divider),
           ...activeMeals.map((mealType) {
             final entries = byMealType[mealType]!;
             final cal   = entries.fold(0, (s, e) => s + e.adjustedCalories);
@@ -393,11 +382,10 @@ class _CalorieRing extends StatelessWidget {
                 Icon(icon, color: color, size: 14),
                 const SizedBox(width: 8),
                 Text(_mealLabel(mealType),
-                    style: AppTextStyles.bodyMedium
-                        .copyWith(color: AppColors.textSecondary)),
+                    style: AppTextStyles.bodyMediumOf(context)),
                 const Spacer(),
                 Text('$cal kcal',
-                    style: AppTextStyles.labelLarge
+                    style: AppTextStyles.labelLargeOf(context)
                         .copyWith(color: color, fontSize: 13)),
               ]),
             );
@@ -416,9 +404,9 @@ class _CalRow extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
-      Flexible(child: Text(label, style: AppTextStyles.bodyMedium, overflow: TextOverflow.ellipsis)),
+      Flexible(child: Text(label, style: AppTextStyles.bodyMediumOf(context), overflow: TextOverflow.ellipsis)),
       const SizedBox(width: 8),
-      Text(value, style: AppTextStyles.labelLarge.copyWith(color: color)),
+      Text(value, style: AppTextStyles.labelLargeOf(context).copyWith(color: color)),
     ],
   );
 }
@@ -426,7 +414,8 @@ class _CalRow extends StatelessWidget {
 class _RingPainter extends CustomPainter {
   final double progress;
   final bool over;
-  const _RingPainter({required this.progress, required this.over});
+  final Color borderColor;
+  const _RingPainter({required this.progress, required this.over, required this.borderColor});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -435,7 +424,7 @@ class _RingPainter extends CustomPainter {
     final r = (size.width - sw * 2) / 2;
 
     canvas.drawCircle(c, r, Paint()
-      ..color = AppColors.border..strokeWidth = sw..style = PaintingStyle.stroke);
+      ..color = borderColor..strokeWidth = sw..style = PaintingStyle.stroke);
 
     if (progress > 0) {
       canvas.drawArc(Rect.fromCircle(center: c, radius: r),
@@ -450,10 +439,10 @@ class _RingPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_RingPainter o) => o.progress != progress;
+  bool shouldRepaint(_RingPainter o) => o.progress != progress || o.borderColor != borderColor;
 }
 
-// ── Macros con metas reales ───────────────────────────────────────
+// ── Macros ────────────────────────────────────────────────────────
 class _MacrosRow extends StatelessWidget {
   final double protein, carbs, fat;
   final double goalProtein, goalCarbs, goalFat;
@@ -490,10 +479,10 @@ class _MacroCard extends StatelessWidget {
         const SizedBox(height: 6),
         RichText(text: TextSpan(children: [
           TextSpan(text: value.toInt().toString(),
-              style: AppTextStyles.headingSmall.copyWith(color: color)),
-          TextSpan(text: 'g', style: AppTextStyles.caption),
+              style: AppTextStyles.headingSmallOf(context).copyWith(color: color)),
+          TextSpan(text: 'g', style: AppTextStyles.captionOf(context)),
         ])),
-        Text('/ ${goal.toInt()}g', style: AppTextStyles.caption),
+        Text('/ ${goal.toInt()}g', style: AppTextStyles.captionOf(context)),
         const SizedBox(height: 6),
         NeonProgressBar(progress: pct,
             gradient: LinearGradient(colors: [color, color.withOpacity(0.7)]),
@@ -503,7 +492,7 @@ class _MacroCard extends StatelessWidget {
   }
 }
 
-// ── Sección de comida (grupo por tipo) ────────────────────────────
+// ── Sección de comida ─────────────────────────────────────────────
 class _MealSection extends StatelessWidget {
   final IconData mealType;
   final Color mealColor;
@@ -516,30 +505,32 @@ class _MealSection extends StatelessWidget {
   int get _totalCal => entries.fold(0, (s, e) => s + e.adjustedCalories);
 
   @override
-  Widget build(BuildContext context) => DarkCard(
-    padding: const EdgeInsets.all(0),
-    child: Column(children: [
-      // Header de la comida
-      Padding(padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-        child: Row(children: [
-          Container(width: 34, height: 34,
-              decoration: BoxDecoration(
-                  color: mealColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: mealColor.withOpacity(0.3), width: 0.5)),
-              child: Icon(mealType, color: mealColor, size: 16)),
-          const SizedBox(width: 10),
-          Text(mealLabel, style: AppTextStyles.headingSmall),
-          const Spacer(),
-          Text('$_totalCal kcal',
-              style: AppTextStyles.neonLabel.copyWith(color: mealColor, fontSize: 12)),
-        ]),
-      ),
-      Divider(color: AppColors.divider, height: 1),
-      // Entradas
-      ...entries.map((e) => _FoodEntryRow(entry: e, onDelete: () => onDelete(e.id))),
-    ]),
-  );
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return DarkCard(
+      padding: const EdgeInsets.all(0),
+      child: Column(children: [
+        Padding(padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+          child: Row(children: [
+            Container(width: 34, height: 34,
+                decoration: BoxDecoration(
+                    color: mealColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: mealColor.withOpacity(0.3), width: 0.5)),
+                child: Icon(mealType, color: mealColor, size: 16)),
+            const SizedBox(width: 10),
+            Text(mealLabel, style: AppTextStyles.headingSmallOf(context)),
+            const Spacer(),
+            Text('$_totalCal kcal',
+                style: AppTextStyles.labelLargeOf(context)
+                    .copyWith(color: mealColor, fontSize: 12, letterSpacing: 0.5)),
+          ]),
+        ),
+        Divider(color: tc.divider, height: 1),
+        ...entries.map((e) => _FoodEntryRow(entry: e, onDelete: () => onDelete(e.id))),
+      ]),
+    );
+  }
 }
 
 class _FoodEntryRow extends StatelessWidget {
@@ -548,39 +539,41 @@ class _FoodEntryRow extends StatelessWidget {
   const _FoodEntryRow({required this.entry, required this.onDelete});
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: () => Navigator.push(context, MaterialPageRoute(
-      builder: (_) => FoodEntryDetailScreen(entry: entry),
-    )),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      child: Row(children: [
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(entry.name, style: AppTextStyles.labelLarge,
-              overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 4),
-          Wrap(spacing: 4, runSpacing: 4, children: [
-            _MacroPill('${entry.adjustedCalories}', 'kcal', AppColors.accentOrange),
-            _MacroPill('${entry.adjustedProtein.toInt()}g', 'P', AppColors.primary),
-            _MacroPill('${entry.adjustedCarbs.toInt()}g', 'C', AppColors.accentBlue),
-            _MacroPill('${entry.adjustedFat.toInt()}g', 'G', AppColors.accentOrange),
-            if (entry.portions != 1.0)
-              Text('×${entry.portions}',
-                  style: AppTextStyles.caption
-                      .copyWith(color: AppColors.textSecondary)),
-          ]),
-        ])),
-        GestureDetector(
-          onTap: onDelete,
-          child: Container(padding: const EdgeInsets.all(6),
-              child: const Icon(Icons.delete_outline_rounded,
-                  color: AppColors.textMuted, size: 17)),
-        ),
-      ]),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(
+        builder: (_) => FoodEntryDetailScreen(entry: entry),
+      )),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(entry.name, style: AppTextStyles.labelLargeOf(context),
+                overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 4),
+            Wrap(spacing: 4, runSpacing: 4, children: [
+              _MacroPill('${entry.adjustedCalories}', 'kcal', AppColors.accentOrange),
+              _MacroPill('${entry.adjustedProtein.toInt()}g', 'P', AppColors.primary),
+              _MacroPill('${entry.adjustedCarbs.toInt()}g', 'C', AppColors.accentBlue),
+              _MacroPill('${entry.adjustedFat.toInt()}g', 'G', AppColors.accentOrange),
+              if (entry.portions != 1.0)
+                Text('×${entry.portions}',
+                    style: AppTextStyles.captionOf(context)
+                        .copyWith(color: tc.textSecondary)),
+            ]),
+          ])),
+          GestureDetector(
+            onTap: onDelete,
+            child: Container(padding: const EdgeInsets.all(6),
+                child: Icon(Icons.delete_outline_rounded,
+                    color: tc.textMuted, size: 17)),
+          ),
+        ]),
+      ),
+    );
+  }
 }
-
 
 class _MacroPill extends StatelessWidget {
   final String value, unit;
@@ -602,23 +595,26 @@ class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.onAdd});
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 32),
-    child: Column(children: [
-      Container(width: 72, height: 72,
-          decoration: BoxDecoration(color: AppColors.surfaceVariant, shape: BoxShape.circle),
-          child: const Icon(Icons.restaurant_menu_rounded,
-              color: AppColors.textMuted, size: 32)),
-      const SizedBox(height: 16),
-      Text('Sin alimentos registrados', style: AppTextStyles.headingSmall),
-      const SizedBox(height: 8),
-      Text('Toca + para agregar tu primera comida',
-          style: AppTextStyles.bodyMedium),
-      const SizedBox(height: 20),
-      NeonButton(label: 'Agregar comida',
-          icon: Icons.add_rounded, onTap: onAdd),
-    ]),
-  );
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      child: Column(children: [
+        Container(width: 72, height: 72,
+            decoration: BoxDecoration(color: tc.surfaceVariant, shape: BoxShape.circle),
+            child: Icon(Icons.restaurant_menu_rounded,
+                color: tc.textMuted, size: 32)),
+        const SizedBox(height: 16),
+        Text('Sin alimentos registrados', style: AppTextStyles.headingSmallOf(context)),
+        const SizedBox(height: 8),
+        Text('Toca + para agregar tu primera comida',
+            style: AppTextStyles.bodyMediumOf(context)),
+        const SizedBox(height: 20),
+        NeonButton(label: 'Agregar comida',
+            icon: Icons.add_rounded, onTap: onAdd),
+      ]),
+    );
+  }
 }
 
 // ── FAB de agregar ────────────────────────────────────────────────
@@ -638,10 +634,10 @@ class _AddFab extends StatelessWidget {
             blurRadius: 16, offset: const Offset(0, 6))],
       ),
       child: const Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.add, color: AppColors.background, size: 20),
+        Icon(Icons.add, color: Color(0xFF0A0A0A), size: 20),
         SizedBox(width: 8),
         Text('Agregar comida', style: TextStyle(fontSize: 14,
-            fontWeight: FontWeight.w700, color: AppColors.background)),
+            fontWeight: FontWeight.w700, color: Color(0xFF0A0A0A))),
       ]),
     ),
   );
@@ -671,13 +667,14 @@ class _LevelSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc   = AppThemeColors.of(context);
     final desc = FitnessCalculator.nivelDescripcion(goal, currentLevel);
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        Text('Intensidad calórica', style: AppTextStyles.labelLarge),
+        Text('Intensidad calórica', style: AppTextStyles.labelLargeOf(context)),
         const Spacer(),
-        Text(desc, style: AppTextStyles.caption
+        Text(desc, style: AppTextStyles.captionOf(context)
             .copyWith(color: _colors[currentLevel - 1])),
       ]),
       const SizedBox(height: 8),
@@ -693,10 +690,10 @@ class _LevelSelector extends StatelessWidget {
               duration: const Duration(milliseconds: 180),
               height: 52,
               decoration: BoxDecoration(
-                color: active ? color.withOpacity(0.14) : AppColors.surfaceVariant,
+                color: active ? color.withOpacity(0.14) : tc.surfaceVariant,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: active ? color : AppColors.border,
+                  color: active ? color : tc.border,
                   width: active ? 1.5 : 0.5,
                 ),
               ),
@@ -706,13 +703,13 @@ class _LevelSelector extends StatelessWidget {
                   Text(_labels[i], style: TextStyle(
                     fontSize: i == 3 ? 15 : 14,
                     fontWeight: active ? FontWeight.w800 : FontWeight.w500,
-                    color: active ? color : AppColors.textSecondary,
+                    color: active ? color : tc.textSecondary,
                   )),
                   const SizedBox(height: 2),
                   Text('${levelCalories[i]}', style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: active ? color.withOpacity(0.9) : AppColors.textMuted,
+                    color: active ? color.withOpacity(0.9) : tc.textMuted,
                   )),
                 ],
               ),
@@ -726,10 +723,6 @@ class _LevelSelector extends StatelessWidget {
 
 // ─────────────────────────────────────────────────────────────────
 // BOTTOM SHEET: Agregar alimento
-// ─────────────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────────
-// BOTTOM SHEET — Buscar y agregar alimento
 // ─────────────────────────────────────────────────────────────────
 class AddFoodSheet extends StatefulWidget {
   final NutritionProvider nutrition;
@@ -746,7 +739,6 @@ class AddFoodSheet extends StatefulWidget {
 }
 
 class _AddFoodSheetState extends State<AddFoodSheet> {
-  // ── Controladores ──────────────────────────────────────────────
   final _searchCtrl = TextEditingController();
   final _nameCtrl   = TextEditingController();
   final _calCtrl    = TextEditingController();
@@ -755,7 +747,6 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
   final _fatCtrl    = TextEditingController();
   final _gramCtrl   = TextEditingController(text: '100');
 
-  // ── Estado ─────────────────────────────────────────────────────
   String _mealType                   = 'almuerzo';
   bool   _isSaving                   = false;
   bool   _isSearching                = false;
@@ -767,7 +758,6 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
   File?                   _photoFile;
   String?                 _visionError;
 
-  // ── Carrito: lista de alimentos a guardar juntos ───────────────
   final List<_CartItem> _cart = [];
 
   String get _suggestedMealType {
@@ -792,7 +782,6 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
     super.dispose();
   }
 
-  // ── Agregar al carrito ─────────────────────────────────────────
   void _addToCart() {
     if (!_formFilled) return;
     setState(() {
@@ -803,7 +792,6 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
         carbs:    double.tryParse(_carbCtrl.text) ?? 0,
         fat:      double.tryParse(_fatCtrl.text) ?? 0,
       ));
-      // Limpiar formulario para agregar el siguiente
       _nameCtrl.clear(); _calCtrl.clear(); _protCtrl.clear();
       _carbCtrl.clear(); _fatCtrl.clear(); _gramCtrl.text = '100';
       _searchCtrl.clear(); _selected = null; _manualMode = false;
@@ -811,7 +799,6 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
     });
   }
 
-  // ── Guardar todos del carrito ──────────────────────────────────
   Future<void> _saveAll() async {
     if (_cart.isEmpty) return;
     setState(() => _isSaving = true);
@@ -822,7 +809,6 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
         carbs: item.carbs, fat: item.fat,
       );
     }
-    // Verificar si el usuario cumplió su meta calórica diaria
     unawaited(widget.nutrition.checkAndAwardNutritionGoal(
       goalCalories: widget.goalCalories,
       userName: widget.userName,
@@ -830,7 +816,6 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
     if (mounted) Navigator.pop(context);
   }
 
-  // ── Búsqueda ───────────────────────────────────────────────────
   Future<void> _search(String query) async {
     if (query.trim().length < 2) {
       setState(() { _results = []; _isSearching = false; });
@@ -858,7 +843,6 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
     setState(() {});
   }
 
-  // ── Foto con IA ────────────────────────────────────────────────
   Future<void> _pickImage(ImageSource source) async {
     try {
       final picker = ImagePicker();
@@ -877,7 +861,6 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
         setState(() { _isAnalyzingPhoto = false; _visionError = result.error; });
         return;
       }
-      // Si detectó varios alimentos, agregarlos todos al carrito directo
       if (result.foods.length > 1) {
         setState(() {
           _isAnalyzingPhoto = false;
@@ -891,7 +874,6 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
         });
         return;
       }
-      // Si detectó uno solo, llenar el formulario
       if (result.foods.length == 1) {
         final food = result.foods.first;
         _nameCtrl.text  = food.name;
@@ -927,14 +909,15 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final tc     = AppThemeColors.of(context);
     final bottom = MediaQuery.of(context).viewInsets.bottom;
     final totalCartCal = _cart.fold(0, (s, i) => s + i.calories);
 
     return Container(
       padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + bottom),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: tc.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
@@ -942,26 +925,24 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
           // Handle
           Container(margin: const EdgeInsets.symmetric(vertical: 12),
               width: 40, height: 4,
-              decoration: BoxDecoration(color: AppColors.border,
+              decoration: BoxDecoration(color: tc.border,
                   borderRadius: BorderRadius.circular(2))),
 
-          // Título + tipo de comida
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text('Agregar alimentos', style: AppTextStyles.headingSmall),
+            Text('Agregar alimentos', style: AppTextStyles.headingSmallOf(context)),
             GestureDetector(onTap: () => Navigator.pop(context),
-                child: const Icon(Icons.close_rounded,
-                    color: AppColors.textMuted, size: 22)),
+                child: Icon(Icons.close_rounded,
+                    color: tc.textMuted, size: 22)),
           ]),
 
           const SizedBox(height: 10),
 
-          // Selector de tipo de comida
           _MealTypePicker(selected: _mealType,
               onChanged: (t) => setState(() => _mealType = t)),
 
           const SizedBox(height: 14),
 
-          // ── CARRITO de alimentos ───────────────────────────────
+          // ── Carrito ────────────────────────────────────────────
           if (_cart.isNotEmpty) ...[
             Container(
               decoration: BoxDecoration(
@@ -970,18 +951,16 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
                 border: Border.all(color: AppColors.primary.withOpacity(0.3)),
               ),
               child: Column(children: [
-                // Header carrito
                 Padding(padding: const EdgeInsets.fromLTRB(14,10,14,6),
                     child: Row(children: [
                       const Icon(Icons.shopping_basket_rounded,
                           size: 16, color: AppColors.primary),
                       const SizedBox(width: 8),
                       Text('${_cart.length} alimento(s) — $totalCartCal kcal total',
-                          style: AppTextStyles.labelLarge
+                          style: AppTextStyles.labelLargeOf(context)
                               .copyWith(color: AppColors.primary)),
                     ])),
                 Divider(color: AppColors.primary.withOpacity(0.2), height: 1),
-                // Items del carrito
                 ..._cart.asMap().entries.map((e) {
                   final i = e.key;
                   final item = e.value;
@@ -992,19 +971,19 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
                       Expanded(child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(item.name, style: AppTextStyles.labelLarge,
+                          Text(item.name, style: AppTextStyles.labelLargeOf(context),
                               overflow: TextOverflow.ellipsis),
                           Text('${item.calories} kcal  ·  '
                               'P:${item.protein.toInt()}g  '
                               'C:${item.carbs.toInt()}g  '
                               'G:${item.fat.toInt()}g',
-                              style: AppTextStyles.caption),
+                              style: AppTextStyles.captionOf(context)),
                         ],
                       )),
                       GestureDetector(
                         onTap: () => setState(() => _cart.removeAt(i)),
-                        child: const Icon(Icons.remove_circle_outline_rounded,
-                            size: 18, color: AppColors.textMuted),
+                        child: Icon(Icons.remove_circle_outline_rounded,
+                            size: 18, color: tc.textMuted),
                       ),
                     ]),
                   );
@@ -1023,7 +1002,6 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
 
           const SizedBox(height: 12),
 
-          // ── Estado análisis foto ───────────────────────────────
           if (_isAnalyzingPhoto)
             _AnalyzingIndicator(photoFile: _photoFile),
 
@@ -1043,52 +1021,48 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
                 items: _visionItems, photoFile: _photoFile,
                 onSelect: _selectVisionItem, onSaveAll: null),
 
-          // ── Separador ─────────────────────────────────────────
+          // ── Búsqueda por nombre ────────────────────────────────
           if (_visionItems.isEmpty && !_isAnalyzingPhoto) ...[
             Row(children: [
-              Expanded(child: Divider(color: AppColors.border, height: 1)),
+              Expanded(child: Divider(color: tc.border, height: 1)),
               Padding(padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Text('busca por nombre',
-                      style: AppTextStyles.caption)),
-              Expanded(child: Divider(color: AppColors.border, height: 1)),
+                      style: AppTextStyles.captionOf(context))),
+              Expanded(child: Divider(color: tc.border, height: 1)),
             ]),
 
             const SizedBox(height: 10),
 
-            // ── Campo de búsqueda ──────────────────────────────
             TextField(
               controller: _searchCtrl,
-              style: AppTextStyles.bodyLarge,
+              style: AppTextStyles.bodyLargeOf(context),
               cursorColor: AppColors.primary,
               onChanged: _search,
               decoration: InputDecoration(
                 hintText: 'huevo, arepa, pollo, café...',
-                hintStyle: AppTextStyles.bodyMedium
-                    .copyWith(color: AppColors.textMuted),
+                hintStyle: AppTextStyles.captionOf(context),
                 prefixIcon: _isSearching
                     ? const Padding(padding: EdgeInsets.all(12),
                     child: SizedBox(width: 18, height: 18,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: AppColors.primary)))
-                    : const Icon(Icons.search_rounded,
-                    size: 20, color: AppColors.textMuted),
+                    : Icon(Icons.search_rounded,
+                    size: 20, color: tc.textMuted),
                 suffixIcon: _searchCtrl.text.isNotEmpty
                     ? IconButton(
-                    icon: const Icon(Icons.clear_rounded,
-                        size: 18, color: AppColors.textMuted),
+                    icon: Icon(Icons.clear_rounded,
+                        size: 18, color: tc.textMuted),
                     onPressed: () {
                       _searchCtrl.clear();
                       setState(() => _results = []);
                     }) : null,
-                filled: true, fillColor: AppColors.surfaceVariant,
+                filled: true, fillColor: tc.surfaceVariant,
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(
-                        color: AppColors.border, width: 0.5)),
+                    borderSide: BorderSide(color: tc.border, width: 0.5)),
                 enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(
-                        color: AppColors.border, width: 0.5)),
+                    borderSide: BorderSide(color: tc.border, width: 0.5)),
                 focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: const BorderSide(
@@ -1098,13 +1072,12 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
               ),
             ),
 
-            // Resultados de búsqueda
             if (_results.isNotEmpty) ...[
               const SizedBox(height: 8),
               Container(
-                decoration: BoxDecoration(color: AppColors.surfaceVariant,
+                decoration: BoxDecoration(color: tc.surfaceVariant,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.border, width: 0.5)),
+                    border: Border.all(color: tc.border, width: 0.5)),
                 child: Column(
                   children: _results.asMap().entries.map((e) {
                     final r = e.value;
@@ -1116,7 +1089,7 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
                             horizontal: 14, vertical: 11),
                         decoration: BoxDecoration(border: isLast ? null
                             : Border(bottom: BorderSide(
-                            color: AppColors.divider, width: 0.5))),
+                            color: tc.divider, width: 0.5))),
                         child: Row(children: [
                           Container(
                               padding: const EdgeInsets.symmetric(
@@ -1136,9 +1109,9 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
                           Expanded(child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(r.displayName, style: AppTextStyles.labelLarge,
+                                Text(r.displayName, style: AppTextStyles.labelLargeOf(context),
                                     overflow: TextOverflow.ellipsis),
-                                Text(r.macroSummary, style: AppTextStyles.caption),
+                                Text(r.macroSummary, style: AppTextStyles.captionOf(context)),
                               ])),
                           const Icon(Icons.add_circle_rounded,
                               color: AppColors.primary, size: 20),
@@ -1150,7 +1123,6 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
               ),
             ],
 
-            // No encontrado
             if (_results.isEmpty && _searchCtrl.text.isNotEmpty && !_isSearching)
               Padding(padding: const EdgeInsets.only(top: 8),
                   child: GestureDetector(
@@ -1161,16 +1133,16 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(color: AppColors.surfaceVariant,
+                      decoration: BoxDecoration(color: tc.surfaceVariant,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.border, width: 0.5)),
+                          border: Border.all(color: tc.border, width: 0.5)),
                       child: Row(children: [
-                        const Icon(Icons.edit_outlined,
-                            size: 16, color: AppColors.textMuted),
+                        Icon(Icons.edit_outlined,
+                            size: 16, color: tc.textMuted),
                         const SizedBox(width: 10),
                         Expanded(child: Text(
                             '"${_searchCtrl.text}" — ingresar manualmente',
-                            style: AppTextStyles.bodyMedium,
+                            style: AppTextStyles.bodyMediumOf(context),
                             overflow: TextOverflow.ellipsis)),
                       ]),
                     ),
@@ -1180,7 +1152,7 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
           // ── Formulario del alimento actual ─────────────────────
           if (_selected != null || _manualMode) ...[
             const SizedBox(height: 14),
-            Divider(color: AppColors.border, height: 1),
+            Divider(color: tc.border, height: 1),
             const SizedBox(height: 12),
 
             _SheetField(controller: _nameCtrl, label: 'Nombre',
@@ -1190,19 +1162,18 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
 
             const SizedBox(height: 10),
 
-            // Gramos si viene de búsqueda
             if (_selected != null) ...[
               Row(children: [
-                const Icon(Icons.scale_outlined,
-                    size: 16, color: AppColors.textMuted),
+                Icon(Icons.scale_outlined,
+                    size: 16, color: tc.textMuted),
                 const SizedBox(width: 8),
-                Text('Cantidad (g)', style: AppTextStyles.labelMedium),
+                Text('Cantidad (g)', style: AppTextStyles.labelMediumOf(context)),
                 const Spacer(),
                 SizedBox(width: 90,
                     child: TextField(
                       controller: _gramCtrl,
                       textAlign: TextAlign.center,
-                      style: AppTextStyles.headingSmall
+                      style: AppTextStyles.headingSmallOf(context)
                           .copyWith(color: AppColors.primary),
                       cursorColor: AppColors.primary,
                       keyboardType: const TextInputType.numberWithOptions(
@@ -1212,16 +1183,16 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
                         if (g != null && g > 0) _recalcFromGrams(g);
                       },
                       decoration: InputDecoration(
-                          suffixText: 'g', suffixStyle: AppTextStyles.caption,
-                          filled: true, fillColor: AppColors.surfaceVariant,
+                          suffixText: 'g', suffixStyle: AppTextStyles.captionOf(context),
+                          filled: true, fillColor: tc.surfaceVariant,
                           border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
-                              borderSide: const BorderSide(
-                                  color: AppColors.border, width: 0.5)),
+                              borderSide: BorderSide(
+                                  color: tc.border, width: 0.5)),
                           enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
-                              borderSide: const BorderSide(
-                                  color: AppColors.border, width: 0.5)),
+                              borderSide: BorderSide(
+                                  color: tc.border, width: 0.5)),
                           focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
                               borderSide: const BorderSide(
@@ -1246,7 +1217,6 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
 
             const SizedBox(height: 14),
 
-            // Botón "+ Agregar a la lista" (no guarda aún)
             GestureDetector(
               onTap: _formFilled ? _addToCart : null,
               child: AnimatedContainer(
@@ -1255,12 +1225,12 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
                 decoration: BoxDecoration(
                   color: _formFilled
                       ? AppColors.accentBlue.withOpacity(0.12)
-                      : AppColors.surfaceVariant,
+                      : tc.surfaceVariant,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: _formFilled
                         ? AppColors.accentBlue.withOpacity(0.5)
-                        : AppColors.border,
+                        : tc.border,
                     width: _formFilled ? 1.0 : 0.5,
                   ),
                 ),
@@ -1268,14 +1238,14 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
                     children: [
                       Icon(Icons.add_rounded,
                           color: _formFilled
-                              ? AppColors.accentBlue : AppColors.textMuted,
+                              ? AppColors.accentBlue : tc.textMuted,
                           size: 18),
                       const SizedBox(width: 8),
                       Text('Agregar a la lista',
                           style: TextStyle(fontSize: 14,
                               fontWeight: FontWeight.w600,
                               color: _formFilled
-                                  ? AppColors.accentBlue : AppColors.textMuted)),
+                                  ? AppColors.accentBlue : tc.textMuted)),
                     ]),
               ),
             ),
@@ -1283,11 +1253,9 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
 
           const SizedBox(height: 16),
 
-          // ── Botón GUARDAR TODOS ────────────────────────────────
           if (_cart.isNotEmpty || (_formFilled && _cart.isEmpty)) ...[
             GestureDetector(
               onTap: () async {
-                // Si hay algo en el form pero no se agregó al carrito, agregarlo
                 if (_formFilled) _addToCart();
                 await _saveAll();
               },
@@ -1304,11 +1272,11 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
                 child: Center(child: _isSaving
                     ? const SizedBox(width: 20, height: 20,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2.5, color: AppColors.background))
+                        strokeWidth: 2.5, color: Color(0xFF0A0A0A)))
                     : Row(mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(Icons.save_rounded,
-                          color: AppColors.background, size: 18),
+                          color: Color(0xFF0A0A0A), size: 18),
                       const SizedBox(width: 8),
                       Text(
                           _cart.length > 1
@@ -1316,7 +1284,7 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
                               : 'Guardar alimento',
                           style: const TextStyle(fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.background)),
+                              color: Color(0xFF0A0A0A))),
                     ])),
               ),
             ),
@@ -1346,6 +1314,7 @@ class _MealTypePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     final types = [
       ('desayuno', 'Desayuno', Icons.wb_sunny_rounded,     const Color(0xFFFFB020)),
       ('almuerzo', 'Almuerzo', Icons.lunch_dining_rounded,  const Color(0xFF4FC3F7)),
@@ -1368,17 +1337,17 @@ class _MealTypePicker extends StatelessWidget {
               duration: const Duration(milliseconds: 180),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                  color: sel ? color.withOpacity(0.15) : AppColors.surfaceVariant,
+                  color: sel ? color.withOpacity(0.15) : tc.surfaceVariant,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                      color: sel ? color.withOpacity(0.5) : AppColors.border,
+                      color: sel ? color.withOpacity(0.5) : tc.border,
                       width: sel ? 1.0 : 0.5)),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(icon, size: 14, color: sel ? color : AppColors.textMuted),
+                Icon(icon, size: 14, color: sel ? color : tc.textMuted),
                 const SizedBox(width: 6),
                 Text(label, style: TextStyle(fontSize: 12,
                     fontWeight: sel ? FontWeight.w700 : FontWeight.w400,
-                    color: sel ? color : AppColors.textSecondary)),
+                    color: sel ? color : tc.textSecondary)),
               ]),
             ),
           );
@@ -1401,29 +1370,32 @@ class _SheetField extends StatelessWidget {
     this.color, this.onChanged});
 
   @override
-  Widget build(BuildContext context) => TextField(
-    controller: controller,
-    keyboardType: keyboardType,
-    onChanged: onChanged,
-    style: AppTextStyles.bodyLarge,
-    cursorColor: color ?? AppColors.primary,
-    decoration: InputDecoration(
-      labelText: label, hintText: hint,
-      labelStyle: AppTextStyles.caption
-          .copyWith(color: color ?? AppColors.textMuted),
-      hintStyle: AppTextStyles.caption,
-      prefixIcon: Icon(icon, size: 16,
-          color: color?.withOpacity(0.7) ?? AppColors.textMuted),
-      filled: true, fillColor: AppColors.surfaceVariant,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border, width: 0.5)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: color ?? AppColors.primary, width: 1.5)),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      onChanged: onChanged,
+      style: AppTextStyles.bodyLargeOf(context),
+      cursorColor: color ?? AppColors.primary,
+      decoration: InputDecoration(
+        labelText: label, hintText: hint,
+        labelStyle: AppTextStyles.captionOf(context)
+            .copyWith(color: color ?? tc.textMuted),
+        hintStyle: AppTextStyles.captionOf(context),
+        prefixIcon: Icon(icon, size: 16,
+            color: color?.withOpacity(0.7) ?? tc.textMuted),
+        filled: true, fillColor: tc.surfaceVariant,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: tc.border, width: 0.5)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: tc.border, width: 0.5)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: color ?? AppColors.primary, width: 1.5)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      ),
+    );
+  }
 }
 
 // ── Preview de macros ──────────────────────────────────────────────
@@ -1442,6 +1414,7 @@ class _MacrosPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     if (editable) {
       return Column(children: [
         Row(children: [
@@ -1477,11 +1450,11 @@ class _MacrosPreview extends StatelessWidget {
           border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 0.5)),
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
         _MPrev('$cal', 'kcal', AppColors.accentOrange),
-        _MPDiv(),
+        _MPDiv(color: tc.border),
         _MPrev('${prot.toStringAsFixed(1)}g', 'Prot.', AppColors.primary),
-        _MPDiv(),
+        _MPDiv(color: tc.border),
         _MPrev('${carbs.toStringAsFixed(1)}g', 'Carb.', AppColors.accentBlue),
-        _MPDiv(),
+        _MPDiv(color: tc.border),
         _MPrev('${fat.toStringAsFixed(1)}g', 'Gras.', AppColors.accentOrange),
       ]),
     );
@@ -1494,14 +1467,16 @@ class _MPrev extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(children: [
     Text(v, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: c)),
-    Text(l, style: AppTextStyles.caption),
+    Text(l, style: AppTextStyles.captionOf(context)),
   ]);
 }
 
 class _MPDiv extends StatelessWidget {
+  final Color color;
+  const _MPDiv({required this.color});
   @override
   Widget build(BuildContext context) =>
-      Container(width: 0.5, height: 28, color: AppColors.border);
+      Container(width: 0.5, height: 28, color: color);
 }
 
 // ── Botones de foto ────────────────────────────────────────────────
@@ -1512,78 +1487,82 @@ class _PhotoButtons extends StatelessWidget {
     required this.visionEnabled});
 
   @override
-  Widget build(BuildContext context) => Row(children: [
-    Expanded(child: GestureDetector(
-      onTap: visionEnabled ? onCamera : () => _showKeyInfo(context),
-      child: Container(height: 54,
-        decoration: BoxDecoration(
-            color: visionEnabled
-                ? AppColors.primary.withOpacity(0.08)
-                : AppColors.surfaceVariant,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-                color: visionEnabled
-                    ? AppColors.primary.withOpacity(0.4)
-                    : AppColors.border,
-                width: visionEnabled ? 1.0 : 0.5)),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.camera_alt_rounded,
-              color: visionEnabled ? AppColors.primary : AppColors.textMuted,
-              size: 20),
-          const SizedBox(width: 8),
-          Column(mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Tomar foto', style: TextStyle(fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: visionEnabled ? AppColors.primary : AppColors.textMuted)),
-                Text('IA calcula los macros',
-                    style: AppTextStyles.caption.copyWith(fontSize: 10)),
-              ]),
-        ]),
-      ),
-    )),
-    const SizedBox(width: 10),
-    Expanded(child: GestureDetector(
-      onTap: visionEnabled ? onGallery : () => _showKeyInfo(context),
-      child: Container(height: 54,
-        decoration: BoxDecoration(
-            color: AppColors.surfaceVariant,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border, width: 0.5)),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.photo_library_rounded,
-              color: visionEnabled ? AppColors.accentBlue : AppColors.textMuted,
-              size: 20),
-          const SizedBox(width: 8),
-          Column(mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Galería', style: TextStyle(fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: visionEnabled ? AppColors.accentBlue : AppColors.textMuted)),
-                Text('Elegir imagen',
-                    style: AppTextStyles.caption.copyWith(fontSize: 10)),
-              ]),
-        ]),
-      ),
-    )),
-  ]);
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return Row(children: [
+      Expanded(child: GestureDetector(
+        onTap: visionEnabled ? onCamera : () => _showKeyInfo(context),
+        child: Container(height: 54,
+          decoration: BoxDecoration(
+              color: visionEnabled
+                  ? AppColors.primary.withOpacity(0.08)
+                  : tc.surfaceVariant,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: visionEnabled
+                      ? AppColors.primary.withOpacity(0.4)
+                      : tc.border,
+                  width: visionEnabled ? 1.0 : 0.5)),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(Icons.camera_alt_rounded,
+                color: visionEnabled ? AppColors.primary : tc.textMuted,
+                size: 20),
+            const SizedBox(width: 8),
+            Column(mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Tomar foto', style: TextStyle(fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: visionEnabled ? AppColors.primary : tc.textMuted)),
+                  Text('IA calcula los macros',
+                      style: AppTextStyles.captionOf(context).copyWith(fontSize: 10)),
+                ]),
+          ]),
+        ),
+      )),
+      const SizedBox(width: 10),
+      Expanded(child: GestureDetector(
+        onTap: visionEnabled ? onGallery : () => _showKeyInfo(context),
+        child: Container(height: 54,
+          decoration: BoxDecoration(
+              color: tc.surfaceVariant,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: tc.border, width: 0.5)),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(Icons.photo_library_rounded,
+                color: visionEnabled ? AppColors.accentBlue : tc.textMuted,
+                size: 20),
+            const SizedBox(width: 8),
+            Column(mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Galería', style: TextStyle(fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: visionEnabled ? AppColors.accentBlue : tc.textMuted)),
+                  Text('Elegir imagen',
+                      style: AppTextStyles.captionOf(context).copyWith(fontSize: 10)),
+                ]),
+          ]),
+        ),
+      )),
+    ]);
+  }
 
   void _showKeyInfo(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     showDialog(context: context, builder: (_) => AlertDialog(
-      backgroundColor: AppColors.surface,
+      backgroundColor: tc.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('Activa el análisis con IA', style: AppTextStyles.headingSmall),
+      title: Text('Activa el análisis con IA', style: AppTextStyles.headingSmallOf(context)),
       content: Column(mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Agrega tu clave gratuita de Gemini para analizar fotos de comida.',
-                style: AppTextStyles.bodyMedium),
+                style: AppTextStyles.bodyMediumOf(context)),
             const SizedBox(height: 8),
             Text('Obtén una clave gratis en: aistudio.google.com/apikey',
-                style: AppTextStyles.bodySmall),
+                style: AppTextStyles.bodySmallOf(context)),
           ]),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: TextStyle(color: AppColors.textMuted))),
+            child: Text('Cancelar', style: TextStyle(color: tc.textMuted))),
         TextButton(
             onPressed: () {
               Navigator.pop(context);
@@ -1601,32 +1580,35 @@ class _AnalyzingIndicator extends StatelessWidget {
   final File? photoFile;
   const _AnalyzingIndicator({this.photoFile});
   @override
-  Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 12),
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-        color: AppColors.primaryGlow,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 0.5)),
-    child: Row(children: [
-      if (photoFile != null) ...[
-        ClipRRect(borderRadius: BorderRadius.circular(8),
-            child: Image.file(photoFile!, width: 48, height: 48, fit: BoxFit.cover)),
-        const SizedBox(width: 12),
-      ],
-      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Analizando con IA...', style: AppTextStyles.labelLarge
-                .copyWith(color: AppColors.primary)),
-            const SizedBox(height: 6),
-            LinearProgressIndicator(
-              backgroundColor: AppColors.border,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ])),
-    ]),
-  );
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+          color: AppColors.primaryGlow,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 0.5)),
+      child: Row(children: [
+        if (photoFile != null) ...[
+          ClipRRect(borderRadius: BorderRadius.circular(8),
+              child: Image.file(photoFile!, width: 48, height: 48, fit: BoxFit.cover)),
+          const SizedBox(width: 12),
+        ],
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Analizando con IA...', style: AppTextStyles.labelLargeOf(context)
+                  .copyWith(color: AppColors.primary)),
+              const SizedBox(height: 6),
+              LinearProgressIndicator(
+                backgroundColor: tc.border,
+                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ])),
+      ]),
+    );
+  }
 }
 
 // ── Error card ─────────────────────────────────────────────────────
@@ -1647,7 +1629,7 @@ class _ErrorCard extends StatelessWidget {
       Row(children: [
         const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 18),
         const SizedBox(width: 10),
-        Expanded(child: Text(message, style: AppTextStyles.bodySmall
+        Expanded(child: Text(message, style: AppTextStyles.bodySmallOf(context)
             .copyWith(color: AppColors.error))),
         GestureDetector(onTap: onDismiss,
             child: const Icon(Icons.close_rounded, size: 16, color: AppColors.error)),
@@ -1662,7 +1644,7 @@ class _ErrorCard extends StatelessWidget {
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(8)),
             child: Text('+ Agregar clave de Gemini',
-                style: AppTextStyles.labelMedium.copyWith(color: Colors.white)),
+                style: AppTextStyles.labelMediumOf(context).copyWith(color: Colors.white)),
           ),
         ),
       ],
@@ -1680,54 +1662,57 @@ class _VisionResultsCard extends StatelessWidget {
     required this.onSelect, this.onSaveAll});
 
   @override
-  Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 12),
-    decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 0.5)),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Padding(padding: const EdgeInsets.all(12), child: Row(children: [
-        if (photoFile != null) ...[
-          ClipRRect(borderRadius: BorderRadius.circular(8),
-              child: Image.file(photoFile!, width: 48, height: 48, fit: BoxFit.cover)),
-          const SizedBox(width: 10),
-        ],
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Gemini detectó ${items.length} alimento(s)',
-                  style: AppTextStyles.labelLarge
-                      .copyWith(color: AppColors.primary)),
-              Text('Toca uno para editarlo antes de agregar',
-                  style: AppTextStyles.bodySmall),
-            ])),
-      ])),
-      Divider(color: AppColors.border, height: 1),
-      ...items.asMap().entries.map((e) {
-        final item   = e.value;
-        final isLast = e.key == items.length - 1;
-        return GestureDetector(
-          onTap: () => onSelect(item),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(border: isLast ? null : Border(
-                bottom: BorderSide(color: AppColors.divider, width: 0.5))),
-            child: Row(children: [
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(item.name, style: AppTextStyles.labelLarge,
-                        overflow: TextOverflow.ellipsis),
-                    Text('~${item.estimatedWeightG}g · ${item.calories} kcal · '
-                        'P:${item.protein.toInt()}g C:${item.carbs.toInt()}g '
-                        'G:${item.fat.toInt()}g',
-                        style: AppTextStyles.caption),
-                  ])),
-              const Icon(Icons.add_circle_outline_rounded,
-                  color: AppColors.primary, size: 18),
-            ]),
-          ),
-        );
-      }),
-    ]),
-  );
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+          color: tc.surfaceVariant,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 0.5)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Padding(padding: const EdgeInsets.all(12), child: Row(children: [
+          if (photoFile != null) ...[
+            ClipRRect(borderRadius: BorderRadius.circular(8),
+                child: Image.file(photoFile!, width: 48, height: 48, fit: BoxFit.cover)),
+            const SizedBox(width: 10),
+          ],
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Gemini detectó ${items.length} alimento(s)',
+                    style: AppTextStyles.labelLargeOf(context)
+                        .copyWith(color: AppColors.primary)),
+                Text('Toca uno para editarlo antes de agregar',
+                    style: AppTextStyles.bodySmallOf(context)),
+              ])),
+        ])),
+        Divider(color: tc.border, height: 1),
+        ...items.asMap().entries.map((e) {
+          final item   = e.value;
+          final isLast = e.key == items.length - 1;
+          return GestureDetector(
+            onTap: () => onSelect(item),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(border: isLast ? null : Border(
+                  bottom: BorderSide(color: tc.divider, width: 0.5))),
+              child: Row(children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(item.name, style: AppTextStyles.labelLargeOf(context),
+                          overflow: TextOverflow.ellipsis),
+                      Text('~${item.estimatedWeightG}g · ${item.calories} kcal · '
+                          'P:${item.protein.toInt()}g C:${item.carbs.toInt()}g '
+                          'G:${item.fat.toInt()}g',
+                          style: AppTextStyles.captionOf(context)),
+                    ])),
+                const Icon(Icons.add_circle_outline_rounded,
+                    color: AppColors.primary, size: 18),
+              ]),
+            ),
+          );
+        }),
+      ]),
+    );
+  }
 }
