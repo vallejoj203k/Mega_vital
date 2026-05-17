@@ -17,6 +17,7 @@ import '../../../core/providers/notification_provider.dart';
 import '../../../core/providers/stories_provider.dart';
 import '../../../services/challenges_service.dart';
 import '../../../services/community_service.dart';
+import '../../../services/follow_service.dart';
 import '../../widgets/shared_widgets.dart';
 import '../notifications/notifications_screen.dart';
 import 'stories_row.dart';
@@ -75,6 +76,18 @@ class _CommunityScreenState extends State<CommunityScreen>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _PublishSheet(userName: userName),
+    );
+  }
+
+  void _openUserSearch(BuildContext ctx) {
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ChangeNotifierProvider.value(
+        value: ctx.read<FollowProvider>(),
+        child: const _UserSearchSheet(),
+      ),
     );
   }
 
@@ -143,6 +156,20 @@ class _CommunityScreenState extends State<CommunityScreen>
                             ),
                           ),
                       ]),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: () => _openUserSearch(context),
+                    child: Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        color: tc.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: tc.border, width: 0.5),
+                      ),
+                      child: Icon(Icons.person_search_rounded,
+                          color: tc.textSecondary, size: 20),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -605,6 +632,243 @@ class _FollowButton extends StatelessWidget {
                 color: following ? tc.textSecondary : const Color(0xFF0A0A0A),
               ),
             ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─── User search sheet ────────────────────────────────────────────────────────
+
+class _UserSearchSheet extends StatefulWidget {
+  const _UserSearchSheet();
+
+  @override
+  State<_UserSearchSheet> createState() => _UserSearchSheetState();
+}
+
+class _UserSearchSheetState extends State<_UserSearchSheet> {
+  final _searchCtrl = TextEditingController();
+  final _service = FollowService();
+  List<UserSearchResult> _results = [];
+  bool _loading = false;
+  String _lastQuery = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _search(String query) async {
+    if (query.trim() == _lastQuery) return;
+    _lastQuery = query.trim();
+    if (_lastQuery.isEmpty) {
+      setState(() { _results = []; _loading = false; });
+      return;
+    }
+    setState(() => _loading = true);
+    final results = await _service.searchUsers(_lastQuery);
+    if (mounted && _lastQuery == query.trim()) {
+      setState(() { _results = results; _loading = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    final mq = MediaQuery.of(context);
+    return Container(
+      height: mq.size.height * 0.75,
+      decoration: BoxDecoration(
+        color: tc.background,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          // Handle
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40, height: 4,
+            decoration: BoxDecoration(
+              color: tc.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text('Buscar personas',
+                      style: AppTextStyles.headingMedium
+                          .copyWith(color: tc.textPrimary)),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Icon(Icons.close_rounded, color: tc.textMuted, size: 22),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              decoration: BoxDecoration(
+                color: tc.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: tc.border, width: 0.5),
+              ),
+              child: TextField(
+                controller: _searchCtrl,
+                autofocus: true,
+                style: TextStyle(fontSize: 15, color: tc.textPrimary),
+                decoration: InputDecoration(
+                  hintText: 'Nombre del usuario…',
+                  hintStyle: TextStyle(fontSize: 15, color: tc.textMuted),
+                  prefixIcon: Icon(Icons.search_rounded,
+                      color: tc.textMuted, size: 20),
+                  suffixIcon: _searchCtrl.text.isNotEmpty
+                      ? GestureDetector(
+                          onTap: () {
+                            _searchCtrl.clear();
+                            _search('');
+                          },
+                          child: Icon(Icons.clear_rounded,
+                              color: tc.textMuted, size: 18),
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+                onChanged: (v) {
+                  setState(() {}); // refresh clear button
+                  _search(v);
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: _loading
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary))
+                : _results.isEmpty && _lastQuery.isNotEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.person_search_rounded,
+                                size: 52, color: tc.textMuted),
+                            const SizedBox(height: 12),
+                            Text('Sin resultados para "$_lastQuery"',
+                                style: TextStyle(
+                                    fontSize: 14, color: tc.textSecondary)),
+                          ],
+                        ),
+                      )
+                    : _results.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.group_add_rounded,
+                                    size: 52, color: tc.textMuted),
+                                const SizedBox(height: 12),
+                                Text('Escribe un nombre para buscar',
+                                    style: TextStyle(
+                                        fontSize: 14, color: tc.textSecondary)),
+                              ],
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 4),
+                            itemCount: _results.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 4),
+                            itemBuilder: (ctx, i) =>
+                                _UserResultTile(user: _results[i]),
+                          ),
+          ),
+          SizedBox(height: mq.viewInsets.bottom + 8),
+        ],
+      ),
+    );
+  }
+}
+
+class _UserResultTile extends StatelessWidget {
+  final UserSearchResult user;
+  const _UserResultTile({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return Consumer<FollowProvider>(
+      builder: (_, fp, __) {
+        final isFollowing = fp.isFollowing(user.uid);
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: tc.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: tc.border, width: 0.5),
+          ),
+          child: Row(
+            children: [
+              InitialsAvatar(
+                initials: user.initials,
+                size: 44,
+                bgColor: tc.surfaceVariant,
+                photoUrl: user.avatarUrl,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(user.name,
+                        style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: tc.textPrimary)),
+                    Text(
+                      isFollowing ? 'Siguiendo' : 'No te sigue',
+                      style: TextStyle(fontSize: 12, color: tc.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: () => fp.toggleFollow(user.uid),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    gradient: isFollowing ? null : AppColors.primaryGradient,
+                    color: isFollowing ? tc.border : null,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    isFollowing ? 'Siguiendo' : 'Seguir',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: isFollowing
+                          ? tc.textSecondary
+                          : AppColors.background,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         );
       },
