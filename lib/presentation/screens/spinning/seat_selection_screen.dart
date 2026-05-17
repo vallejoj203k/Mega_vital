@@ -99,7 +99,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
             Text(widget.currentSeat != null ? 'Cambiar lugar' : 'Elegir Puesto',
                 style: AppTextStyles.headingMedium.copyWith(color: tc.textPrimary)),
             Text(widget.spinClass.name,
-                style: TextStyle(fontSize: 12, color: tc.textSecondary)),
+                style: TextStyle(fontSize: 13, color: tc.textSecondary)),
           ]),
         ),
         Container(
@@ -110,7 +110,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
             border: Border.all(color: _accentColor.withOpacity(0.4), width: 1),
           ),
           child: Text(widget.spinClass.time,
-              style: TextStyle(fontSize: 12, color: _accentColor, fontWeight: FontWeight.w700)),
+              style: TextStyle(fontSize: 13, color: _accentColor, fontWeight: FontWeight.w700)),
         ),
       ]),
     );
@@ -130,19 +130,19 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
           icon: Icons.chair_rounded, label: 'Disponibles',
           value: '${widget.spinClass.availableSpots}',
           color: widget.spinClass.availableSpots > 5 ? AppColors.primary : AppColors.warning,
-          muted: tc.textMuted,
+          muted: tc.textSecondary,
         ),
         _Divider(color: tc.border),
         _InfoItem(
           icon: Icons.local_fire_department_rounded, label: 'Calorías',
           value: '${widget.spinClass.caloriesMin}–${widget.spinClass.caloriesMax}',
-          color: AppColors.accentOrange, muted: tc.textMuted,
+          color: AppColors.accentOrange, muted: tc.textSecondary,
         ),
         _Divider(color: tc.border),
         _InfoItem(
           icon: Icons.timer_rounded, label: 'Duración',
           value: '${widget.spinClass.durationMinutes}m',
-          color: AppColors.accentBlue, muted: tc.textMuted,
+          color: AppColors.accentBlue, muted: tc.textSecondary,
         ),
         _Divider(color: tc.border),
         _InfoItem(
@@ -150,7 +150,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
           value: widget.spinClass.days.split('·').length.toString() == '1'
               ? widget.spinClass.days.trim()
               : '${widget.spinClass.days.split('·').length} días',
-          color: AppColors.accentPurple, muted: tc.textMuted,
+          color: AppColors.accentPurple, muted: tc.textSecondary,
         ),
       ]),
     );
@@ -192,7 +192,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
           Icon(Icons.directions_bike_rounded, color: _accentColor, size: 18),
           const SizedBox(width: 8),
           Text('INSTRUCTOR', style: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w800,
+              fontSize: 13, fontWeight: FontWeight.w800,
               color: _accentColor, letterSpacing: 2)),
         ]),
       ),
@@ -210,7 +210,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
             child: Row(children: [
               SizedBox(width: 24,
                 child: Text(_rowLabel(row),
-                    style: TextStyle(fontSize: 12, color: tc.textMuted, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 13, color: tc.textMuted, fontWeight: FontWeight.w600),
                     textAlign: TextAlign.center)),
               const SizedBox(width: 8),
               ...List.generate(cols, (col) {
@@ -269,7 +269,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
                         Icon(iconData, size: 20, color: iconColor),
                         const SizedBox(height: 2),
                         Text('${_rowLabel(row)}${col + 1}',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: textColor)),
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: textColor)),
                       ]),
                     ),
                   ),
@@ -278,7 +278,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
               const SizedBox(width: 8),
               SizedBox(width: 24,
                 child: Text(_rowLabel(row),
-                    style: TextStyle(fontSize: 12, color: tc.textMuted, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 13, color: tc.textMuted, fontWeight: FontWeight.w600),
                     textAlign: TextAlign.center)),
             ]),
           );
@@ -305,7 +305,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('Puesto seleccionado',
-                style: TextStyle(fontSize: 11, color: tc.textSecondary)),
+                style: TextStyle(fontSize: 13, color: tc.textSecondary)),
             const SizedBox(height: 2),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
@@ -364,8 +364,8 @@ class _InfoItem extends StatelessWidget {
     child: Column(children: [
       Icon(icon, size: 16, color: color),
       const SizedBox(height: 3),
-      Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
-      Text(label, style: TextStyle(fontSize: 10, color: muted)),
+      Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+      Text(label, style: TextStyle(fontSize: 13, color: muted)),
     ]),
   );
 }
@@ -398,6 +398,6 @@ class _LegendItem extends StatelessWidget {
       child: Icon(icon, size: 12, color: secondary),
     ),
     const SizedBox(width: 6),
-    Text(label, style: TextStyle(fontSize: 11, color: secondary)),
+    Text(label, style: TextStyle(fontSize: 13, color: secondary)),
   ]);
 }

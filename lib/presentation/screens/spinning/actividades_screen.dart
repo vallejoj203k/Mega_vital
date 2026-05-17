@@ -116,7 +116,7 @@ class ActividadesScreen extends StatelessWidget {
                         ),
                         child: const Text('PRO',
                             style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w800,
                                 color: Colors.white,
                                 letterSpacing: 1.2)),
@@ -124,7 +124,7 @@ class ActividadesScreen extends StatelessWidget {
                     ]),
                     const SizedBox(height: 2),
                     Text('Elige tu actividad y reserva tu lugar',
-                        style: AppTextStyles.bodySmall.copyWith(color: tc.textSecondary)),
+                        style: AppTextStyles.bodyMedium.copyWith(color: tc.textSecondary)),
                   ],
                 ),
               ),
@@ -166,7 +166,7 @@ class _StatChip extends StatelessWidget {
           Icon(icon, size: 13, color: color),
           const SizedBox(width: 5),
           Text(label,
-              style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+              style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.w600)),
         ]),
       );
 }
@@ -266,7 +266,7 @@ class _ActivityCard extends StatelessWidget {
                     const SizedBox(width: 5),
                     Text(title,
                         style: const TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
                             letterSpacing: 0.5)),
@@ -282,7 +282,7 @@ class _ActivityCard extends StatelessWidget {
                       style: AppTextStyles.headingLarge.copyWith(color: Colors.white)),
                   Text(subtitle,
                       style: TextStyle(
-                          fontSize: 12, color: accentColor, fontWeight: FontWeight.w600)),
+                          fontSize: 13, color: accentColor, fontWeight: FontWeight.w600)),
                 ]),
               ),
             ]),
@@ -293,7 +293,7 @@ class _ActivityCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(description,
-                  style: TextStyle(fontSize: 12, color: tc.textSecondary, height: 1.5)),
+                  style: TextStyle(fontSize: 13, color: tc.textSecondary, height: 1.5)),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 6,
@@ -313,7 +313,7 @@ class _ActivityCard extends StatelessWidget {
                             const SizedBox(width: 4),
                             Text(f,
                                 style: TextStyle(
-                                    fontSize: 10,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                     color: accentColor)),
                           ]),
@@ -350,7 +350,7 @@ class _ActivityCard extends StatelessWidget {
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     const Text('Ver clases',
                         style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 15,
                             fontWeight: FontWeight.w700,
                             color: Colors.white)),
                     const SizedBox(width: 6),
@@ -386,7 +386,7 @@ class _InfoPill extends StatelessWidget {
           const SizedBox(width: 4),
           Text(label,
               style:
-                  TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+                  TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.w600)),
         ]),
       );
 }

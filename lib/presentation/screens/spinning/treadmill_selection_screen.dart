@@ -106,7 +106,7 @@ class _TreadmillSelectionScreenState extends State<TreadmillSelectionScreen>
               style: AppTextStyles.headingMedium.copyWith(color: tc.textPrimary),
             ),
             Text(widget.runClass.name,
-                style: TextStyle(fontSize: 12, color: tc.textSecondary)),
+                style: TextStyle(fontSize: 13, color: tc.textSecondary)),
           ]),
         ),
         Container(
@@ -118,7 +118,7 @@ class _TreadmillSelectionScreenState extends State<TreadmillSelectionScreen>
           ),
           child: Text(widget.runClass.time,
               style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: _accentColor,
                   fontWeight: FontWeight.w700)),
         ),
@@ -143,7 +143,7 @@ class _TreadmillSelectionScreenState extends State<TreadmillSelectionScreen>
           color: widget.runClass.availableSpots > 2
               ? AppColors.primary
               : AppColors.warning,
-          muted: tc.textMuted,
+          muted: tc.textSecondary,
         ),
         _Divider(color: tc.border),
         _InfoItem(
@@ -151,7 +151,7 @@ class _TreadmillSelectionScreenState extends State<TreadmillSelectionScreen>
           label: 'Calorías',
           value: '${widget.runClass.caloriesMin}–${widget.runClass.caloriesMax}',
           color: AppColors.accentOrange,
-          muted: tc.textMuted,
+          muted: tc.textSecondary,
         ),
         _Divider(color: tc.border),
         _InfoItem(
@@ -159,7 +159,7 @@ class _TreadmillSelectionScreenState extends State<TreadmillSelectionScreen>
           label: 'Duración',
           value: '${widget.runClass.durationMinutes}m',
           color: AppColors.accentBlue,
-          muted: tc.textMuted,
+          muted: tc.textSecondary,
         ),
         _Divider(color: tc.border),
         _InfoItem(
@@ -169,7 +169,7 @@ class _TreadmillSelectionScreenState extends State<TreadmillSelectionScreen>
               ? widget.runClass.days.trim()
               : '${widget.runClass.days.split('·').length} días',
           color: AppColors.accentPurple,
-          muted: tc.textMuted,
+          muted: tc.textSecondary,
         ),
       ]),
     );
@@ -229,7 +229,7 @@ class _TreadmillSelectionScreenState extends State<TreadmillSelectionScreen>
           const SizedBox(width: 8),
           Text('INSTRUCTOR',
               style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w800,
                   color: _accentColor,
                   letterSpacing: 2)),
@@ -251,7 +251,7 @@ class _TreadmillSelectionScreenState extends State<TreadmillSelectionScreen>
                 width: 24,
                 child: Text(_rowLabel(row),
                     style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: tc.textMuted,
                         fontWeight: FontWeight.w600),
                     textAlign: TextAlign.center),
@@ -325,12 +325,12 @@ class _TreadmillSelectionScreenState extends State<TreadmillSelectionScreen>
                             const SizedBox(height: 4),
                             Text('${_rowLabel(row)}${col + 1}',
                                 style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w700,
                                     color: textColor)),
                             Text('Trotadora',
                                 style: TextStyle(
-                                    fontSize: 9,
+                                    fontSize: 13,
                                     color: textColor.withOpacity(0.7))),
                           ]),
                     ),
@@ -342,7 +342,7 @@ class _TreadmillSelectionScreenState extends State<TreadmillSelectionScreen>
                 width: 24,
                 child: Text(_rowLabel(row),
                     style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: tc.textMuted,
                         fontWeight: FontWeight.w600),
                     textAlign: TextAlign.center),
@@ -373,7 +373,7 @@ class _TreadmillSelectionScreenState extends State<TreadmillSelectionScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('Trotadora seleccionada',
-                style: TextStyle(fontSize: 11, color: tc.textSecondary)),
+                style: TextStyle(fontSize: 13, color: tc.textSecondary)),
             const SizedBox(height: 2),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
@@ -447,8 +447,8 @@ class _InfoItem extends StatelessWidget {
           const SizedBox(height: 3),
           Text(value,
               style: TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w700, color: color)),
-          Text(label, style: TextStyle(fontSize: 10, color: muted)),
+                  fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+          Text(label, style: TextStyle(fontSize: 13, color: muted)),
         ]),
       );
 }
@@ -486,6 +486,6 @@ class _LegendItem extends StatelessWidget {
           child: Icon(icon, size: 12, color: secondary),
         ),
         const SizedBox(width: 6),
-        Text(label, style: TextStyle(fontSize: 11, color: secondary)),
+        Text(label, style: TextStyle(fontSize: 13, color: secondary)),
       ]);
 }
