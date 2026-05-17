@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../services/stories_service.dart';
 
-export '../../services/stories_service.dart' show StoryModel, UserStoriesGroup;
+export '../../services/stories_service.dart' show StoryModel, UserStoriesGroup, StoryViewer;
 
 class StoriesProvider extends ChangeNotifier {
   final StoriesService _svc;
@@ -56,6 +56,9 @@ class StoriesProvider extends ChangeNotifier {
     )).toList();
     notifyListeners();
   }
+
+  Future<List<StoryViewer>> fetchViewers(String storyId) =>
+      _svc.fetchViewers(storyId);
 
   Future<bool> deleteStory(String storyId) async {
     final ok = await _svc.delete(storyId);

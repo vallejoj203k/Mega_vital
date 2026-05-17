@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/constants/app_theme_colors.dart';
 import '../../../core/providers/stories_provider.dart';
 
 const _kStoryDuration = Duration(seconds: 5);
@@ -29,6 +30,9 @@ class StoriesRow extends StatelessWidget {
     this.currentUserAvatarUrl,
   });
 
+  UserStoriesGroup? get _myGroup =>
+      groups.where((g) => g.userId == currentUserId).firstOrNull;
+
   List<UserStoriesGroup> get _others =>
       groups.where((g) => g.userId != currentUserId).toList();
 
@@ -47,6 +51,10 @@ class StoriesRow extends StatelessWidget {
               userName:  currentUserName,
               initials:  currentUserInitials,
               avatarUrl: currentUserAvatarUrl,
+              myGroup:   _myGroup,
+              onViewStories: _myGroup != null
+                  ? () => _openMyViewer(ctx)
+                  : null,
             );
           }
           final group = _others[i - 1];
@@ -67,6 +75,22 @@ class StoriesRow extends StatelessWidget {
       pageBuilder: (_, __, ___) => StoryViewerPage(
         groups: _others,
         initialGroupIndex: index,
+        currentUserId: currentUserId,
+      ),
+    ));
+  }
+
+  void _openMyViewer(BuildContext ctx) {
+    final myGroup = _myGroup;
+    if (myGroup == null) return;
+    Navigator.of(ctx).push(PageRouteBuilder(
+      opaque: false,
+      barrierDismissible: true,
+      barrierColor: Colors.black,
+      pageBuilder: (_, __, ___) => StoryViewerPage(
+        groups: [myGroup],
+        initialGroupIndex: 0,
+        currentUserId: currentUserId,
       ),
     ));
   }
@@ -77,18 +101,42 @@ class StoriesRow extends StatelessWidget {
 class _MyCircle extends StatelessWidget {
   final String userId, userName, initials;
   final String? avatarUrl;
-  const _MyCircle({required this.userId, required this.userName, required this.initials, this.avatarUrl});
+  final UserStoriesGroup? myGroup;
+  final VoidCallback? onViewStories;
+
+  const _MyCircle({
+    required this.userId,
+    required this.userName,
+    required this.initials,
+    this.avatarUrl,
+    this.myGroup,
+    this.onViewStories,
+  });
+
+  bool get _hasStories => myGroup != null;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _openSheet(context),
-      child: _CircleLayout(
-        label: 'Tú',
-        avatar: Stack(children: [
-          _Ring(hasNew: true, child: _AvatarContent(initials: initials, hasNew: true, avatarUrl: avatarUrl)),
-          Positioned(
-            right: 0, bottom: 0,
+    return _CircleLayout(
+      label: 'Tú',
+      avatar: Stack(children: [
+        // Tap on the circle body: view stories if exist, else add
+        GestureDetector(
+          onTap: _hasStories ? onViewStories : () => _openSheet(context),
+          child: _Ring(
+            hasNew: _hasStories,
+            child: _AvatarContent(
+              initials: initials,
+              hasNew: _hasStories,
+              avatarUrl: avatarUrl,
+            ),
+          ),
+        ),
+        // + badge always tappable to add a new story
+        Positioned(
+          right: 0, bottom: 0,
+          child: GestureDetector(
+            onTap: () => _openSheet(context),
             child: Container(
               width: 22, height: 22,
               decoration: const BoxDecoration(
@@ -98,8 +146,8 @@ class _MyCircle extends StatelessWidget {
               child: const Icon(Icons.add, size: 14, color: AppColors.background),
             ),
           ),
-        ]),
-      ),
+        ),
+      ]),
     );
   }
 
@@ -181,21 +229,24 @@ class _Ring extends StatelessWidget {
   const _Ring({required this.hasNew, required this.child});
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: 68, height: 68,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      gradient: hasNew ? AppColors.primaryGradient : null,
-      color: hasNew ? null : AppColors.textMuted.withOpacity(0.35),
-    ),
-    alignment: Alignment.center,
-    child: Container(
-      width: 60, height: 60,
-      decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.background),
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return Container(
+      width: 68, height: 68,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: hasNew ? AppColors.primaryGradient : null,
+        color: hasNew ? null : AppColors.textMuted.withOpacity(0.35),
+      ),
       alignment: Alignment.center,
-      child: child,
-    ),
-  );
+      child: Container(
+        width: 60, height: 60,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: tc.background),
+        alignment: Alignment.center,
+        child: child,
+      ),
+    );
+  }
 }
 
 class _AvatarContent extends StatelessWidget {
@@ -242,7 +293,14 @@ class _AvatarContent extends StatelessWidget {
 class StoryViewerPage extends StatefulWidget {
   final List<UserStoriesGroup> groups;
   final int initialGroupIndex;
-  const StoryViewerPage({super.key, required this.groups, required this.initialGroupIndex});
+  final String currentUserId;
+
+  const StoryViewerPage({
+    super.key,
+    required this.groups,
+    required this.initialGroupIndex,
+    required this.currentUserId,
+  });
 
   @override
   State<StoryViewerPage> createState() => _StoryViewerPageState();
@@ -273,12 +331,16 @@ class _StoryViewerPageState extends State<StoryViewerPage>
 
   UserStoriesGroup get _group => widget.groups[_gIdx];
   StoryModel       get _story => _group.stories[_sIdx];
+  bool get _isMyStory => _group.userId == widget.currentUserId;
 
   void _start() {
     _timer?.cancel();
     _progress.reset();
     _progress.forward();
-    context.read<StoriesProvider>().markViewed(_story.id);
+    // Don't mark own story as viewed
+    if (!_isMyStory) {
+      context.read<StoriesProvider>().markViewed(_story.id);
+    }
     _timer = Timer(_kStoryDuration, _next);
   }
 
@@ -325,6 +387,56 @@ class _StoryViewerPageState extends State<StoryViewerPage>
     return 'Ayer';
   }
 
+  void _showViewers() {
+    _pause();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      onClosing: () => _resume(),
+      builder: (_) => _ViewersSheet(
+        storyId: _story.id,
+        onClose: () {
+          Navigator.pop(context);
+          _resume();
+        },
+      ),
+    ).then((_) => _resume());
+  }
+
+  void _confirmDelete() async {
+    _pause();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1C1C1E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Eliminar historia',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+        content: const Text('¿Seguro que quieres eliminarla?',
+            style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.white60)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Eliminar',
+                style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (ok == true) {
+      await context.read<StoriesProvider>().deleteStory(_story.id);
+      if (mounted) Navigator.of(context).pop();
+    } else {
+      _resume();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final group = _group;
@@ -366,7 +478,7 @@ class _StoryViewerPageState extends State<StoryViewerPage>
               ),
             ),
 
-          // Gradiente inferior para que el texto sea legible sobre la foto
+          // Gradiente inferior
           if (story.hasImage && story.content != null && story.content!.isNotEmpty)
             Positioned(
               left: 0, right: 0, bottom: 0,
@@ -382,7 +494,7 @@ class _StoryViewerPageState extends State<StoryViewerPage>
               ),
             ),
 
-          // ── Texto centrado (sin foto) o sobre la foto ─────────────
+          // ── Texto centrado (sin foto) ─────────────────────────────
           if (!story.hasImage)
             Center(
               child: Padding(
@@ -417,21 +529,55 @@ class _StoryViewerPageState extends State<StoryViewerPage>
               ),
             ),
 
-          // Texto sobre la foto (posición inferior)
+          // Texto sobre foto (posición inferior)
           if (story.hasImage && story.content != null && story.content!.isNotEmpty)
             Positioned(
-              left: 20, right: 20, bottom: 40,
+              left: 20, right: 20, bottom: _isMyStory ? 80 : 40,
               child: Text(
                 story.content!,
                 style: AppTextStyles.headingMedium.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
                   height: 1.5,
-                  shadows: [
-                    const Shadow(blurRadius: 8, color: Colors.black87),
-                  ],
+                  shadows: [const Shadow(blurRadius: 8, color: Colors.black87)],
                 ),
                 textAlign: TextAlign.center,
+              ),
+            ),
+
+          // ── Botón "Visto por" (solo propias) ─────────────────────
+          if (_isMyStory)
+            Positioned(
+              left: 0, right: 0, bottom: 0,
+              child: SafeArea(
+                top: false,
+                child: GestureDetector(
+                  onTap: _showViewers,
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [Colors.black.withOpacity(0.6), Colors.transparent],
+                      ),
+                    ),
+                    child: Row(children: [
+                      const Icon(Icons.remove_red_eye_outlined,
+                          color: Colors.white, size: 18),
+                      const SizedBox(width: 8),
+                      const Text('Visto por',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14)),
+                      const Spacer(),
+                      const Icon(Icons.keyboard_arrow_up_rounded,
+                          color: Colors.white70, size: 20),
+                    ]),
+                  ),
+                ),
               ),
             ),
 
@@ -500,6 +646,21 @@ class _StoryViewerPageState extends State<StoryViewerPage>
                           style: AppTextStyles.caption.copyWith(color: Colors.white60)),
                     ]),
                     const Spacer(),
+                    // Delete button for own stories
+                    if (_isMyStory)
+                      GestureDetector(
+                        onTap: _confirmDelete,
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.delete_outline_rounded,
+                              color: Colors.white70, size: 18),
+                        ),
+                      ),
                     GestureDetector(
                       onTap: () => Navigator.of(context).pop(),
                       child: const Icon(Icons.close, color: Colors.white, size: 24),
@@ -514,6 +675,167 @@ class _StoryViewerPageState extends State<StoryViewerPage>
       ),
     );
   }
+}
+
+// ─── Sheet "Visto por" ────────────────────────────────────────────────────────
+
+class _ViewersSheet extends StatefulWidget {
+  final String storyId;
+  final VoidCallback onClose;
+  const _ViewersSheet({required this.storyId, required this.onClose});
+
+  @override
+  State<_ViewersSheet> createState() => _ViewersSheetState();
+}
+
+class _ViewersSheetState extends State<_ViewersSheet> {
+  List<StoryViewer>? _viewers;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final list = await context.read<StoriesProvider>().fetchViewers(widget.storyId);
+    if (mounted) setState(() => _viewers = list);
+  }
+
+  String _timeAgo(DateTime dt) {
+    final d = DateTime.now().difference(dt);
+    if (d.inMinutes < 1)  return 'Ahora';
+    if (d.inMinutes < 60) return 'Hace ${d.inMinutes} min';
+    if (d.inHours < 24)   return 'Hace ${d.inHours}h';
+    return 'Ayer';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewers = _viewers;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1C1C1E),
+        borderRadius: BorderRadius.all(Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          Padding(
+            padding: const EdgeInsets.only(top: 12, bottom: 4),
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 16, 12),
+            child: Row(children: [
+              const Icon(Icons.remove_red_eye_outlined,
+                  color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                viewers == null
+                    ? 'Visto por'
+                    : 'Visto por ${viewers.length} ${viewers.length == 1 ? "persona" : "personas"}',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: widget.onClose,
+                child: const Icon(Icons.close, color: Colors.white60, size: 20),
+              ),
+            ]),
+          ),
+          const Divider(color: Colors.white12, height: 1),
+          // Lista de viewers
+          if (viewers == null)
+            const Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(
+                  color: AppColors.primary, strokeWidth: 2),
+            )
+          else if (viewers.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(32),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.visibility_off_outlined,
+                    color: Colors.white30, size: 36),
+                SizedBox(height: 12),
+                Text('Nadie ha visto esta historia todavía',
+                    style: TextStyle(color: Colors.white54, fontSize: 14)),
+              ]),
+            )
+          else
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.4,
+              ),
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: viewers.length,
+                itemBuilder: (_, i) {
+                  final v = viewers[i];
+                  final hasPhoto = v.avatarUrl != null && v.avatarUrl!.isNotEmpty;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(children: [
+                      Container(
+                        width: 40, height: 40,
+                        clipBehavior: Clip.antiAlias,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0xFF2C2C2E),
+                        ),
+                        alignment: Alignment.center,
+                        child: hasPhoto
+                            ? Image.network(v.avatarUrl!,
+                                width: 40, height: 40, fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    _initialsWidget(v))
+                            : _initialsWidget(v),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text(
+                        v.userName,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14),
+                      )),
+                      Text(
+                        _timeAgo(v.viewedAt),
+                        style: const TextStyle(
+                            color: Colors.white38, fontSize: 12),
+                      ),
+                    ]),
+                  );
+                },
+              ),
+            ),
+          SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _initialsWidget(StoryViewer v) => Text(
+    v.initials,
+    style: const TextStyle(
+        color: AppColors.primary,
+        fontWeight: FontWeight.w700,
+        fontSize: 14),
+  );
 }
 
 // ─── Sheet para crear historia ────────────────────────────────────────────────
@@ -539,7 +861,7 @@ class _AddStorySheetState extends State<AddStorySheet> {
   Future<void> _pickImage(ImageSource source) async {
     final file = await _picker.pickImage(
       source: source,
-      imageQuality: 72,    // compresión razonable
+      imageQuality: 72,
       maxWidth:     1080,
     );
     if (file != null) setState(() => _image = file);
@@ -590,9 +912,8 @@ class _AddStorySheetState extends State<AddStorySheet> {
   }
 
   Future<void> _publish() async {
-    final text  = _ctrl.text.trim();
-    final hasContent = text.isNotEmpty || _image != null;
-    if (!hasContent) return;
+    final text = _ctrl.text.trim();
+    if (text.isEmpty && _image == null) return;
 
     setState(() => _posting = true);
 
@@ -621,15 +942,16 @@ class _AddStorySheetState extends State<AddStorySheet> {
 
   @override
   Widget build(BuildContext context) {
+    final tc     = AppThemeColors.of(context);
     final bottom = MediaQuery.of(context).viewInsets.bottom;
 
     return Container(
       margin: EdgeInsets.fromLTRB(12, 0, 12, 12 + bottom),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: tc.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border, width: 0.5),
+        border: Border.all(color: tc.border, width: 0.5),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -639,16 +961,14 @@ class _AddStorySheetState extends State<AddStorySheet> {
           Center(child: Container(
             width: 36, height: 4,
             margin: const EdgeInsets.only(bottom: 20),
-            decoration: BoxDecoration(color: AppColors.border,
+            decoration: BoxDecoration(color: tc.border,
                 borderRadius: BorderRadius.circular(2)),
           )),
 
           Row(children: [
-            Text('Nueva historia', style: AppTextStyles.headingMedium),
+            Text('Nueva historia', style: AppTextStyles.headingMediumOf(context)),
             const Spacer(),
-            Text('24 h', style: AppTextStyles.caption.copyWith(
-              color: AppColors.textMuted,
-            )),
+            Text('24 h', style: AppTextStyles.captionOf(context)),
           ]),
           const SizedBox(height: 16),
 
@@ -659,13 +979,9 @@ class _AddStorySheetState extends State<AddStorySheet> {
                 ? Container(
                     width: double.infinity, height: 130,
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceVariant,
+                      color: tc.surfaceVariant,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppColors.border,
-                        width: 1,
-                        style: BorderStyle.solid,
-                      ),
+                      border: Border.all(color: tc.border, width: 1),
                     ),
                     child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                       Container(
@@ -679,14 +995,12 @@ class _AddStorySheetState extends State<AddStorySheet> {
                       ),
                       const SizedBox(height: 10),
                       Text('Añadir foto',
-                          style: AppTextStyles.labelLarge.copyWith(
+                          style: AppTextStyles.labelLargeOf(context).copyWith(
                             color: AppColors.primary,
                           )),
                       const SizedBox(height: 2),
                       Text('Cámara o galería',
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.textMuted,
-                          )),
+                          style: AppTextStyles.captionOf(context)),
                     ]),
                   )
                 : Stack(children: [
@@ -705,7 +1019,7 @@ class _AddStorySheetState extends State<AddStorySheet> {
                         onTap: () => setState(() => _image = null),
                         child: Container(
                           width: 30, height: 30,
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             color: Colors.black54,
                             shape: BoxShape.circle,
                           ),
@@ -726,7 +1040,7 @@ class _AddStorySheetState extends State<AddStorySheet> {
                           child: Row(mainAxisSize: MainAxisSize.min, children: [
                             const Icon(Icons.edit_rounded, color: Colors.white, size: 13),
                             const SizedBox(width: 4),
-                            Text('Cambiar', style: AppTextStyles.caption
+                            Text('Cambiar', style: AppTextStyles.captionOf(context)
                                 .copyWith(color: Colors.white)),
                           ]),
                         ),
@@ -741,21 +1055,21 @@ class _AddStorySheetState extends State<AddStorySheet> {
             controller: _ctrl,
             maxLines: 3,
             maxLength: _maxChars,
-            style: AppTextStyles.bodyLarge,
+            style: AppTextStyles.bodyLargeOf(context),
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
               hintText: _image != null
                   ? 'Añadir texto (opcional)…'
                   : '¿Qué quieres compartir?',
-              hintStyle: AppTextStyles.bodyLarge.copyWith(color: AppColors.textMuted),
+              hintStyle: AppTextStyles.bodyLargeOf(context).copyWith(color: tc.textMuted),
               filled: true,
-              fillColor: AppColors.surfaceVariant,
+              fillColor: tc.surfaceVariant,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide.none,
               ),
               contentPadding: const EdgeInsets.all(14),
-              counterStyle: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+              counterStyle: AppTextStyles.captionOf(context),
             ),
           ),
           const SizedBox(height: 12),
@@ -772,21 +1086,21 @@ class _AddStorySheetState extends State<AddStorySheet> {
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
                         gradient: _canPost ? AppColors.primaryGradient : null,
-                        color: _canPost ? null : AppColors.surfaceVariant,
+                        color: _canPost ? null : tc.surfaceVariant,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       alignment: Alignment.center,
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         Icon(Icons.auto_awesome_rounded, size: 16,
                             color: _canPost
-                                ? AppColors.background
-                                : AppColors.textMuted),
+                                ? const Color(0xFF0A0A0A)
+                                : tc.textMuted),
                         const SizedBox(width: 8),
                         Text('Publicar historia',
-                            style: AppTextStyles.labelLarge.copyWith(
+                            style: AppTextStyles.labelLargeOf(context).copyWith(
                               color: _canPost
-                                  ? AppColors.background
-                                  : AppColors.textMuted,
+                                  ? const Color(0xFF0A0A0A)
+                                  : tc.textMuted,
                             )),
                       ]),
                     ),
