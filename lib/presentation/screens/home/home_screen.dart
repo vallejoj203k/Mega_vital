@@ -450,14 +450,13 @@ class _TopBar extends StatelessWidget {
           Row(children: [
             Icon(saludoIcon, size: 12, color: AppColors.accentOrange),
             const SizedBox(width: 4),
-            Text(saludo, style: AppTextStyles.bodySmall
-                .copyWith(color: tc.textSecondary)),
+            Text(saludo, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: tc.textSecondary)),
           ]),
           Text(nombre, style: AppTextStyles.headingSmallOf(context),
               overflow: TextOverflow.ellipsis),
           const SizedBox(height: 1),
           Text(fecha, style: AppTextStyles.caption
-              .copyWith(color: tc.textMuted, fontSize: 11)),
+              .copyWith(color: tc.textSecondary, fontSize: 12, fontWeight: FontWeight.w500)),
         ],
       )),
       StreakBadge(days: streak),
@@ -526,7 +525,7 @@ class _WelcomeCard extends StatelessWidget {
           const SizedBox(height: 6),
           RichText(text: TextSpan(children: [
             TextSpan(text: 'Hola, $_primerNombre\n',
-                style: AppTextStyles.headingLargeOf(context).copyWith(height: 1.3)),
+                style: AppTextStyles.headingLargeOf(context).copyWith(height: 1.3, color: Colors.white)),
             TextSpan(text: '¡A darle hoy!',
                 style: AppTextStyles.headingMedium
                     .copyWith(color: AppColors.primary, height: 1.3)),
@@ -594,8 +593,8 @@ class _CalCircle extends StatelessWidget {
           const Icon(Icons.local_fire_department_rounded,
               color: AppColors.primary, size: 18),
           Text(quemadas.toString(),
-              style: AppTextStyles.statNumberOf(context).copyWith(fontSize: 16)),
-          Text('kcal', style: AppTextStyles.captionOf(context)),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.5, height: 1.0)),
+          const Text('kcal', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.white60)),
         ]),
       ]),
     );
@@ -664,11 +663,11 @@ class _WorkoutOfDay extends StatelessWidget {
             const SizedBox(width: 14),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-              Text(active.name, style: AppTextStyles.headingSmallOf(context)),
+              Text(active.name, style: AppTextStyles.headingSmall.copyWith(color: Colors.white)),
               const SizedBox(height: 4),
               Text('${active.exercises.length} ejercicios · '
                   '${active.totalDoneSets} series hechas',
-                  style: AppTextStyles.captionOf(context)),
+                  style: const TextStyle(fontSize: 12, color: Colors.white70)),
             ])),
             GestureDetector(
               onTap: () => context.read<NavProvider>().goTo(1),
@@ -712,12 +711,12 @@ class _WorkoutOfDay extends StatelessWidget {
             const SizedBox(width: 14),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-              Text(lastToday.name, style: AppTextStyles.headingSmallOf(context)),
+              Text(lastToday.name, style: AppTextStyles.headingSmall.copyWith(color: Colors.white)),
               const SizedBox(height: 4),
               Text('${lastToday.durationMinutes} min  ·  '
                   '${lastToday.totalDoneSets} series  ·  '
                   '${lastToday.totalVolume > 0 ? "${lastToday.totalVolume.toStringAsFixed(0)} kg" : "—"}',
-                  style: AppTextStyles.captionOf(context)),
+                  style: const TextStyle(fontSize: 12, color: Colors.white70)),
             ])),
           ]),
         ]),
@@ -807,8 +806,8 @@ class _LastWorkout extends StatelessWidget {
           const SizedBox(width: 14),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Último entrenamiento', style: AppTextStyles.captionOf(context)
-                  .copyWith(color: tc.textMuted, fontSize: 11)),
+              Text('Último entrenamiento', style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: tc.textSecondary)),
               const SizedBox(height: 2),
               Text(w.name, style: AppTextStyles.labelLargeOf(context)),
               const SizedBox(height: 3),
@@ -836,8 +835,8 @@ class _LastWorkout extends StatelessWidget {
         const SizedBox(width: 14),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Último entrenamiento', style: AppTextStyles.captionOf(context)
-                .copyWith(color: tc.textMuted, fontSize: 11)),
+            Text('Último entrenamiento', style: TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w600, color: tc.textSecondary)),
             const SizedBox(height: 2),
             Text(last.name, style: AppTextStyles.labelLargeOf(context),
                 overflow: TextOverflow.ellipsis),
@@ -902,6 +901,7 @@ class _MacrosRing extends StatelessWidget {
                   pRatio: totalReal > 0 ? (protHoy * 4) / totalReal : 0,
                   cRatio: totalReal > 0 ? (carbsHoy * 4) / totalReal : 0,
                   fRatio: totalReal > 0 ? (grasHoy * 9) / totalReal : 0,
+                  ringBgColor: tc.border,
                 ),
               ),
               Column(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -909,8 +909,7 @@ class _MacrosRing extends StatelessWidget {
                     style: AppTextStyles.headingSmallOf(context).copyWith(fontSize: 22)),
                 Text('kcal', style: AppTextStyles.captionOf(context)),
                 Text('/ ${calc.metaCalorias}',
-                    style: AppTextStyles.captionOf(context)
-                        .copyWith(color: tc.textMuted, fontSize: 10)),
+                    style: TextStyle(fontSize: 11, color: tc.textSecondary, fontWeight: FontWeight.w500)),
               ]),
             ]),
           ),
@@ -950,11 +949,10 @@ class _MacroRow extends StatelessWidget {
       Row(children: [
         Icon(icon, size: 11, color: color),
         const SizedBox(width: 4),
-        Text(label, style: AppTextStyles.captionOf(context)),
+        Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: tc.textPrimary)),
         const Spacer(),
         Text('${actual.toInt()} / ${meta.toInt()} g',
-            style: AppTextStyles.captionOf(context)
-                .copyWith(color: tc.textSecondary)),
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: tc.textSecondary)),
       ]),
       const SizedBox(height: 4),
       NeonProgressBar(
@@ -969,8 +967,10 @@ class _MacroRow extends StatelessWidget {
 
 class _MacroPainter extends CustomPainter {
   final double pRatio, cRatio, fRatio;
+  final Color ringBgColor;
   const _MacroPainter(
-      {required this.pRatio, required this.cRatio, required this.fRatio});
+      {required this.pRatio, required this.cRatio, required this.fRatio,
+       this.ringBgColor = const Color(0xFF2A2A2A)});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -981,7 +981,7 @@ class _MacroPainter extends CustomPainter {
     const start = -math.pi / 2;
 
     canvas.drawCircle(center, radius, Paint()
-      ..color = const Color(0xFF2A2A2A)
+      ..color = ringBgColor
       ..strokeWidth = sw
       ..style = PaintingStyle.stroke);
 
@@ -1006,7 +1006,7 @@ class _MacroPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_MacroPainter o) => false;
+  bool shouldRepaint(_MacroPainter o) => o.ringBgColor != ringBgColor;
 }
 
 // ── Tracker de agua con meta calculada ────────────────────────────
@@ -1041,8 +1041,7 @@ class _WaterTracker extends StatelessWidget {
         ]),
         const SizedBox(height: 6),
         Text('Meta calculada: $metaVasos vasos para tu peso',
-            style: AppTextStyles.captionOf(context)
-                .copyWith(color: tc.textMuted, fontSize: 11)),
+            style: TextStyle(fontSize: 12, color: tc.textSecondary, fontWeight: FontWeight.w500)),
         const SizedBox(height: 12),
         // Vasos visuales (máx 12 en pantalla para no desbordar)
         Wrap(spacing: 7, runSpacing: 7,
@@ -1165,7 +1164,7 @@ class _DailyProgress extends StatelessWidget {
                         style: AppTextStyles.labelLargeOf(context)
                             .copyWith(color: tc.textPrimary)),
                     TextSpan(text: ' / ${it.meta}',
-                        style: AppTextStyles.captionOf(context)),
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w400, color: tc.textSecondary)),
                   ])),
                 ],
               ),
@@ -1272,8 +1271,7 @@ class _WeightChart extends StatelessWidget {
             ],
             const Spacer(),
             Text('Último: ${_formatDate(prov.latest!.recordedAt)}',
-                style: AppTextStyles.captionOf(context)
-                    .copyWith(color: tc.textMuted, fontSize: 10)),
+                style: TextStyle(fontSize: 11, color: tc.textSecondary, fontWeight: FontWeight.w500)),
           ]),
           const SizedBox(height: 16),
 
@@ -1567,8 +1565,7 @@ class _MotivationCard extends StatelessWidget {
               color: AppColors.accentOrange, fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),
           Text(MockData.motivationalQuotes[0],
-              style: AppTextStyles.bodyMediumOf(context)
-                  .copyWith(fontStyle: FontStyle.italic, height: 1.4)),
+              style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: Colors.white70, height: 1.4)),
         ],
       )),
     ]),
@@ -1602,8 +1599,8 @@ class _QuickActions extends StatelessWidget {
           child: Column(children: [
             BoxedIcon(icon: a.$1, color: a.$3),
             const SizedBox(height: 8),
-            Text(a.$2, style: AppTextStyles.captionOf(context).copyWith(
-                fontSize: 11, fontWeight: FontWeight.w500,
+            Text(a.$2, style: TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w700,
                 color: AppThemeColors.of(context).textSecondary)),
           ]),
         ),
@@ -1676,7 +1673,7 @@ class _WeeklyProgress extends StatelessWidget {
             Text(d.label, style: TextStyle(
               fontSize: 11,
               fontWeight: d.isToday ? FontWeight.w700 : FontWeight.w400,
-              color: d.isToday ? AppColors.primary : tc.textMuted,
+              color: d.isToday ? AppColors.primary : tc.textSecondary,
             )),
           ])).toList(),
         ),
@@ -1714,7 +1711,7 @@ class _StatCard extends StatelessWidget {
             TextSpan(text: ' $unit', style: AppTextStyles.statUnitOf(context)),
           ])),
           const SizedBox(height: 4),
-          Text(label, style: AppTextStyles.captionOf(context)),
+          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppThemeColors.of(context).textSecondary)),
           const SizedBox(height: 6),
           NeonProgressBar(
               progress: progress.clamp(0.0, 1.0),
