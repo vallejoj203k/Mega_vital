@@ -393,7 +393,6 @@ class _StoryViewerPageState extends State<StoryViewerPage>
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      onClosing: () => _resume(),
       builder: (_) => _ViewersSheet(
         storyId: _story.id,
         onClose: () {
