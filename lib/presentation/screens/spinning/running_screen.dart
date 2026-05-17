@@ -185,7 +185,7 @@ class _RunningScreenState extends State<RunningScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _classes = _buildRunClasses();
     _loadBookings();
     _subscribeRealtime();
@@ -473,7 +473,6 @@ class _RunningScreenState extends State<RunningScreen>
                               _openTreadmillSelection(cls, oldSpot: oldSpot),
                           onCancel: _cancelBooking,
                         ),
-                        _RunInstructorsTab(instructors: _runInstructors),
                         _RunMyBookingsTab(
                           classes: _classes,
                           myBookings: _myBookings,
@@ -657,7 +656,6 @@ class _RunningScreenState extends State<RunningScreen>
             const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
         tabs: const [
           Tab(text: 'Horarios'),
-          Tab(text: 'Entrenadores'),
           Tab(text: 'Mis Reservas'),
         ],
       ),
@@ -1167,9 +1165,9 @@ class _BookButton extends StatelessWidget {
                 SizedBox(width: 8),
                 Text('Elegir Trotadora',
                     style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white)),
+                        color: Colors.black)),
               ]),
         ),
       );
@@ -1201,7 +1199,7 @@ class _BookedActions extends StatelessWidget {
               const SizedBox(width: 6),
               Text('Cambiar trotadora',
                   style: TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+                      fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black)),
             ]),
           ),
         )),
@@ -1224,9 +1222,9 @@ class _BookedActions extends StatelessWidget {
                   SizedBox(width: 6),
                   Text('Cancelar',
                       style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.error)),
+                          color: Colors.black)),
                 ]),
           ),
         )),
@@ -1246,9 +1244,9 @@ class _FullButton extends StatelessWidget {
           SizedBox(width: 8),
           Text('Clase llena',
               style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.error)),
+                  color: Colors.black)),
         ]),
       );
 }
@@ -1623,9 +1621,9 @@ class _RunMyBookingsTab extends StatelessWidget {
                         const SizedBox(width: 5),
                         Text('Cambiar trotadora',
                             style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: color)),
+                                color: Colors.black)),
                       ]),
                 ),
               )),
@@ -1649,9 +1647,9 @@ class _RunMyBookingsTab extends StatelessWidget {
                         SizedBox(width: 5),
                         Text('Cancelar',
                             style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.error)),
+                                color: Colors.black)),
                       ]),
                 ),
               )),
