@@ -100,9 +100,8 @@ class GymApp extends StatelessWidget {
             statusBarColor: Colors.transparent,
             statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
             systemNavigationBarColor:
-                isDark ? AppColors.navBackground : const Color(0xFFF2F2F7),
-            systemNavigationBarIconBrightness:
-                isDark ? Brightness.light : Brightness.dark,
+                isDark ? AppColors.navBackground : const Color(0xFF1C1C1E),
+            systemNavigationBarIconBrightness: Brightness.light,
           ));
           return MaterialApp(
             title: 'Mega Vital',

@@ -42,7 +42,7 @@ const List<NavItem> navItems = [
   NavItem(
     icon: Icons.directions_bike_outlined,
     activeIcon: Icons.directions_bike_rounded,
-    label: 'Spinning',
+    label: 'Actividades',
   ),
   NavItem(
     icon: Icons.restaurant_outlined,

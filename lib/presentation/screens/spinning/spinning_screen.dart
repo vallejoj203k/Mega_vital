@@ -522,7 +522,7 @@ class _SpinningScreenState extends State<SpinningScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(children: [
-                      Text('Spinning',
+                      Text('Actividades',
                           style: AppTextStyles.displayMedium.copyWith(color: tc.textPrimary)),
                       const SizedBox(width: 8),
                       Container(
