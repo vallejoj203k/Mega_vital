@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_theme_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/challenges_provider.dart';
@@ -79,6 +80,7 @@ class _CommunityScreenState extends State<CommunityScreen>
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     super.build(context);
 
     if (!context.watch<PremiumProvider>().hasAccess) {
@@ -93,7 +95,7 @@ class _CommunityScreenState extends State<CommunityScreen>
     final userInitials  = _currentUserInitials(context);
     final userAvatarUrl = context.watch<AuthProvider>().profile?.avatarUrl;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: tc.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -101,7 +103,7 @@ class _CommunityScreenState extends State<CommunityScreen>
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
                 children: [
-                  Text('Comunidad', style: AppTextStyles.displayMedium),
+                  Text('Comunidad', style: AppTextStyles.displayMediumOf(context)),
                   const Spacer(),
                   // Campana de notificaciones
                   Consumer<NotificationProvider>(
@@ -115,19 +117,19 @@ class _CommunityScreenState extends State<CommunityScreen>
                         Container(
                           width: 40, height: 40,
                           decoration: BoxDecoration(
-                            color: AppColors.surface,
+                            color: tc.surface,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.border, width: 0.5),
+                            border: Border.all(color: tc.border, width: 0.5),
                           ),
                           child: const Icon(Icons.notifications_outlined,
-                              color: AppColors.textSecondary, size: 20),
+                              color: tc.textSecondary, size: 20),
                         ),
                         if (np.unreadCount > 0)
                           Positioned(
                             top: -4, right: -4,
                             child: Container(
                               padding: const EdgeInsets.all(3),
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 color: AppColors.error,
                                 shape: BoxShape.circle,
                               ),
@@ -192,12 +194,13 @@ class _CustomTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     return Container(
       height: 44,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: tc.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border, width: 0.5),
+        border: Border.all(color: tc.border, width: 0.5),
       ),
       child: TabBar(
         controller: controller,
@@ -208,7 +211,7 @@ class _CustomTabBar extends StatelessWidget {
         indicatorSize: TabBarIndicatorSize.tab,
         indicatorPadding: const EdgeInsets.all(4),
         labelColor: AppColors.background,
-        unselectedLabelColor: AppColors.textSecondary,
+        unselectedLabelColor: tc.textSecondary,
         labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
         unselectedLabelStyle:
             const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
@@ -236,6 +239,7 @@ class _FeedTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     return Column(
       children: [
         // ── Fila de historias ──
@@ -249,7 +253,7 @@ class _FeedTab extends StatelessWidget {
             currentUserAvatarUrl:  currentUserAvatarUrl,
           ),
         ),
-        const Divider(height: 1, thickness: 0.5, color: AppColors.divider),
+        const Divider(height: 1, thickness: 0.5, color: tc.divider),
         const SizedBox(height: 4),
         // ── Posts ──
         Expanded(
@@ -266,21 +270,21 @@ class _FeedTab extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.people_outline_rounded,
-                          size: 56, color: AppColors.textMuted),
+                          size: 56, color: tc.textMuted),
                       const SizedBox(height: 12),
                       Text('Aún no hay publicaciones',
-                          style: AppTextStyles.bodyMedium
-                              .copyWith(color: AppColors.textMuted)),
+                          style: AppTextStyles.bodyMediumOf(context)
+                              .copyWith(color: tc.textMuted)),
                       const SizedBox(height: 6),
                       Text('¡Sé el primero en compartir algo!',
-                          style: AppTextStyles.caption),
+                          style: AppTextStyles.captionOf(context)),
                     ],
                   ),
                 );
               }
               return RefreshIndicator(
                 color: AppColors.primary,
-                backgroundColor: AppColors.surface,
+                backgroundColor: tc.surface,
                 onRefresh: () async {
                   await provider.loadPosts();
                   await context.read<StoriesProvider>().load();
@@ -341,6 +345,7 @@ class _PostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     final provider = context.read<CommunityProvider>();
     final isOwn = post.userId == currentUserId;
 
@@ -366,7 +371,7 @@ class _PostCard extends StatelessWidget {
                 child: InitialsAvatar(
                   initials: post.userInitials,
                   size: 40,
-                  bgColor: AppColors.surfaceVariant,
+                  bgColor: tc.surfaceVariant,
                   photoUrl: post.avatarUrl,
                 ),
               ),
@@ -386,9 +391,9 @@ class _PostCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(post.userName, style: AppTextStyles.labelLarge),
+                      Text(post.userName, style: AppTextStyles.labelLargeOf(context)),
                       Text(_timeAgo(post.createdAt),
-                          style: AppTextStyles.caption),
+                          style: AppTextStyles.captionOf(context)),
                     ],
                   ),
                 ),
@@ -398,7 +403,7 @@ class _PostCard extends StatelessWidget {
                 GestureDetector(
                   onTap: () => _confirmDelete(context, provider),
                   child: const Icon(Icons.more_horiz_rounded,
-                      color: AppColors.textMuted, size: 20),
+                      color: tc.textMuted, size: 20),
                 ),
             ],
           ),
@@ -425,7 +430,7 @@ class _PostCard extends StatelessWidget {
           ],
 
           const SizedBox(height: 10),
-          Text(post.content, style: AppTextStyles.bodyMedium),
+          Text(post.content, style: AppTextStyles.bodyMediumOf(context)),
 
           // Post image
           if (post.imageUrl != null && post.imageUrl!.isNotEmpty) ...[
@@ -440,7 +445,7 @@ class _PostCard extends StatelessWidget {
                     ? child
                     : Container(
                         height: 200,
-                        color: AppColors.surfaceVariant,
+                        color: tc.surfaceVariant,
                         child: const Center(
                           child: CircularProgressIndicator(
                               color: AppColors.primary, strokeWidth: 2),
@@ -449,12 +454,12 @@ class _PostCard extends StatelessWidget {
                 errorBuilder: (_, __, ___) => Container(
                   height: 120,
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceVariant,
+                    color: tc.surfaceVariant,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Center(
                     child: Icon(Icons.broken_image_outlined,
-                        color: AppColors.textMuted, size: 32),
+                        color: tc.textMuted, size: 32),
                   ),
                 ),
               ),
@@ -468,7 +473,7 @@ class _PostCard extends StatelessWidget {
           ],
 
           const SizedBox(height: 14),
-          Divider(color: AppColors.divider, height: 1),
+          Divider(color: tc.divider, height: 1),
           const SizedBox(height: 10),
 
           // Actions
@@ -480,21 +485,21 @@ class _PostCard extends StatelessWidget {
                     : Icons.favorite_border_rounded,
                 label: '${post.likesCount}',
                 color:
-                    post.likedByMe ? AppColors.error : AppColors.textMuted,
+                    post.likedByMe ? AppColors.error : tc.textMuted,
                 onTap: () => provider.toggleLike(post.id),
               ),
               const SizedBox(width: 20),
               _ActionButton(
                 icon: Icons.chat_bubble_outline_rounded,
                 label: '${post.commentsCount}',
-                color: AppColors.textMuted,
+                color: tc.textMuted,
                 onTap: () => _showComments(context),
               ),
               const Spacer(),
               _ActionButton(
                 icon: Icons.share_outlined,
                 label: 'Compartir',
-                color: AppColors.textMuted,
+                color: tc.textMuted,
                 onTap: () {},
               ),
             ],
@@ -509,16 +514,16 @@ class _PostCard extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: tc.surface,
         title: Text('Eliminar publicación',
-            style: AppTextStyles.labelLarge),
+            style: AppTextStyles.labelLargeOf(context)),
         content: Text('¿Seguro que quieres eliminar este post?',
-            style: AppTextStyles.bodyMedium),
+            style: AppTextStyles.bodyMediumOf(context)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx, false),
             child: Text('Cancelar',
-                style: TextStyle(color: AppColors.textSecondary)),
+                style: TextStyle(color: tc.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx, true),
@@ -549,6 +554,7 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Row(
@@ -574,6 +580,7 @@ class _FollowButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     return Consumer<FollowProvider>(
       builder: (_, fp, __) {
         final following = fp.isFollowing(targetId);
@@ -583,10 +590,10 @@ class _FollowButton extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
             decoration: BoxDecoration(
               gradient: following ? null : AppColors.primaryGradient,
-              color: following ? AppColors.surfaceVariant : null,
+              color: following ? tc.surfaceVariant : null,
               borderRadius: BorderRadius.circular(20),
               border: following
-                  ? Border.all(color: AppColors.border, width: 0.5)
+                  ? Border.all(color: tc.border, width: 0.5)
                   : null,
             ),
             child: Text(
@@ -594,7 +601,7 @@ class _FollowButton extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: following ? AppColors.textSecondary : AppColors.background,
+                color: following ? tc.textSecondary : const Color(0xFF0A0A0A),
               ),
             ),
           ),
@@ -730,11 +737,12 @@ class _PublishSheetState extends State<_PublishSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     final bottom = MediaQuery.of(context).viewInsets.bottom;
     return Container(
       padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
+      decoration: BoxDecoration(
+        color: tc.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
@@ -746,33 +754,33 @@ class _PublishSheetState extends State<_PublishSheet> {
             child: Container(
               width: 40, height: 4,
               decoration: BoxDecoration(
-                color: AppColors.border,
+                color: tc.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
           const SizedBox(height: 16),
-          Text('Nueva publicación', style: AppTextStyles.headingSmall),
+          Text('Nueva publicación', style: AppTextStyles.headingSmallOf(context)),
           const SizedBox(height: 14),
           TextField(
             controller: _controller,
             maxLines: 4,
             maxLength: 500,
             autofocus: true,
-            style: AppTextStyles.bodyMedium,
+            style: AppTextStyles.bodyMediumOf(context),
             decoration: InputDecoration(
               hintText: '¿Qué quieres compartir con la comunidad?',
               hintStyle:
-                  AppTextStyles.bodyMedium.copyWith(color: AppColors.textMuted),
+                  AppTextStyles.bodyMediumOf(context).copyWith(color: tc.textMuted),
               filled: true,
-              fillColor: AppColors.background,
+              fillColor: tc.background,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: AppColors.border, width: 0.5),
+                borderSide: BorderSide(color: tc.border, width: 0.5),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: AppColors.border, width: 0.5),
+                borderSide: BorderSide(color: tc.border, width: 0.5),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -780,7 +788,7 @@ class _PublishSheetState extends State<_PublishSheet> {
                     const BorderSide(color: AppColors.primary, width: 1),
               ),
               counterStyle:
-                  AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                  AppTextStyles.captionOf(context).copyWith(color: tc.textMuted),
             ),
           ),
           const SizedBox(height: 10),
@@ -832,7 +840,7 @@ class _PublishSheetState extends State<_PublishSheet> {
                     ),
                     const SizedBox(width: 6),
                     Text('Logro',
-                        style: AppTextStyles.caption
+                        style: AppTextStyles.captionOf(context)
                             .copyWith(color: AppColors.primary)),
                   ],
                 ),
@@ -843,20 +851,20 @@ class _PublishSheetState extends State<_PublishSheet> {
             const SizedBox(height: 10),
             TextField(
               controller: _achievementController,
-              style: AppTextStyles.bodyMedium,
+              style: AppTextStyles.bodyMediumOf(context),
               decoration: InputDecoration(
                 hintText: 'Ej: Récord Personal, Racha de 30 días…',
-                hintStyle: AppTextStyles.caption
-                    .copyWith(color: AppColors.textMuted),
+                hintStyle: AppTextStyles.captionOf(context)
+                    .copyWith(color: tc.textMuted),
                 filled: true,
-                fillColor: AppColors.background,
+                fillColor: tc.background,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.border, width: 0.5),
+                  borderSide: BorderSide(color: tc.border, width: 0.5),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.border, width: 0.5),
+                  borderSide: BorderSide(color: tc.border, width: 0.5),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -888,7 +896,7 @@ class _PublishSheetState extends State<_PublishSheet> {
                           strokeWidth: 2, color: AppColors.background),
                     )
                   : Text('Publicar',
-                      style: AppTextStyles.labelLarge
+                      style: AppTextStyles.labelLargeOf(context)
                           .copyWith(color: AppColors.background)),
             ),
           ),
@@ -970,12 +978,13 @@ class _CommentsSheetState extends State<_CommentsSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     final bottom = MediaQuery.of(context).viewInsets.bottom;
     return Container(
       height: MediaQuery.of(context).size.height * 0.75,
       padding: EdgeInsets.only(bottom: bottom),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
+      decoration: BoxDecoration(
+        color: tc.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
@@ -988,26 +997,26 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                 Container(
                   width: 40, height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.border,
+                    color: tc.border,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Text('Comentarios', style: AppTextStyles.headingSmall),
+                    Text('Comentarios', style: AppTextStyles.headingSmallOf(context)),
                     const Spacer(),
                     Text(
                       '${widget.post.commentsCount}',
-                      style: AppTextStyles.caption
-                          .copyWith(color: AppColors.textMuted),
+                      style: AppTextStyles.captionOf(context)
+                          .copyWith(color: tc.textMuted),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-          Divider(color: AppColors.divider, height: 1),
+          Divider(color: tc.divider, height: 1),
 
           // Post preview
           Padding(
@@ -1018,17 +1027,17 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                 InitialsAvatar(
                     initials: widget.post.userInitials,
                     size: 32,
-                    bgColor: AppColors.surfaceVariant),
+                    bgColor: tc.surfaceVariant),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(widget.post.userName,
-                          style: AppTextStyles.labelMedium),
+                          style: AppTextStyles.labelMediumOf(context)),
                       const SizedBox(height: 2),
                       Text(widget.post.content,
-                          style: AppTextStyles.bodyMedium,
+                          style: AppTextStyles.bodyMediumOf(context),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis),
                     ],
@@ -1037,7 +1046,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
               ],
             ),
           ),
-          Divider(color: AppColors.divider, height: 1),
+          Divider(color: tc.divider, height: 1),
 
           // Comments list
           Expanded(
@@ -1053,8 +1062,8 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                 if (comments.isEmpty) {
                   return Center(
                     child: Text('Sé el primero en comentar',
-                        style: AppTextStyles.caption
-                            .copyWith(color: AppColors.textMuted)),
+                        style: AppTextStyles.captionOf(context)
+                            .copyWith(color: tc.textMuted)),
                   );
                 }
                 return ListView.separated(
@@ -1070,7 +1079,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                         InitialsAvatar(
                             initials: c.userInitials,
                             size: 30,
-                            bgColor: AppColors.surfaceVariant),
+                            bgColor: tc.surfaceVariant),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(
@@ -1079,16 +1088,16 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                               Row(
                                 children: [
                                   Text(c.userName,
-                                      style: AppTextStyles.labelMedium),
+                                      style: AppTextStyles.labelMediumOf(context)),
                                   const SizedBox(width: 6),
                                   Text(_timeAgo(c.createdAt),
-                                      style: AppTextStyles.caption.copyWith(
-                                          color: AppColors.textMuted)),
+                                      style: AppTextStyles.captionOf(context).copyWith(
+                                          color: tc.textMuted)),
                                 ],
                               ),
                               const SizedBox(height: 2),
                               Text(c.content,
-                                  style: AppTextStyles.bodyMedium),
+                                  style: AppTextStyles.bodyMediumOf(context)),
                             ],
                           ),
                         ),
@@ -1108,26 +1117,26 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                 Expanded(
                   child: TextField(
                     controller: _controller,
-                    style: AppTextStyles.bodyMedium,
+                    style: AppTextStyles.bodyMediumOf(context),
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => _send(),
                     decoration: InputDecoration(
                       hintText: 'Añadir un comentario…',
-                      hintStyle: AppTextStyles.caption
-                          .copyWith(color: AppColors.textMuted),
+                      hintStyle: AppTextStyles.captionOf(context)
+                          .copyWith(color: tc.textMuted),
                       filled: true,
-                      fillColor: AppColors.background,
+                      fillColor: tc.background,
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 12),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide:
-                            BorderSide(color: AppColors.border, width: 0.5),
+                            BorderSide(color: tc.border, width: 0.5),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide:
-                            BorderSide(color: AppColors.border, width: 0.5),
+                            BorderSide(color: tc.border, width: 0.5),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
@@ -1184,6 +1193,7 @@ class _LeaderboardTabState extends State<_LeaderboardTab> {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     return Consumer<CommunityProvider>(
       builder: (context, provider, _) {
         final leaders = _mode == _LeaderMode.weekly
@@ -1210,14 +1220,14 @@ class _LeaderboardTabState extends State<_LeaderboardTab> {
               child: _mode == _LeaderMode.weekly
                   ? Text(
                       'Puntos ganados esta semana · se reinicia cada lunes',
-                      style: AppTextStyles.caption
-                          .copyWith(color: AppColors.textMuted),
+                      style: AppTextStyles.captionOf(context)
+                          .copyWith(color: tc.textMuted),
                       textAlign: TextAlign.center,
                     )
                   : Text(
                       'Puntos acumulados desde el inicio',
-                      style: AppTextStyles.caption
-                          .copyWith(color: AppColors.textMuted),
+                      style: AppTextStyles.captionOf(context)
+                          .copyWith(color: tc.textMuted),
                       textAlign: TextAlign.center,
                     ),
             ),
@@ -1251,10 +1261,11 @@ class _ModeToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     return Container(
       height: 38,
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
+        color: tc.surfaceVariant,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -1291,6 +1302,7 @@ class _ToggleBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -1308,8 +1320,8 @@ class _ToggleBtn extends StatelessWidget {
               Icon(icon,
                   size: 13,
                   color: selected
-                      ? AppColors.background
-                      : AppColors.textMuted),
+                      ? const Color(0xFF0A0A0A)
+                      : tc.textMuted),
               const SizedBox(width: 4),
               Text(
                 label,
@@ -1319,8 +1331,8 @@ class _ToggleBtn extends StatelessWidget {
                       ? FontWeight.w700
                       : FontWeight.w400,
                   color: selected
-                      ? AppColors.background
-                      : AppColors.textMuted,
+                      ? const Color(0xFF0A0A0A)
+                      : tc.textMuted,
                 ),
               ),
             ],
@@ -1337,6 +1349,7 @@ class _LeaderboardEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     final isWeekly = mode == _LeaderMode.weekly;
     return Center(
       child: Padding(
@@ -1349,15 +1362,15 @@ class _LeaderboardEmpty extends StatelessWidget {
                   ? Icons.calendar_today_rounded
                   : Icons.emoji_events_rounded,
               size: 52,
-              color: AppColors.textMuted,
+              color: tc.textMuted,
             ),
             const SizedBox(height: 14),
             Text(
               isWeekly
                   ? 'Nadie ha ganado puntos esta semana todavía'
                   : 'Aún no hay puntos acumulados',
-              style: AppTextStyles.bodyMedium
-                  .copyWith(color: AppColors.textMuted),
+              style: AppTextStyles.bodyMediumOf(context)
+                  .copyWith(color: tc.textMuted),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
@@ -1365,7 +1378,7 @@ class _LeaderboardEmpty extends StatelessWidget {
               isWeekly
                   ? '¡Entrena, publica y comenta para subir!'
                   : 'Completa entrenamientos y participa en la comunidad',
-              style: AppTextStyles.caption,
+              style: AppTextStyles.captionOf(context),
               textAlign: TextAlign.center,
             ),
           ],
@@ -1382,9 +1395,10 @@ class _LeaderboardList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     return RefreshIndicator(
       color: AppColors.primary,
-      backgroundColor: AppColors.surface,
+      backgroundColor: tc.surface,
       onRefresh: onRefresh,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(
@@ -1418,6 +1432,7 @@ class _LeaderboardList extends StatelessWidget {
 class _PointsLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     const items = [
       (Icons.fitness_center_rounded,    'Completar entrenamiento',    '+100'),
       (Icons.restaurant_menu_rounded,   'Cumplir meta calórica diaria', '+ 50'),
@@ -1436,20 +1451,20 @@ class _PointsLegend extends StatelessWidget {
             const SizedBox(width: 6),
             Text('Cómo ganar puntos',
                 style:
-                    AppTextStyles.labelMedium.copyWith(color: AppColors.primary)),
+                    AppTextStyles.labelMediumOf(context).copyWith(color: AppColors.primary)),
           ]),
           const SizedBox(height: 10),
           ...items.map(
             (item) => Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Row(children: [
-                Icon(item.$1, size: 14, color: AppColors.textMuted),
+                Icon(item.$1, size: 14, color: tc.textMuted),
                 const SizedBox(width: 8),
                 Expanded(
-                    child: Text(item.$2, style: AppTextStyles.caption)),
+                    child: Text(item.$2, style: AppTextStyles.captionOf(context))),
                 Text(
                   item.$3,
-                  style: AppTextStyles.caption
+                  style: AppTextStyles.captionOf(context)
                       .copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
                 ),
               ]),
@@ -1485,12 +1500,13 @@ class _TopThreeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     final color = _medalColor;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: tc.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: color.withOpacity(0.55), width: 1.5),
         ),
@@ -1530,10 +1546,10 @@ class _TopThreeCard extends StatelessWidget {
                     children: [
                       Text(
                         entry.isMe ? '${entry.name} (tú)' : entry.name,
-                        style: AppTextStyles.labelLarge.copyWith(
+                        style: AppTextStyles.labelLargeOf(context).copyWith(
                           color: entry.isMe
                               ? AppColors.primary
-                              : AppColors.textPrimary,
+                              : tc.textPrimary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1541,7 +1557,7 @@ class _TopThreeCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         '#${entry.rank} lugar',
-                        style: AppTextStyles.caption
+                        style: AppTextStyles.captionOf(context)
                             .copyWith(color: color.withOpacity(0.85)),
                       ),
                     ],
@@ -1564,7 +1580,7 @@ class _TopThreeCard extends StatelessWidget {
                         height: 1,
                       ),
                     ),
-                    Text('pts', style: AppTextStyles.caption),
+                    Text('pts', style: AppTextStyles.captionOf(context)),
                   ],
                 ),
               ),
@@ -1582,6 +1598,7 @@ class _LeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     return DarkCard(
       borderColor:
           entry.isMe ? AppColors.primary.withOpacity(0.4) : null,
@@ -1590,28 +1607,28 @@ class _LeaderCard extends StatelessWidget {
         children: [
           SizedBox(
             width: 28,
-            child: Text('#${entry.rank}', style: AppTextStyles.labelMedium),
+            child: Text('#${entry.rank}', style: AppTextStyles.labelMediumOf(context)),
           ),
           InitialsAvatar(
             initials: entry.initials,
             size: 38,
-            bgColor: entry.isMe ? null : AppColors.surfaceVariant,
+            bgColor: entry.isMe ? null : tc.surfaceVariant,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               entry.isMe ? '${entry.name} (tú)' : entry.name,
-              style: AppTextStyles.labelLarge.copyWith(
+              style: AppTextStyles.labelLargeOf(context).copyWith(
                 color: entry.isMe
                     ? AppColors.primary
-                    : AppColors.textPrimary,
+                    : tc.textPrimary,
               ),
             ),
           ),
           Text(
             '${entry.points} pts',
-            style: AppTextStyles.labelMedium
-                .copyWith(color: AppColors.textPrimary),
+            style: AppTextStyles.labelMediumOf(context)
+                .copyWith(color: tc.textPrimary),
           ),
         ],
       ),
@@ -1630,6 +1647,7 @@ class _ChallengesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     return Consumer<ChallengesProvider>(
       builder: (ctx, cp, _) {
         if (cp.loading && cp.challenges.isEmpty) {
@@ -1637,7 +1655,7 @@ class _ChallengesTab extends StatelessWidget {
         }
         return RefreshIndicator(
           color: AppColors.primary,
-          backgroundColor: AppColors.surface,
+          backgroundColor: tc.surface,
           onRefresh: cp.load,
           child: CustomScrollView(
             slivers: [
@@ -1649,9 +1667,9 @@ class _ChallengesTab extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Retos activos', style: AppTextStyles.headingSmall),
+                          Text('Retos activos', style: AppTextStyles.headingSmallOf(context)),
                           Text('${cp.challenges.where((c) => c.isActive).length} en curso',
-                              style: AppTextStyles.caption),
+                              style: AppTextStyles.captionOf(context)),
                         ],
                       ),
                       const Spacer(),
@@ -1668,7 +1686,7 @@ class _ChallengesTab extends StatelessWidget {
                               const Icon(Icons.add, size: 15, color: AppColors.background),
                               const SizedBox(width: 5),
                               Text('Crear reto',
-                                  style: AppTextStyles.caption.copyWith(
+                                  style: AppTextStyles.captionOf(context).copyWith(
                                     color: AppColors.background,
                                     fontWeight: FontWeight.w700,
                                   )),
@@ -1687,14 +1705,14 @@ class _ChallengesTab extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.emoji_events_outlined,
-                            size: 48, color: AppColors.textMuted),
+                            size: 48, color: tc.textMuted),
                         const SizedBox(height: 12),
                         Text('Aún no hay retos',
-                            style: AppTextStyles.bodyMedium.copyWith(
-                                color: AppColors.textMuted)),
+                            style: AppTextStyles.bodyMediumOf(context).copyWith(
+                                color: tc.textMuted)),
                         const SizedBox(height: 6),
                         Text('¡Sé el primero en crear uno!',
-                            style: AppTextStyles.caption),
+                            style: AppTextStyles.captionOf(context)),
                       ],
                     ),
                   ),
@@ -1755,18 +1773,19 @@ class _ChallengeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     final isOwner = challenge.creatorId == currentUserId;
     return GestureDetector(
       onTap: () => _openDetail(context),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: AppColors.cardGradient,
+          gradient: tc.cardGradient,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: challenge.isActive
                 ? AppColors.primary.withOpacity(0.25)
-                : AppColors.border,
+                : tc.border,
             width: 0.5,
           ),
         ),
@@ -1790,11 +1809,11 @@ class _ChallengeCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(challenge.title,
-                          style: AppTextStyles.labelLarge,
+                          style: AppTextStyles.labelLargeOf(context),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis),
                       Text(challenge.exercise,
-                          style: AppTextStyles.caption),
+                          style: AppTextStyles.captionOf(context)),
                     ],
                   ),
                 ),
@@ -1805,7 +1824,7 @@ class _ChallengeCard extends StatelessWidget {
                   GestureDetector(
                     onTap: () => _confirmDelete(context),
                     child: const Icon(Icons.more_horiz,
-                        size: 18, color: AppColors.textMuted),
+                        size: 18, color: tc.textMuted),
                   ),
                 ],
               ],
@@ -1813,8 +1832,8 @@ class _ChallengeCard extends StatelessWidget {
             if (challenge.description != null) ...[
               const SizedBox(height: 10),
               Text(challenge.description!,
-                  style: AppTextStyles.bodySmall
-                      .copyWith(color: AppColors.textSecondary),
+                  style: AppTextStyles.bodySmallOf(context)
+                      .copyWith(color: tc.textSecondary),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis),
             ],
@@ -1843,7 +1862,7 @@ class _ChallengeCard extends StatelessWidget {
                     ),
                     child: Text(
                       'Mi marca: ${_formatRecord(challenge.myRecord!, challenge.unit, challenge.myReps)}',
-                      style: AppTextStyles.caption.copyWith(
+                      style: AppTextStyles.captionOf(context).copyWith(
                         color: AppColors.primary,
                         fontWeight: FontWeight.w700,
                       ),
@@ -1860,14 +1879,14 @@ class _ChallengeCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 9),
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceVariant,
+                        color: tc.surfaceVariant,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       alignment: Alignment.center,
                       child: Text('Ver ranking',
-                          style: AppTextStyles.caption.copyWith(
+                          style: AppTextStyles.captionOf(context).copyWith(
                               fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary)),
+                              color: tc.textPrimary)),
                     ),
                   ),
                 ),
@@ -1885,7 +1904,7 @@ class _ChallengeCard extends StatelessWidget {
                         alignment: Alignment.center,
                         child: Text(
                           challenge.myRecord != null ? 'Actualizar marca' : 'Registrar marca',
-                          style: AppTextStyles.caption.copyWith(
+                          style: AppTextStyles.captionOf(context).copyWith(
                               fontWeight: FontWeight.w700,
                               color: AppColors.background),
                         ),
@@ -1929,16 +1948,17 @@ class _ChallengeCard extends StatelessWidget {
   }
 
   Future<void> _confirmDelete(BuildContext ctx) async {
+    final tc = AppThemeColors.of(ctx);
     final ok = await showDialog<bool>(
       context: ctx,
       builder: (d) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: const Text('Eliminar reto', style: TextStyle(color: AppColors.textPrimary)),
+        backgroundColor: tc.surface,
+        title: const Text('Eliminar reto', style: TextStyle(color: tc.textPrimary)),
         content: const Text('Se borrarán todos los registros. ¿Continuar?',
-            style: TextStyle(color: AppColors.textSecondary)),
+            style: TextStyle(color: tc.textSecondary)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(d, false),
-              child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary))),
+              child: const Text('Cancelar', style: TextStyle(color: tc.textSecondary))),
           TextButton(onPressed: () => Navigator.pop(d, true),
               child: const Text('Eliminar', style: TextStyle(color: AppColors.error))),
         ],
@@ -1996,14 +2016,15 @@ class _ChallengeDetailSheetState extends State<_ChallengeDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     final ch = widget.challenge;
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
       maxChildSize: 0.93,
       minChildSize: 0.4,
       builder: (_, ctrl) => Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
+        decoration: BoxDecoration(
+          color: tc.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
@@ -2012,7 +2033,7 @@ class _ChallengeDetailSheetState extends State<_ChallengeDetailSheet> {
             Container(
               width: 40, height: 4,
               decoration: BoxDecoration(
-                  color: AppColors.border,
+                  color: tc.border,
                   borderRadius: BorderRadius.circular(2)),
             ),
             const SizedBox(height: 16),
@@ -2024,7 +2045,7 @@ class _ChallengeDetailSheetState extends State<_ChallengeDetailSheet> {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(ch.title, style: AppTextStyles.headingSmall),
+                        child: Text(ch.title, style: AppTextStyles.headingSmallOf(context)),
                       ),
                       _StatusBadge(challenge: ch),
                     ],
@@ -2032,8 +2053,8 @@ class _ChallengeDetailSheetState extends State<_ChallengeDetailSheet> {
                   if (ch.description != null) ...[
                     const SizedBox(height: 6),
                     Text(ch.description!,
-                        style: AppTextStyles.bodySmall
-                            .copyWith(color: AppColors.textSecondary)),
+                        style: AppTextStyles.bodySmallOf(context)
+                            .copyWith(color: tc.textSecondary)),
                   ],
                   const SizedBox(height: 10),
                   Wrap(
@@ -2054,17 +2075,17 @@ class _ChallengeDetailSheetState extends State<_ChallengeDetailSheet> {
               ),
             ),
             const SizedBox(height: 8),
-            const Divider(color: AppColors.divider, height: 1),
+            const Divider(color: tc.divider, height: 1),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
               child: Row(
                 children: [
-                  Text('Ranking', style: AppTextStyles.labelLarge),
+                  Text('Ranking', style: AppTextStyles.labelLargeOf(context)),
                   const Spacer(),
                   GestureDetector(
                     onTap: () => setState(_reload),
                     child: const Icon(Icons.refresh,
-                        size: 18, color: AppColors.textMuted),
+                        size: 18, color: tc.textMuted),
                   ),
                 ],
               ),
@@ -2082,7 +2103,7 @@ class _ChallengeDetailSheetState extends State<_ChallengeDetailSheet> {
                   if (records.isEmpty) {
                     return Center(
                       child: Text('Aún no hay marcas registradas.',
-                          style: AppTextStyles.caption),
+                          style: AppTextStyles.captionOf(context)),
                     );
                   }
                   return ListView.separated(
@@ -2090,7 +2111,7 @@ class _ChallengeDetailSheetState extends State<_ChallengeDetailSheet> {
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                     itemCount: records.length,
                     separatorBuilder: (_, __) =>
-                        const Divider(color: AppColors.divider, height: 1),
+                        const Divider(color: tc.divider, height: 1),
                     itemBuilder: (_, i) => _RecordRow(
                       record: records[i],
                       unit: ch.unit,
@@ -2128,7 +2149,7 @@ class _ChallengeDetailSheetState extends State<_ChallengeDetailSheet> {
                     alignment: Alignment.center,
                     child: Text(
                       ch.myRecord != null ? 'Actualizar mi marca' : 'Registrar mi marca',
-                      style: AppTextStyles.labelLarge.copyWith(
+                      style: AppTextStyles.labelLargeOf(context).copyWith(
                           color: AppColors.background),
                     ),
                   ),
@@ -2151,6 +2172,7 @@ class _RecordRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     final hasVideo = record.videoUrl != null && record.videoUrl!.isNotEmpty;
     return GestureDetector(
       onTap: hasVideo ? () => _showVideo(context) : null,
@@ -2166,22 +2188,22 @@ class _RecordRow extends StatelessWidget {
                       style: const TextStyle(fontSize: 20),
                       textAlign: TextAlign.center)
                   : Text('#${record.rank}',
-                      style: AppTextStyles.caption.copyWith(
-                          color: AppColors.textMuted)),
+                      style: AppTextStyles.captionOf(context).copyWith(
+                          color: tc.textMuted)),
             ),
             const SizedBox(width: 10),
             InitialsAvatar(
               initials: record.initials,
               size: 36,
               photoUrl: record.avatarUrl,
-              bgColor: AppColors.surfaceVariant,
+              bgColor: tc.surfaceVariant,
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 record.userName + (isMe ? ' (tú)' : ''),
-                style: AppTextStyles.labelMedium.copyWith(
-                    color: isMe ? AppColors.primary : AppColors.textPrimary),
+                style: AppTextStyles.labelMediumOf(context).copyWith(
+                    color: isMe ? AppColors.primary : tc.textPrimary),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -2191,14 +2213,14 @@ class _RecordRow extends StatelessWidget {
               children: [
                 Text(
                   _formatRecord(record.value, unit, record.reps),
-                  style: AppTextStyles.labelLarge.copyWith(
-                    color: record.rank == 1 ? AppColors.primary : AppColors.textPrimary,
+                  style: AppTextStyles.labelLargeOf(context).copyWith(
+                    color: record.rank == 1 ? AppColors.primary : tc.textPrimary,
                   ),
                 ),
                 if (unit == 'kg×reps')
                   Text(
                     '${record.volume.toInt()} vol',
-                    style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                    style: AppTextStyles.captionOf(context).copyWith(color: tc.textMuted),
                   ),
               ],
             ),
@@ -2214,9 +2236,10 @@ class _RecordRow extends StatelessWidget {
   }
 
   void _showVideo(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.background,
+      backgroundColor: tc.background,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => Padding(
@@ -2229,16 +2252,16 @@ class _RecordRow extends StatelessWidget {
               child: Container(
                 width: 40, height: 4,
                 decoration: BoxDecoration(
-                    color: AppColors.border,
+                    color: tc.border,
                     borderRadius: BorderRadius.circular(2)),
               ),
             ),
             const SizedBox(height: 14),
             Text(record.userName,
-                style: AppTextStyles.labelLarge),
+                style: AppTextStyles.labelLargeOf(context)),
             Text(_formatRecord(record.value, unit, record.reps),
-                style: AppTextStyles.caption
-                    .copyWith(color: AppColors.textSecondary)),
+                style: AppTextStyles.captionOf(context)
+                    .copyWith(color: tc.textSecondary)),
             const SizedBox(height: 14),
             _VideoPostPlayer(videoUrl: record.videoUrl!),
             const SizedBox(height: 8),
@@ -2342,12 +2365,13 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     final bottom = MediaQuery.of(context).viewInsets.bottom;
     final ch = widget.challenge;
     return Container(
       padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
+      decoration: BoxDecoration(
+        color: tc.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
@@ -2358,18 +2382,18 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
             child: Container(
               width: 40, height: 4,
               decoration: BoxDecoration(
-                  color: AppColors.border,
+                  color: tc.border,
                   borderRadius: BorderRadius.circular(2)),
             ),
           ),
           const SizedBox(height: 16),
-          Text(ch.title, style: AppTextStyles.headingSmall),
+          Text(ch.title, style: AppTextStyles.headingSmallOf(context)),
           const SizedBox(height: 4),
           Text(
             ch.myRecord != null
                 ? 'Tu marca actual: ${_formatRecord(ch.myRecord!, ch.unit, ch.myReps)}'
                 : 'Registra tu primera marca',
-            style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+            style: AppTextStyles.captionOf(context).copyWith(color: tc.textSecondary),
           ),
           const SizedBox(height: 20),
           if (_isWeightReps) ...[
@@ -2379,7 +2403,7 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
                 const SizedBox(width: 10),
                 _unitLabel('kg'),
                 const SizedBox(width: 16),
-                const Text('×', style: TextStyle(fontSize: 22, color: AppColors.textMuted)),
+                const Text('×', style: TextStyle(fontSize: 22, color: tc.textMuted)),
                 const SizedBox(width: 16),
                 Expanded(child: _numField(_repsCtrl, '0', decimal: false)),
                 const SizedBox(width: 10),
@@ -2390,7 +2414,7 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
             Center(
               child: Text(
                 'El ranking se ordena por volumen (kg × reps)',
-                style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                style: AppTextStyles.captionOf(context).copyWith(color: tc.textMuted),
               ),
             ),
           ] else
@@ -2432,7 +2456,7 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
                         child: CircularProgressIndicator(
                             color: AppColors.background, strokeWidth: 2))
                     : Text('Guardar marca',
-                        style: AppTextStyles.labelLarge
+                        style: AppTextStyles.labelLargeOf(context)
                             .copyWith(color: AppColors.background)),
               ),
             ),
@@ -2444,23 +2468,24 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
 
   Widget _numField(TextEditingController ctrl, String hint,
       {bool autofocus = false, bool decimal = true}) {
+    final tc = AppThemeColors.of(context);
     return TextField(
       controller: ctrl,
       keyboardType: TextInputType.numberWithOptions(decimal: decimal),
       autofocus: autofocus,
-      style: AppTextStyles.headingMedium,
+      style: AppTextStyles.headingMediumOf(context),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: AppTextStyles.headingMedium.copyWith(color: AppColors.textMuted),
+        hintStyle: AppTextStyles.headingMediumOf(context).copyWith(color: tc.textMuted),
         filled: true,
-        fillColor: AppColors.background,
+        fillColor: tc.background,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border, width: 0.5),
+          borderSide: BorderSide(color: tc.border, width: 0.5),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border, width: 0.5),
+          borderSide: BorderSide(color: tc.border, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -2470,14 +2495,16 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
     );
   }
 
-  Widget _unitLabel(String unit) => Container(
+  Widget _unitLabel(String unit) {
+    final tc = AppThemeColors.of(context);
+    return Container(
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
     decoration: BoxDecoration(
-      color: AppColors.surfaceVariant,
+      color: tc.surfaceVariant,
       borderRadius: BorderRadius.circular(12),
     ),
     child: Text(unit,
-        style: AppTextStyles.labelLarge.copyWith(color: AppColors.textSecondary)),
+        style: AppTextStyles.labelLargeOf(context).copyWith(color: tc.textSecondary)),
   );
 }
 
@@ -2563,11 +2590,12 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     final bottom = MediaQuery.of(context).viewInsets.bottom;
     return Container(
       padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
+      decoration: BoxDecoration(
+        color: tc.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: SingleChildScrollView(
@@ -2579,12 +2607,12 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
               child: Container(
                 width: 40, height: 4,
                 decoration: BoxDecoration(
-                    color: AppColors.border,
+                    color: tc.border,
                     borderRadius: BorderRadius.circular(2)),
               ),
             ),
             const SizedBox(height: 16),
-            Text('Nuevo reto', style: AppTextStyles.headingSmall),
+            Text('Nuevo reto', style: AppTextStyles.headingSmallOf(context)),
             const SizedBox(height: 16),
             _buildField(_titleCtrl, 'Título del reto *', maxLines: 1),
             const SizedBox(height: 12),
@@ -2592,7 +2620,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
             const SizedBox(height: 12),
             _buildField(_descCtrl, 'Descripción (opcional)', maxLines: 3),
             const SizedBox(height: 16),
-            Text('Unidad de medida', style: AppTextStyles.labelMedium),
+            Text('Unidad de medida', style: AppTextStyles.labelMediumOf(context)),
             const SizedBox(height: 8),
             Row(
               children: _units.map((u) {
@@ -2606,20 +2634,20 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                           horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
                         gradient: sel ? AppColors.primaryGradient : null,
-                        color: sel ? null : AppColors.surfaceVariant,
+                        color: sel ? null : tc.surfaceVariant,
                         borderRadius: BorderRadius.circular(20),
                         border: sel
                             ? null
                             : Border.all(
-                                color: AppColors.border, width: 0.5),
+                                color: tc.border, width: 0.5),
                       ),
                       child: Text(u,
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: sel
-                                ? AppColors.background
-                                : AppColors.textSecondary,
+                                ? const Color(0xFF0A0A0A)
+                                : tc.textSecondary,
                           )),
                     ),
                   ),
@@ -2642,7 +2670,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                     Expanded(
                       child: Text(
                         'Ranking por volumen: kg × reps. Gana quien acumule más volumen total.',
-                        style: AppTextStyles.caption.copyWith(color: AppColors.primary),
+                        style: AppTextStyles.captionOf(context).copyWith(color: AppColors.primary),
                       ),
                     ),
                   ],
@@ -2656,14 +2684,14 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Criterio de victoria', style: AppTextStyles.labelMedium),
+                        Text('Criterio de victoria', style: AppTextStyles.labelMediumOf(context)),
                         const SizedBox(height: 4),
                         Text(
                           _higherIsBetter
                               ? 'Gana el mayor valor'
                               : 'Gana el menor valor',
-                          style: AppTextStyles.caption
-                              .copyWith(color: AppColors.textSecondary),
+                          style: AppTextStyles.captionOf(context)
+                              .copyWith(color: tc.textSecondary),
                         ),
                       ],
                     ),
@@ -2683,11 +2711,11 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Fecha límite', style: AppTextStyles.labelMedium),
+                      Text('Fecha límite', style: AppTextStyles.labelMediumOf(context)),
                       const SizedBox(height: 4),
                       Text(
                         '${_deadline.day}/${_deadline.month}/${_deadline.year}',
-                        style: AppTextStyles.bodyMedium
+                        style: AppTextStyles.bodyMediumOf(context)
                             .copyWith(color: AppColors.primary),
                       ),
                     ],
@@ -2699,17 +2727,17 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceVariant,
+                      color: tc.surfaceVariant,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
                       children: [
                         const Icon(Icons.calendar_today,
-                            size: 14, color: AppColors.textSecondary),
+                            size: 14, color: tc.textSecondary),
                         const SizedBox(width: 6),
                         Text('Cambiar',
-                            style: AppTextStyles.caption
-                                .copyWith(color: AppColors.textSecondary)),
+                            style: AppTextStyles.captionOf(context)
+                                .copyWith(color: tc.textSecondary)),
                       ],
                     ),
                   ),
@@ -2734,7 +2762,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                           child: CircularProgressIndicator(
                               color: AppColors.background, strokeWidth: 2))
                       : Text('Publicar reto',
-                          style: AppTextStyles.labelLarge
+                          style: AppTextStyles.labelLargeOf(context)
                               .copyWith(color: AppColors.background)),
                 ),
               ),
@@ -2747,25 +2775,26 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
 
   Widget _buildField(TextEditingController ctrl, String hint,
       {int maxLines = 1}) {
+    final tc = AppThemeColors.of(context);
     return TextField(
       controller: ctrl,
       maxLines: maxLines,
-      style: AppTextStyles.bodyMedium,
+      style: AppTextStyles.bodyMediumOf(context),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle:
-            AppTextStyles.bodyMedium.copyWith(color: AppColors.textMuted),
+            AppTextStyles.bodyMediumOf(context).copyWith(color: tc.textMuted),
         filled: true,
-        fillColor: AppColors.background,
+        fillColor: tc.background,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:
-              const BorderSide(color: AppColors.border, width: 0.5),
+              BorderSide(color: tc.border, width: 0.5),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:
-              const BorderSide(color: AppColors.border, width: 0.5),
+              BorderSide(color: tc.border, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -2785,16 +2814,17 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     if (!challenge.isActive) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: AppColors.surfaceVariant,
+          color: tc.surfaceVariant,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text('Finalizado',
-            style: AppTextStyles.caption
-                .copyWith(color: AppColors.textMuted)),
+            style: AppTextStyles.captionOf(context)
+                .copyWith(color: tc.textMuted)),
       );
     }
     final days = challenge.daysLeft;
@@ -2808,7 +2838,7 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         days == 0 ? 'Hoy' : '${days}d',
-        style: AppTextStyles.caption.copyWith(
+        style: AppTextStyles.captionOf(context).copyWith(
           color: days <= 2 ? AppColors.accentOrange : AppColors.primary,
           fontWeight: FontWeight.w700,
         ),
@@ -2826,11 +2856,11 @@ class _InfoChip extends StatelessWidget {
   Widget build(BuildContext context) => Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: AppColors.textMuted),
+          Icon(icon, size: 12, color: tc.textMuted),
           const SizedBox(width: 4),
           Text(label,
-              style: AppTextStyles.caption
-                  .copyWith(color: AppColors.textMuted)),
+              style: AppTextStyles.captionOf(context)
+                  .copyWith(color: tc.textMuted)),
         ],
       );
 }
@@ -2864,17 +2894,18 @@ class _MediaButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     final active = onTap != null;
     return GestureDetector(
       onTap: onTap,
       child: Row(
         children: [
           Icon(icon,
-              color: active ? AppColors.primary : AppColors.textMuted, size: 18),
+              color: active ? AppColors.primary : tc.textMuted, size: 18),
           const SizedBox(width: 6),
           Text(label,
-              style: AppTextStyles.caption.copyWith(
-                  color: active ? AppColors.primary : AppColors.textMuted)),
+              style: AppTextStyles.captionOf(context).copyWith(
+                  color: active ? AppColors.primary : tc.textMuted)),
         ],
       ),
     );
@@ -2889,6 +2920,7 @@ class _MediaPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     return Stack(
       children: [
         ClipRRect(
@@ -2904,7 +2936,7 @@ class _MediaPreview extends StatelessWidget {
           child: GestureDetector(
             onTap: onRemove,
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                   color: Colors.black54, shape: BoxShape.circle),
               padding: const EdgeInsets.all(4),
               child: const Icon(Icons.close, color: Colors.white, size: 16),
@@ -2946,9 +2978,10 @@ class _LocalVideoPreviewState extends State<_LocalVideoPreview> {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     if (!_ready) {
       return Container(
-        color: AppColors.surfaceVariant,
+        color: tc.surfaceVariant,
         child: const Center(
             child: CircularProgressIndicator(
                 color: AppColors.primary, strokeWidth: 2)),
@@ -2966,7 +2999,7 @@ class _LocalVideoPreviewState extends State<_LocalVideoPreview> {
           AspectRatio(aspectRatio: _ctrl.value.aspectRatio, child: VideoPlayer(_ctrl)),
           if (!_ctrl.value.isPlaying)
             Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                   color: Colors.black45, shape: BoxShape.circle),
               padding: const EdgeInsets.all(10),
               child: const Icon(Icons.play_arrow_rounded,
@@ -3012,6 +3045,7 @@ class _VideoPostPlayerState extends State<_VideoPostPlayer> {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     if (!_visible) {
       // Miniatura con botón de play — no consume recursos hasta que el usuario toca
       return GestureDetector(
@@ -3019,7 +3053,7 @@ class _VideoPostPlayerState extends State<_VideoPostPlayer> {
         child: Container(
           height: 200,
           decoration: BoxDecoration(
-            color: AppColors.surfaceVariant,
+            color: tc.surfaceVariant,
             borderRadius: BorderRadius.circular(12),
           ),
           child: const Center(
@@ -3031,7 +3065,7 @@ class _VideoPostPlayerState extends State<_VideoPostPlayer> {
                 SizedBox(height: 6),
                 Text('Toca para reproducir',
                     style: TextStyle(
-                        color: AppColors.textMuted, fontSize: 12)),
+                        color: tc.textMuted, fontSize: 12)),
               ],
             ),
           ),
@@ -3043,7 +3077,7 @@ class _VideoPostPlayerState extends State<_VideoPostPlayer> {
       return Container(
         height: 200,
         decoration: BoxDecoration(
-            color: AppColors.surfaceVariant,
+            color: tc.surfaceVariant,
             borderRadius: BorderRadius.circular(12)),
         child: const Center(
             child: CircularProgressIndicator(
@@ -3065,7 +3099,7 @@ class _VideoPostPlayerState extends State<_VideoPostPlayer> {
                 child: VideoPlayer(_ctrl!)),
             if (!_ctrl!.value.isPlaying)
               Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                     color: Colors.black45, shape: BoxShape.circle),
                 padding: const EdgeInsets.all(10),
                 child: const Icon(Icons.play_arrow_rounded,
