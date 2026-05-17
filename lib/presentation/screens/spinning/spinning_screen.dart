@@ -181,7 +181,7 @@ class _SpinningScreenState extends State<SpinningScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _classes = _buildClasses();
     _loadBookings();
     _subscribeRealtime();
@@ -467,7 +467,6 @@ class _SpinningScreenState extends State<SpinningScreen>
                               _openSeatSelection(cls, oldSeat: oldSeat),
                           onCancel: _cancelBooking,
                         ),
-                        _InstructorsTab(instructors: _instructors),
                         _MyBookingsTab(
                           classes: _classes,
                           myBookings: _myBookings,
@@ -600,7 +599,6 @@ class _SpinningScreenState extends State<SpinningScreen>
         unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
         tabs: const [
           Tab(text: 'Horarios'),
-          Tab(text: 'Entrenadores'),
           Tab(text: 'Mis Reservas'),
         ],
       ),
@@ -997,7 +995,7 @@ class _BookButton extends StatelessWidget {
       child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(Icons.event_seat_rounded, size: 18, color: Colors.white),
         SizedBox(width: 8),
-        Text('Elegir Puesto', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+        Text('Elegir Puesto', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black)),
       ]),
     ),
   );
@@ -1023,7 +1021,7 @@ class _BookedActions extends StatelessWidget {
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(Icons.swap_horiz_rounded, size: 16, color: color),
           const SizedBox(width: 6),
-          Text('Cambiar lugar', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+          Text('Cambiar lugar', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black)),
         ]),
       ),
     )),
@@ -1040,7 +1038,7 @@ class _BookedActions extends StatelessWidget {
         child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(Icons.cancel_outlined, size: 16, color: AppColors.error),
           SizedBox(width: 6),
-          Text('Cancelar', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.error)),
+          Text('Cancelar', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black)),
         ]),
       ),
     )),
@@ -1058,7 +1056,7 @@ class _FullButton extends StatelessWidget {
     child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
       Icon(Icons.block_rounded, size: 18, color: AppColors.error),
       SizedBox(width: 8),
-      Text('Clase llena', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.error)),
+      Text('Clase llena', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black)),
     ]),
   );
 }
@@ -1333,7 +1331,7 @@ class _MyBookingsTab extends StatelessWidget {
                     Icon(Icons.swap_horiz_rounded, size: 15, color: color),
                     const SizedBox(width: 5),
                     Text('Cambiar lugar',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black)),
                   ]),
                 ),
               )),
@@ -1351,7 +1349,7 @@ class _MyBookingsTab extends StatelessWidget {
                     Icon(Icons.cancel_outlined, size: 15, color: AppColors.error),
                     SizedBox(width: 5),
                     Text('Cancelar', style: TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.error)),
+                        fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black)),
                   ]),
                 ),
               )),
