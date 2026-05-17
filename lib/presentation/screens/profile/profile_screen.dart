@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/constants/app_theme_colors.dart';
 import '../../../core/mock/mock_data.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/workout_log_provider.dart';
@@ -42,33 +43,41 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final tc   = AppThemeColors.of(context);
     final auth = context.watch<AuthProvider>();
-    final name = auth.profile?.name ?? auth.displayName;
-    final initials = auth.userInitials;
+    final name      = auth.profile?.name ?? auth.displayName;
+    final initials  = auth.userInitials;
     final avatarUrl = auth.profile?.avatarUrl;
-    final goal = auth.profile?.goal ?? MockData.currentUser.goal;
+    final goal   = auth.profile?.goal   ?? MockData.currentUser.goal;
     final weight = auth.profile?.weight ?? MockData.currentUser.weight;
     final height = auth.profile?.height ?? MockData.currentUser.height;
-    final age = auth.profile?.age ?? MockData.currentUser.age;
+    final age    = auth.profile?.age    ?? MockData.currentUser.age;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: tc.background,
       body: SafeArea(
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
             // Header
-            SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(20,16,20,0),
+            SliverToBoxAdapter(child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text('Perfil', style: AppTextStyles.displayMedium),
+                Text('Perfil', style: AppTextStyles.displayMediumOf(context)),
                 GestureDetector(
                   onTap: () async {
                     await Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen()));
-                    setState(() {}); // refresca al volver
+                    setState(() {});
                   },
-                  child: Container(width: 40, height: 40,
-                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border, width: 0.5)),
-                    child: const Icon(Icons.edit_outlined, color: AppColors.textSecondary, size: 20)),
+                  child: Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      color: tc.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: tc.border, width: 0.5),
+                    ),
+                    child: Icon(Icons.edit_outlined, color: tc.textSecondary, size: 20),
+                  ),
                 ),
               ]),
             )),
@@ -76,9 +85,14 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
             const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
             // Tarjeta principal
-            SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20),
+            SliverToBoxAdapter(child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: DarkCard(
-                gradient: const LinearGradient(colors: [Color(0xFF0F2318), Color(0xFF0A1A10)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0F2318), Color(0xFF0A1A10)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
                 borderColor: AppColors.primary.withOpacity(0.2),
                 child: Row(children: [
                   GestureDetector(
@@ -98,30 +112,46 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
                             )
                           : InitialsAvatar(
                               initials: initials, size: 72, photoUrl: avatarUrl),
-                      Positioned(right: 0, bottom: 0, child: Container(
-                        width: 24, height: 24,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary, shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.background, width: 2)),
-                        child: const Icon(Icons.camera_alt, size: 12, color: AppColors.background)),
+                      Positioned(right: 0, bottom: 0,
+                        child: Container(
+                          width: 24, height: 24,
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary, shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.camera_alt, size: 12, color: Color(0xFF0A0A0A)),
+                        ),
                       ),
                     ]),
                   ),
                   const SizedBox(width: 16),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(name, style: AppTextStyles.headingMedium),
-                    const SizedBox(height: 2),
+                    Text(name, style: AppTextStyles.headingMediumOf(context)),
+                    const SizedBox(height: 3),
                     Text(
                       () {
                         final e = auth.profile?.email ?? auth.firebaseUser?.email ?? '';
                         return e.isEmpty || e.startsWith('noemail_') ? 'Sin correo registrado' : e;
                       }(),
-                      style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted),
+                      style: AppTextStyles.bodySmallOf(context).copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     const SizedBox(height: 6),
-                    Row(children: [const Icon(Icons.flag_outlined, size: 13, color: AppColors.textMuted), const SizedBox(width: 4), Text(goal, style: AppTextStyles.bodyMedium)]),
+                    Row(children: [
+                      const Icon(Icons.flag_outlined, size: 13, color: AppColors.textSecondary),
+                      const SizedBox(width: 4),
+                      Text(goal, style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      )),
+                    ]),
                     const SizedBox(height: 10),
-                    _Chip(label: '${MockData.achievements.where((a) => a.unlocked).length} logros', color: AppColors.accentBlue),
+                    _Chip(
+                      label: '${MockData.achievements.where((a) => a.unlocked).length} logros',
+                      color: AppColors.accentBlue,
+                    ),
                   ])),
                 ]),
               ),
@@ -130,23 +160,26 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
             const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
             // Medidas corporales
-            SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20),
+            SliverToBoxAdapter(child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(children: [
-                Expanded(child: _BodyStatCard(icon: Icons.monitor_weight_outlined, label: 'Peso', value: weight.toStringAsFixed(1), unit: 'kg', color: AppColors.primary)),
+                Expanded(child: _BodyStatCard(icon: Icons.monitor_weight_outlined, label: 'Peso',   value: weight.toStringAsFixed(1), unit: 'kg',   color: AppColors.primary)),
                 const SizedBox(width: 10),
-                Expanded(child: _BodyStatCard(icon: Icons.straighten_rounded, label: 'Altura', value: '${height.round()}', unit: 'cm', color: AppColors.accentBlue)),
+                Expanded(child: _BodyStatCard(icon: Icons.straighten_rounded,      label: 'Altura', value: '${height.round()}',       unit: 'cm',   color: AppColors.accentBlue)),
                 const SizedBox(width: 10),
-                Expanded(child: _BodyStatCard(icon: Icons.cake_outlined, label: 'Edad', value: '$age', unit: 'años', color: AppColors.accentOrange)),
+                Expanded(child: _BodyStatCard(icon: Icons.cake_outlined,            label: 'Edad',   value: '$age',                    unit: 'años', color: AppColors.accentOrange)),
                 const SizedBox(width: 10),
-                Expanded(child: _BodyStatCard(icon: Icons.favorite_outline_rounded, label: 'IMC', value: _imc(weight, height), unit: '', color: AppColors.accentPurple)),
+                Expanded(child: _BodyStatCard(icon: Icons.favorite_outline_rounded, label: 'IMC',    value: _imc(weight, height),      unit: '',     color: AppColors.accentPurple)),
               ]),
             )),
 
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
             // Logros
-            SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: SectionHeader(title: 'Logros', actionLabel: 'Ver todos', onAction: () {}))),
+            SliverToBoxAdapter(child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: SectionHeader(title: 'Logros', actionLabel: 'Ver todos', onAction: () {}),
+            )),
             const SliverToBoxAdapter(child: SizedBox(height: 12)),
             SliverToBoxAdapter(child: SizedBox(height: 110,
               child: ListView.separated(
@@ -162,26 +195,34 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
             // Estadísticas totales
-            SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _LifetimeStats())),
+            SliverToBoxAdapter(child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _LifetimeStats(),
+            )),
 
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
             // Menú de configuración
-            SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _SettingsList())),
+            SliverToBoxAdapter(child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _SettingsList(),
+            )),
 
             const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
             // Cerrar sesión
-            SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _LogoutButton())),
+            SliverToBoxAdapter(child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _LogoutButton(),
+            )),
 
             const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
             // Eliminar cuenta
-            SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _DeleteAccountButton())),
+            SliverToBoxAdapter(child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _DeleteAccountButton(),
+            )),
 
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
@@ -197,52 +238,83 @@ class _ProfileScreenState extends State<ProfileScreen> with AutomaticKeepAliveCl
 }
 
 class _Chip extends StatelessWidget {
-  final String label; final Color color;
+  final String label;
+  final Color color;
   const _Chip({required this.label, required this.color});
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-    decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
-    child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.15),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
   );
 }
 
 class _BodyStatCard extends StatelessWidget {
-  final IconData icon; final String label, value, unit; final Color color;
+  final IconData icon;
+  final String label, value, unit;
+  final Color color;
   const _BodyStatCard({required this.icon, required this.label, required this.value, required this.unit, required this.color});
+
   @override
-  Widget build(BuildContext context) => DarkCard(padding: const EdgeInsets.all(12), child: Column(children: [
-    Icon(icon, color: color, size: 20),
-    const SizedBox(height: 6),
-    Text(value, style: AppTextStyles.headingSmall.copyWith(color: color)),
-    if (unit.isNotEmpty) Text(unit, style: AppTextStyles.caption),
-    const SizedBox(height: 2),
-    Text(label, style: AppTextStyles.caption),
-  ]));
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return DarkCard(
+      padding: const EdgeInsets.all(12),
+      child: Column(children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(height: 6),
+        Text(value, style: AppTextStyles.headingSmallOf(context).copyWith(color: color)),
+        if (unit.isNotEmpty)
+          Text(unit, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: tc.textSecondary)),
+        const SizedBox(height: 2),
+        Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: tc.textSecondary)),
+      ]),
+    );
+  }
 }
 
 class _AchievementCard extends StatelessWidget {
   final AchievementModel a;
   const _AchievementCard({required this.a});
   @override
-  Widget build(BuildContext context) => Opacity(
-    opacity: a.unlocked ? 1.0 : 0.35,
-    child: DarkCard(
-      borderColor: a.unlocked ? a.color.withOpacity(0.3) : null,
-      padding: const EdgeInsets.all(14),
-      child: SizedBox(width: 90, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Container(width: 40, height: 40, decoration: BoxDecoration(color: a.color.withOpacity(0.15), shape: BoxShape.circle),
-          child: Icon(a.icon, color: a.color, size: 20)),
-        const SizedBox(height: 6),
-        Text(a.title, style: AppTextStyles.caption.copyWith(color: a.unlocked ? AppColors.textPrimary : AppColors.textMuted, fontWeight: FontWeight.w600, fontSize: 11), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-      ])),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return Opacity(
+      opacity: a.unlocked ? 1.0 : 0.35,
+      child: DarkCard(
+        borderColor: a.unlocked ? a.color.withOpacity(0.3) : null,
+        padding: const EdgeInsets.all(14),
+        child: SizedBox(width: 90, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(color: a.color.withOpacity(0.15), shape: BoxShape.circle),
+            child: Icon(a.icon, color: a.color, size: 20),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            a.title,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: a.unlocked ? tc.textPrimary : tc.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ])),
+      ),
+    );
+  }
 }
 
 class _LifetimeStats extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final tc      = AppThemeColors.of(context);
     final history = context.watch<WorkoutLogProvider>().history;
     final totalWorkouts = history.length;
     final totalMinutes  = history.fold<int>(0, (sum, s) => sum + s.durationMinutes);
@@ -252,15 +324,22 @@ class _LifetimeStats extends StatelessWidget {
       {'label': 'Total entrenamientos', 'value': '$totalWorkouts', 'icon': Icons.fitness_center_rounded, 'color': AppColors.primary},
       {'label': 'Horas de ejercicio',   'value': '$totalHours h',  'icon': Icons.timer_rounded,           'color': AppColors.accentBlue},
     ];
+
     return DarkCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Estadísticas totales', style: AppTextStyles.headingSmall),
+      Text('Estadísticas totales', style: AppTextStyles.headingSmallOf(context)),
       const SizedBox(height: 14),
-      ...stats.map((s) => Padding(padding: const EdgeInsets.only(bottom: 12), child: Row(children: [
-        BoxedIcon(icon: s['icon'] as IconData, color: s['color'] as Color, size: 36),
-        const SizedBox(width: 12),
-        Expanded(child: Text(s['label'] as String, style: AppTextStyles.bodyMedium)),
-        Text(s['value'] as String, style: AppTextStyles.labelLarge),
-      ]))),
+      ...stats.map((s) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(children: [
+          BoxedIcon(icon: s['icon'] as IconData, color: s['color'] as Color, size: 36),
+          const SizedBox(width: 12),
+          Expanded(child: Text(
+            s['label'] as String,
+            style: AppTextStyles.labelLargeOf(context).copyWith(color: tc.textSecondary),
+          )),
+          Text(s['value'] as String, style: AppTextStyles.labelLargeOf(context)),
+        ]),
+      )),
     ]));
   }
 }
@@ -268,35 +347,44 @@ class _LifetimeStats extends StatelessWidget {
 class _SettingsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final tc    = AppThemeColors.of(context);
     final email = context.read<AuthProvider>().profile?.email ?? '';
     final isAdmin = AppConfig.adminEmails.contains(email.toLowerCase().trim());
     final items = [
-      _SI(icon: Icons.auto_awesome_rounded, label: 'Claves de IA (análisis fotos)',
-          color: AppColors.primary,
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const ApiKeysScreen()))),
+      _SI(
+        icon: Icons.auto_awesome_rounded,
+        label: 'Claves de IA (análisis fotos)',
+        color: AppColors.primary,
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ApiKeysScreen())),
+      ),
       if (isAdmin)
-        _SI(icon: Icons.admin_panel_settings_outlined, label: 'Administración',
-            color: AppColors.accentPurple,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const AdminAccessScreen()))),
+        _SI(
+          icon: Icons.admin_panel_settings_outlined,
+          label: 'Administración',
+          color: AppColors.accentPurple,
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminAccessScreen())),
+        ),
     ];
-    return DarkCard(padding: const EdgeInsets.symmetric(vertical: 8), child: Column(
-      children: items.map((item) => GestureDetector(
-        onTap: item.onTap,
-        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Row(children: [
-            BoxedIcon(icon: item.icon, color: item.color, size: 36),
-            const SizedBox(width: 12),
-            Expanded(child: Text(item.label, style: AppTextStyles.labelLarge)),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
-          ])),
-      )).toList(),
-    ));
+    return DarkCard(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        children: items.map((item) => GestureDetector(
+          onTap: item.onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(children: [
+              BoxedIcon(icon: item.icon, color: item.color, size: 36),
+              const SizedBox(width: 12),
+              Expanded(child: Text(item.label, style: AppTextStyles.labelLargeOf(context))),
+              Icon(Icons.chevron_right_rounded, color: tc.textSecondary, size: 20),
+            ]),
+          ),
+        )).toList(),
+      ),
+    );
   }
 }
 
-// Simple data class — top-level so it's visible everywhere
 class _SI {
   final IconData     icon;
   final String       label;
@@ -306,31 +394,41 @@ class _SI {
       required this.color, required this.onTap});
 }
 
-
 class _LogoutButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     return GestureDetector(
       onTap: () async {
         final ok = await showDialog<bool>(context: context, builder: (_) => AlertDialog(
-          backgroundColor: AppColors.surface,
+          backgroundColor: tc.surface,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text('¿Cerrar sesión?', style: AppTextStyles.headingSmall),
-          content: Text('¿Seguro que quieres salir de tu cuenta?', style: AppTextStyles.bodyMedium),
+          title: Text('¿Cerrar sesión?', style: AppTextStyles.headingSmallOf(context)),
+          content: Text('¿Seguro que quieres salir de tu cuenta?', style: AppTextStyles.bodyMediumOf(context)),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancelar', style: TextStyle(color: AppColors.textSecondary))),
-            TextButton(onPressed: () => Navigator.pop(context, true), child: Text('Salir', style: TextStyle(color: AppColors.error))),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Cancelar', style: TextStyle(color: tc.textSecondary, fontWeight: FontWeight.w600)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Salir', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
+            ),
           ],
         ));
         if ((ok ?? false) && context.mounted) await context.read<AuthProvider>().signOut();
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(color: AppColors.error.withOpacity(0.1), borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.error.withOpacity(0.3), width: 0.5)),
+        decoration: BoxDecoration(
+          color: AppColors.error.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.error.withOpacity(0.3), width: 0.5),
+        ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           const Icon(Icons.logout_rounded, color: AppColors.error, size: 18),
           const SizedBox(width: 8),
-          Text('Cerrar sesión', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.error)),
+          const Text('Cerrar sesión', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.error)),
         ]),
       ),
     );
@@ -347,6 +445,7 @@ class _DeleteAccountButtonState extends State<_DeleteAccountButton> {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     return GestureDetector(
       onTap: _deleting ? null : () => _confirmDelete(context),
       child: Container(
@@ -354,39 +453,46 @@ class _DeleteAccountButtonState extends State<_DeleteAccountButton> {
         decoration: BoxDecoration(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.textMuted.withOpacity(0.3), width: 0.5),
+          border: Border.all(color: tc.textMuted.withOpacity(0.4), width: 0.5),
         ),
         child: _deleting
-            ? const Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textMuted)))
+            ? Center(child: SizedBox(width: 18, height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: tc.textSecondary)))
             : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.delete_outline_rounded, color: AppColors.textMuted, size: 18),
+                Icon(Icons.delete_outline_rounded, color: tc.textSecondary, size: 18),
                 const SizedBox(width: 8),
-                Text('Eliminar cuenta', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textMuted)),
+                Text('Eliminar cuenta', style: TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.w600, color: tc.textSecondary)),
               ]),
       ),
     );
   }
 
   Future<void> _confirmDelete(BuildContext context) async {
+    final tc = AppThemeColors.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: tc.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Eliminar cuenta', style: AppTextStyles.headingSmall.copyWith(color: AppColors.error)),
+        title: Text('Eliminar cuenta', style: AppTextStyles.headingSmallOf(context).copyWith(color: AppColors.error)),
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Esta acción es permanente e irreversible.', style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
+          Text('Esta acción es permanente e irreversible.',
+              style: AppTextStyles.bodyMediumOf(context).copyWith(fontWeight: FontWeight.w700, color: tc.textPrimary)),
           const SizedBox(height: 8),
-          Text('Se eliminarán:\n• Tu perfil y datos personales\n• Todas tus publicaciones y comentarios\n• Tu historial de entrenamientos y nutrición\n• Tus rutinas y retos', style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+          Text(
+            'Se eliminarán:\n• Tu perfil y datos personales\n• Todas tus publicaciones y comentarios\n• Tu historial de entrenamientos y nutrición\n• Tus rutinas y retos',
+            style: AppTextStyles.bodySmallOf(context).copyWith(color: tc.textSecondary, fontSize: 13),
+          ),
         ]),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+            child: Text('Cancelar', style: TextStyle(color: tc.textSecondary, fontWeight: FontWeight.w600)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('Eliminar', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
+            child: const Text('Eliminar', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
