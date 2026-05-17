@@ -6,6 +6,7 @@
 
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
+import 'app_theme_colors.dart';
 
 class AppTextStyles {
   AppTextStyles._();
@@ -112,4 +113,45 @@ class AppTextStyles {
     color: AppColors.textMuted,
     letterSpacing: 0.3,
   );
+
+  // ── Context-aware variants (use these in widgets when possible) ──
+
+  static TextStyle displayLargeOf(BuildContext context) => displayLarge.copyWith(
+        color: AppThemeColors.of(context).textPrimary);
+
+  static TextStyle displayMediumOf(BuildContext context) => displayMedium.copyWith(
+        color: AppThemeColors.of(context).textPrimary);
+
+  static TextStyle headingLargeOf(BuildContext context) => headingLarge.copyWith(
+        color: AppThemeColors.of(context).textPrimary);
+
+  static TextStyle headingMediumOf(BuildContext context) => headingMedium.copyWith(
+        color: AppThemeColors.of(context).textPrimary);
+
+  static TextStyle headingSmallOf(BuildContext context) => headingSmall.copyWith(
+        color: AppThemeColors.of(context).textPrimary);
+
+  static TextStyle bodyLargeOf(BuildContext context) => bodyLarge.copyWith(
+        color: AppThemeColors.of(context).textPrimary);
+
+  static TextStyle bodyMediumOf(BuildContext context) => bodyMedium.copyWith(
+        color: AppThemeColors.of(context).textSecondary);
+
+  static TextStyle bodySmallOf(BuildContext context) => bodySmall.copyWith(
+        color: AppThemeColors.of(context).textMuted);
+
+  static TextStyle labelLargeOf(BuildContext context) => labelLarge.copyWith(
+        color: AppThemeColors.of(context).textPrimary);
+
+  static TextStyle labelMediumOf(BuildContext context) => labelMedium.copyWith(
+        color: AppThemeColors.of(context).textSecondary);
+
+  static TextStyle statNumberOf(BuildContext context) => statNumber.copyWith(
+        color: AppThemeColors.of(context).textPrimary);
+
+  static TextStyle statUnitOf(BuildContext context) => statUnit.copyWith(
+        color: AppThemeColors.of(context).textSecondary);
+
+  static TextStyle captionOf(BuildContext context) => caption.copyWith(
+        color: AppThemeColors.of(context).textMuted);
 }

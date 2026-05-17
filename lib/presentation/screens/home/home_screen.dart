@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/constants/app_theme_colors.dart';
 import '../../../core/mock/mock_data.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/nav_provider.dart';
@@ -61,8 +62,10 @@ class _HomeScreenState extends State<HomeScreen>
       context: context,
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDlg) => AlertDialog(
-          backgroundColor: AppColors.surface,
+        builder: (ctx, setDlg) {
+          final tc = AppThemeColors.of(ctx);
+          return AlertDialog(
+          backgroundColor: tc.surface,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20)),
           title: Row(children: [
@@ -73,7 +76,7 @@ class _HomeScreenState extends State<HomeScreen>
               context.read<WeightProvider>().history.isEmpty
                   ? 'Registra tu peso inicial'
                   : 'Actualiza tu peso mensual',
-              style: AppTextStyles.headingSmall,
+              style: AppTextStyles.headingSmallOf(ctx),
             ),
           ]),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -81,8 +84,7 @@ class _HomeScreenState extends State<HomeScreen>
               context.read<WeightProvider>().history.isEmpty
                   ? 'Registra tu peso para comenzar a ver tu progreso.'
                   : 'Han pasado más de 30 días. Registra tu peso actual para mantener el seguimiento.',
-              style: AppTextStyles.bodySmall
-                  .copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.bodySmallOf(ctx),
             ),
             const SizedBox(height: 20),
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -96,9 +98,9 @@ class _HomeScreenState extends State<HomeScreen>
               const SizedBox(width: 16),
               Column(children: [
                 Text(draft.toStringAsFixed(1),
-                    style: AppTextStyles.headingLarge
+                    style: AppTextStyles.headingLargeOf(ctx)
                         .copyWith(color: AppColors.accentOrange)),
-                Text('kg', style: AppTextStyles.caption),
+                Text('kg', style: AppTextStyles.captionOf(ctx)),
               ]),
               const SizedBox(width: 16),
               _DialogAdjBtn(
@@ -114,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen>
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
               child: Text('Ahora no',
-                  style: TextStyle(color: AppColors.textSecondary)),
+                  style: TextStyle(color: tc.textSecondary)),
             ),
             TextButton(
               onPressed: () async {
@@ -127,7 +129,8 @@ class _HomeScreenState extends State<HomeScreen>
                       fontWeight: FontWeight.w700)),
             ),
           ],
-        ),
+        );
+        },
       ),
     );
   }
@@ -382,9 +385,9 @@ class _HomeScreenState extends State<HomeScreen>
 class _LoadingHome extends StatelessWidget {
   const _LoadingHome();
   @override
-  Widget build(BuildContext context) => const Scaffold(
-    backgroundColor: AppColors.background,
-    body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AppThemeColors.of(context).background,
+    body: const Center(child: CircularProgressIndicator(color: AppColors.primary)),
   );
 }
 
@@ -392,34 +395,36 @@ class _ErrorHome extends StatelessWidget {
   final VoidCallback onRetry;
   const _ErrorHome({required this.onRetry});
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: AppColors.background,
-    body: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      const Icon(Icons.cloud_off_rounded, color: AppColors.textMuted, size: 48),
-      const SizedBox(height: 16),
-      Text('No se pudo cargar tu perfil',
-          style: AppTextStyles.headingSmall),
-      const SizedBox(height: 8),
-      Text('Verifica tu conexión y vuelve a intentarlo.',
-          style: AppTextStyles.bodyMedium
-              .copyWith(color: AppColors.textSecondary),
-          textAlign: TextAlign.center),
-      const SizedBox(height: 24),
-      GestureDetector(
-        onTap: onRetry,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          decoration: BoxDecoration(
-            gradient: AppColors.primaryGradient,
-            borderRadius: BorderRadius.circular(12),
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return Scaffold(
+      backgroundColor: tc.background,
+      body: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.cloud_off_rounded, color: tc.textMuted, size: 48),
+        const SizedBox(height: 16),
+        Text('No se pudo cargar tu perfil',
+            style: AppTextStyles.headingSmallOf(context)),
+        const SizedBox(height: 8),
+        Text('Verifica tu conexión y vuelve a intentarlo.',
+            style: AppTextStyles.bodyMediumOf(context),
+            textAlign: TextAlign.center),
+        const SizedBox(height: 24),
+        GestureDetector(
+          onTap: onRetry,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text('Reintentar',
+                style: AppTextStyles.labelLargeOf(context)
+                    .copyWith(color: tc.background)),
           ),
-          child: Text('Reintentar',
-              style: AppTextStyles.labelLarge
-                  .copyWith(color: AppColors.background)),
         ),
-      ),
-    ])),
-  );
+      ])),
+    );
+  }
 }
 
 // ── Top bar ───────────────────────────────────────────────────────
@@ -436,6 +441,7 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
     final isDark = themeProvider.isDark;
+    final tc = AppThemeColors.of(context);
     return Row(children: [
       InitialsAvatar(initials: iniciales, photoUrl: photoUrl),
       const SizedBox(width: 12),
@@ -445,13 +451,13 @@ class _TopBar extends StatelessWidget {
             Icon(saludoIcon, size: 12, color: AppColors.accentOrange),
             const SizedBox(width: 4),
             Text(saludo, style: AppTextStyles.bodySmall
-                .copyWith(color: AppColors.textSecondary)),
+                .copyWith(color: tc.textSecondary)),
           ]),
-          Text(nombre, style: AppTextStyles.headingSmall,
+          Text(nombre, style: AppTextStyles.headingSmallOf(context),
               overflow: TextOverflow.ellipsis),
           const SizedBox(height: 1),
           Text(fecha, style: AppTextStyles.caption
-              .copyWith(color: AppColors.textMuted, fontSize: 11)),
+              .copyWith(color: tc.textMuted, fontSize: 11)),
         ],
       )),
       StreakBadge(days: streak),
@@ -485,11 +491,11 @@ class _TopBar extends StatelessWidget {
       GestureDetector(
         onTap: () {},
         child: Container(width: 40, height: 40,
-            decoration: BoxDecoration(color: AppColors.surfaceVariant,
+            decoration: BoxDecoration(color: tc.surfaceVariant,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border, width: 0.5)),
-            child: const Icon(Icons.notifications_outlined,
-                color: AppColors.textSecondary, size: 20)),
+                border: Border.all(color: tc.border, width: 0.5)),
+            child: Icon(Icons.notifications_outlined,
+                color: tc.textSecondary, size: 20)),
       ),
     ]);
   }
@@ -505,7 +511,9 @@ class _WelcomeCard extends StatelessWidget {
   String get _primerNombre => nombre.trim().split(' ').first;
 
   @override
-  Widget build(BuildContext context) => DarkCard(
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return DarkCard(
     padding: const EdgeInsets.all(20),
     gradient: const LinearGradient(
         colors: [Color(0xFF0F2318), Color(0xFF0A1A10)],
@@ -518,7 +526,7 @@ class _WelcomeCard extends StatelessWidget {
           const SizedBox(height: 6),
           RichText(text: TextSpan(children: [
             TextSpan(text: 'Hola, $_primerNombre\n',
-                style: AppTextStyles.headingLarge.copyWith(height: 1.3)),
+                style: AppTextStyles.headingLargeOf(context).copyWith(height: 1.3)),
             TextSpan(text: '¡A darle hoy!',
                 style: AppTextStyles.headingMedium
                     .copyWith(color: AppColors.primary, height: 1.3)),
@@ -568,6 +576,7 @@ class _WelcomeCard extends StatelessWidget {
       _CalCircle(quemadas: calQuemadas, meta: metaCalorias),
     ]),
   );
+  }
 }
 
 class _CalCircle extends StatelessWidget {
@@ -585,8 +594,8 @@ class _CalCircle extends StatelessWidget {
           const Icon(Icons.local_fire_department_rounded,
               color: AppColors.primary, size: 18),
           Text(quemadas.toString(),
-              style: AppTextStyles.statNumber.copyWith(fontSize: 16)),
-          Text('kcal', style: AppTextStyles.caption),
+              style: AppTextStyles.statNumberOf(context).copyWith(fontSize: 16)),
+          Text('kcal', style: AppTextStyles.captionOf(context)),
         ]),
       ]),
     );
@@ -629,6 +638,7 @@ class _WorkoutOfDay extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<WorkoutLogProvider>();
     final today    = provider.todaySessions;
+    final tc       = AppThemeColors.of(context);
 
     // Si hay sesión activa, mostrar estado "en curso"
     if (provider.hasActiveSession) {
@@ -645,7 +655,7 @@ class _WorkoutOfDay extends StatelessWidget {
                 icon: Icons.circle, color: AppColors.primary),
             const Spacer(),
             Text('${provider.currentDurationMinutes} min',
-                style: AppTextStyles.caption),
+                style: AppTextStyles.captionOf(context)),
           ]),
           const SizedBox(height: 12),
           Row(children: [
@@ -654,11 +664,11 @@ class _WorkoutOfDay extends StatelessWidget {
             const SizedBox(width: 14),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-              Text(active.name, style: AppTextStyles.headingSmall),
+              Text(active.name, style: AppTextStyles.headingSmallOf(context)),
               const SizedBox(height: 4),
               Text('${active.exercises.length} ejercicios · '
                   '${active.totalDoneSets} series hechas',
-                  style: AppTextStyles.caption),
+                  style: AppTextStyles.captionOf(context)),
             ])),
             GestureDetector(
               onTap: () => context.read<NavProvider>().goTo(1),
@@ -693,7 +703,7 @@ class _WorkoutOfDay extends StatelessWidget {
                 icon: Icons.check_circle_rounded, color: AppColors.primary),
             const Spacer(),
             Text('${today.length} sesión${today.length > 1 ? "es" : ""}',
-                style: AppTextStyles.caption),
+                style: AppTextStyles.captionOf(context)),
           ]),
           const SizedBox(height: 12),
           Row(children: [
@@ -702,12 +712,12 @@ class _WorkoutOfDay extends StatelessWidget {
             const SizedBox(width: 14),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-              Text(lastToday.name, style: AppTextStyles.headingSmall),
+              Text(lastToday.name, style: AppTextStyles.headingSmallOf(context)),
               const SizedBox(height: 4),
               Text('${lastToday.durationMinutes} min  ·  '
                   '${lastToday.totalDoneSets} series  ·  '
                   '${lastToday.totalVolume > 0 ? "${lastToday.totalVolume.toStringAsFixed(0)} kg" : "—"}',
-                  style: AppTextStyles.caption),
+                  style: AppTextStyles.captionOf(context)),
             ])),
           ]),
         ]),
@@ -727,7 +737,7 @@ class _WorkoutOfDay extends StatelessWidget {
           _Pill(label: 'Entrenamiento del día',
               icon: Icons.today_rounded, color: AppColors.accentBlue),
           const Spacer(),
-          Text('Recomendado', style: AppTextStyles.caption),
+          Text('Recomendado', style: AppTextStyles.captionOf(context)),
         ]),
         const SizedBox(height: 12),
         Row(children: [
@@ -735,18 +745,18 @@ class _WorkoutOfDay extends StatelessWidget {
           const SizedBox(width: 14),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(w.name, style: AppTextStyles.headingSmall),
+              Text(w.name, style: AppTextStyles.headingSmallOf(context)),
               const SizedBox(height: 4),
               Row(children: [
-                const Icon(Icons.timer_outlined,
-                    size: 12, color: AppColors.textMuted),
+                Icon(Icons.timer_outlined,
+                    size: 12, color: tc.textMuted),
                 const SizedBox(width: 4),
-                Text('${w.durationMinutes} min', style: AppTextStyles.caption),
+                Text('${w.durationMinutes} min', style: AppTextStyles.captionOf(context)),
                 const SizedBox(width: 10),
-                const Icon(Icons.local_fire_department_outlined,
-                    size: 12, color: AppColors.textMuted),
+                Icon(Icons.local_fire_department_outlined,
+                    size: 12, color: tc.textMuted),
                 const SizedBox(width: 4),
-                Text('${w.calories} kcal', style: AppTextStyles.caption),
+                Text('${w.calories} kcal', style: AppTextStyles.captionOf(context)),
               ]),
               const SizedBox(height: 6),
               DifficultyChip(difficulty: w.difficulty),
@@ -785,6 +795,7 @@ class _LastWorkout extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider  = context.watch<WorkoutLogProvider>();
     final completed = provider.history.where((s) => s.isCompleted).toList();
+    final tc        = AppThemeColors.of(context);
 
     // Sin historial real: mostrar mock
     if (completed.isEmpty) {
@@ -796,13 +807,13 @@ class _LastWorkout extends StatelessWidget {
           const SizedBox(width: 14),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Último entrenamiento', style: AppTextStyles.caption
-                  .copyWith(color: AppColors.textMuted, fontSize: 11)),
+              Text('Último entrenamiento', style: AppTextStyles.captionOf(context)
+                  .copyWith(color: tc.textMuted, fontSize: 11)),
               const SizedBox(height: 2),
-              Text(w.name, style: AppTextStyles.labelLarge),
+              Text(w.name, style: AppTextStyles.labelLargeOf(context)),
               const SizedBox(height: 3),
               Text('¡Registra tu primer entrenamiento!',
-                  style: AppTextStyles.caption),
+                  style: AppTextStyles.captionOf(context)),
             ],
           )),
         ]),
@@ -825,15 +836,15 @@ class _LastWorkout extends StatelessWidget {
         const SizedBox(width: 14),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Último entrenamiento', style: AppTextStyles.caption
-                .copyWith(color: AppColors.textMuted, fontSize: 11)),
+            Text('Último entrenamiento', style: AppTextStyles.captionOf(context)
+                .copyWith(color: tc.textMuted, fontSize: 11)),
             const SizedBox(height: 2),
-            Text(last.name, style: AppTextStyles.labelLarge,
+            Text(last.name, style: AppTextStyles.labelLargeOf(context),
                 overflow: TextOverflow.ellipsis),
             const SizedBox(height: 3),
             Row(children: [
-              const Icon(Icons.access_time_rounded,
-                  size: 12, color: AppColors.textMuted),
+              Icon(Icons.access_time_rounded,
+                  size: 12, color: tc.textMuted),
               const SizedBox(width: 4),
               Flexible(child: Text(
                 [
@@ -841,7 +852,7 @@ class _LastWorkout extends StatelessWidget {
                   if (last.durationMinutes > 0) '${last.durationMinutes} min',
                   if (volStr != null) volStr,
                 ].join('  ·  '),
-                style: AppTextStyles.caption,
+                style: AppTextStyles.captionOf(context),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               )),
@@ -853,8 +864,8 @@ class _LastWorkout extends StatelessWidget {
               icon: Icons.check_circle_rounded, color: AppColors.primary),
           const SizedBox(height: 6),
           Text('${last.totalDoneSets} series',
-              style: AppTextStyles.caption
-                  .copyWith(color: AppColors.textSecondary)),
+              style: AppTextStyles.captionOf(context)
+                  .copyWith(color: tc.textSecondary)),
         ]),
       ]),
     );
@@ -871,11 +882,12 @@ class _MacrosRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final totalReal = protHoy * 4 + carbsHoy * 4 + grasHoy * 9;
+    final tc        = AppThemeColors.of(context);
     return DarkCard(child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(children: [
-          Text('Macros del día', style: AppTextStyles.headingSmall),
+          Text('Macros del día', style: AppTextStyles.headingSmallOf(context)),
           const Spacer(),
           Text('Meta: ${calc.metaCalorias} kcal',
               style: AppTextStyles.neonLabel.copyWith(fontSize: 12)),
@@ -894,11 +906,11 @@ class _MacrosRing extends StatelessWidget {
               ),
               Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                 Text(calHoy.toInt().toString(),
-                    style: AppTextStyles.headingSmall.copyWith(fontSize: 22)),
-                Text('kcal', style: AppTextStyles.caption),
+                    style: AppTextStyles.headingSmallOf(context).copyWith(fontSize: 22)),
+                Text('kcal', style: AppTextStyles.captionOf(context)),
                 Text('/ ${calc.metaCalorias}',
-                    style: AppTextStyles.caption
-                        .copyWith(color: AppColors.textMuted, fontSize: 10)),
+                    style: AppTextStyles.captionOf(context)
+                        .copyWith(color: tc.textMuted, fontSize: 10)),
               ]),
             ]),
           ),
@@ -933,15 +945,16 @@ class _MacroRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pct = (actual / meta).clamp(0.0, 1.0);
+    final tc  = AppThemeColors.of(context);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         Icon(icon, size: 11, color: color),
         const SizedBox(width: 4),
-        Text(label, style: AppTextStyles.caption),
+        Text(label, style: AppTextStyles.captionOf(context)),
         const Spacer(),
         Text('${actual.toInt()} / ${meta.toInt()} g',
-            style: AppTextStyles.caption
-                .copyWith(color: AppColors.textSecondary)),
+            style: AppTextStyles.captionOf(context)
+                .copyWith(color: tc.textSecondary)),
       ]),
       const SizedBox(height: 4),
       NeonProgressBar(
@@ -1008,6 +1021,7 @@ class _WaterTracker extends StatelessWidget {
   Widget build(BuildContext context) {
     final litrosHoy = (vasos * 0.25);
     final completo  = vasos >= metaVasos;
+    final tc        = AppThemeColors.of(context);
     return DarkCard(child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1015,20 +1029,20 @@ class _WaterTracker extends StatelessWidget {
           const Icon(Icons.water_drop_rounded,
               size: 16, color: AppColors.accentBlue),
           const SizedBox(width: 8),
-          Text('Agua', style: AppTextStyles.headingSmall),
+          Text('Agua', style: AppTextStyles.headingSmallOf(context)),
           const Spacer(),
           RichText(text: TextSpan(children: [
             TextSpan(text: litrosHoy.toStringAsFixed(2),
-                style: AppTextStyles.labelLarge
+                style: AppTextStyles.labelLargeOf(context)
                     .copyWith(color: AppColors.accentBlue)),
             TextSpan(text: ' / ${metaLitros.toStringAsFixed(1)} L',
-                style: AppTextStyles.caption),
+                style: AppTextStyles.captionOf(context)),
           ])),
         ]),
         const SizedBox(height: 6),
         Text('Meta calculada: $metaVasos vasos para tu peso',
-            style: AppTextStyles.caption
-                .copyWith(color: AppColors.textMuted, fontSize: 11)),
+            style: AppTextStyles.captionOf(context)
+                .copyWith(color: tc.textMuted, fontSize: 11)),
         const SizedBox(height: 12),
         // Vasos visuales (máx 12 en pantalla para no desbordar)
         Wrap(spacing: 7, runSpacing: 7,
@@ -1040,12 +1054,12 @@ class _WaterTracker extends StatelessWidget {
               decoration: BoxDecoration(
                 color: lleno
                     ? AppColors.accentBlue.withOpacity(0.2)
-                    : AppColors.surfaceVariant,
+                    : tc.surfaceVariant,
                 borderRadius: BorderRadius.circular(7),
                 border: Border.all(
                   color: lleno
                       ? AppColors.accentBlue.withOpacity(0.5)
-                      : AppColors.border,
+                      : tc.border,
                   width: 0.5,
                 ),
               ),
@@ -1053,7 +1067,7 @@ class _WaterTracker extends StatelessWidget {
                 lleno ? Icons.water_drop_rounded
                     : Icons.water_drop_outlined,
                 size: 14,
-                color: lleno ? AppColors.accentBlue : AppColors.textMuted,
+                color: lleno ? AppColors.accentBlue : tc.textMuted,
               ),
             );
           }),
@@ -1065,11 +1079,11 @@ class _WaterTracker extends StatelessWidget {
         Row(children: [
           Expanded(child: GestureDetector(onTap: onRemove,
               child: Container(height: 40,
-                  decoration: BoxDecoration(color: AppColors.surfaceVariant,
+                  decoration: BoxDecoration(color: tc.surfaceVariant,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border, width: 0.5)),
-                  child: const Icon(Icons.remove_rounded,
-                      color: AppColors.textSecondary, size: 20)))),
+                      border: Border.all(color: tc.border, width: 0.5)),
+                  child: Icon(Icons.remove_rounded,
+                      color: tc.textSecondary, size: 20)))),
           const SizedBox(width: 10),
           Expanded(flex: 2, child: GestureDetector(onTap: onAdd,
               child: Container(height: 40,
@@ -1129,10 +1143,11 @@ class _DailyProgress extends StatelessWidget {
           AppColors.primaryGradient, Icons.bedtime_rounded,
           AppColors.primary),
     ];
+    final tc = AppThemeColors.of(context);
     return DarkCard(child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Progreso del día', style: AppTextStyles.headingSmall),
+        Text('Progreso del día', style: AppTextStyles.headingSmallOf(context)),
         const SizedBox(height: 14),
         ...items.map((it) => Padding(
           padding: const EdgeInsets.only(bottom: 14),
@@ -1143,14 +1158,14 @@ class _DailyProgress extends StatelessWidget {
                   Row(children: [
                     Icon(it.icon, size: 13, color: it.color),
                     const SizedBox(width: 5),
-                    Text(it.label, style: AppTextStyles.labelMedium),
+                    Text(it.label, style: AppTextStyles.labelMediumOf(context)),
                   ]),
                   RichText(text: TextSpan(children: [
                     TextSpan(text: it.actual,
-                        style: AppTextStyles.labelLarge
-                            .copyWith(color: AppColors.textPrimary)),
+                        style: AppTextStyles.labelLargeOf(context)
+                            .copyWith(color: tc.textPrimary)),
                     TextSpan(text: ' / ${it.meta}',
-                        style: AppTextStyles.caption),
+                        style: AppTextStyles.captionOf(context)),
                   ])),
                 ],
               ),
@@ -1181,6 +1196,7 @@ class _WeightChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<WeightProvider>();
+    final tc   = AppThemeColors.of(context);
 
     return DarkCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1188,7 +1204,7 @@ class _WeightChart extends StatelessWidget {
           const Icon(Icons.monitor_weight_outlined,
               size: 16, color: AppColors.accentOrange),
           const SizedBox(width: 8),
-          Text('Progreso de peso', style: AppTextStyles.headingSmall),
+          Text('Progreso de peso', style: AppTextStyles.headingSmallOf(context)),
           const Spacer(),
           GestureDetector(
             onTap: () => _showAddDialog(context, prov),
@@ -1228,9 +1244,9 @@ class _WeightChart extends StatelessWidget {
             RichText(text: TextSpan(children: [
               TextSpan(
                   text: prov.latest!.weight.toStringAsFixed(1),
-                  style: AppTextStyles.headingLarge
+                  style: AppTextStyles.headingLargeOf(context)
                       .copyWith(color: AppColors.accentOrange, fontSize: 32)),
-              TextSpan(text: ' kg', style: AppTextStyles.caption),
+              TextSpan(text: ' kg', style: AppTextStyles.captionOf(context)),
             ])),
             const SizedBox(width: 10),
             if (prov.trend != null) ...[
@@ -1246,7 +1262,7 @@ class _WeightChart extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 '${prov.trend! >= 0 ? "+" : ""}${prov.trend!.toStringAsFixed(1)} kg',
-                style: AppTextStyles.caption.copyWith(
+                style: AppTextStyles.captionOf(context).copyWith(
                   color: prov.trend! < 0
                       ? AppColors.primary
                       : AppColors.accentOrange,
@@ -1256,8 +1272,8 @@ class _WeightChart extends StatelessWidget {
             ],
             const Spacer(),
             Text('Último: ${_formatDate(prov.latest!.recordedAt)}',
-                style: AppTextStyles.caption
-                    .copyWith(color: AppColors.textMuted, fontSize: 10)),
+                style: AppTextStyles.captionOf(context)
+                    .copyWith(color: tc.textMuted, fontSize: 10)),
           ]),
           const SizedBox(height: 16),
 
@@ -1269,6 +1285,9 @@ class _WeightChart extends StatelessWidget {
               painter: _WeightLinePainter(
                 // El painter espera de menor a mayor (cronológico)
                 entries: prov.history.reversed.toList(),
+                bgColor: tc.surface,
+                labelColor: tc.textSecondary,
+                mutedColor: tc.textMuted,
               ),
             ),
           ),
@@ -1288,15 +1307,17 @@ class _WeightChart extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDlg) => AlertDialog(
-          backgroundColor: AppColors.surface,
+        builder: (ctx, setDlg) {
+          final tc = AppThemeColors.of(ctx);
+          return AlertDialog(
+          backgroundColor: tc.surface,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20)),
           title: Row(children: [
             const Icon(Icons.monitor_weight_outlined,
                 color: AppColors.accentOrange, size: 22),
             const SizedBox(width: 10),
-            Text('Registrar peso', style: AppTextStyles.headingSmall),
+            Text('Registrar peso', style: AppTextStyles.headingSmallOf(ctx)),
           ]),
           content: Row(mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -1308,9 +1329,9 @@ class _WeightChart extends StatelessWidget {
             const SizedBox(width: 20),
             Column(children: [
               Text(draft.toStringAsFixed(1),
-                  style: AppTextStyles.headingLarge
+                  style: AppTextStyles.headingLargeOf(ctx)
                       .copyWith(color: AppColors.accentOrange)),
-              Text('kg', style: AppTextStyles.caption),
+              Text('kg', style: AppTextStyles.captionOf(ctx)),
             ]),
             const SizedBox(width: 20),
             _DialogAdjBtn(
@@ -1323,7 +1344,7 @@ class _WeightChart extends StatelessWidget {
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
               child: Text('Cancelar',
-                  style: TextStyle(color: AppColors.textSecondary)),
+                  style: TextStyle(color: tc.textSecondary)),
             ),
             TextButton(
               onPressed: () async {
@@ -1336,7 +1357,8 @@ class _WeightChart extends StatelessWidget {
                       fontWeight: FontWeight.w700)),
             ),
           ],
-        ),
+        );
+        },
       ),
     );
   }
@@ -1346,27 +1368,30 @@ class _EmptyWeight extends StatelessWidget {
   final VoidCallback onAdd;
   const _EmptyWeight({required this.onAdd});
   @override
-  Widget build(BuildContext context) => SizedBox(
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return SizedBox(
     height: 100,
     child: Center(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.monitor_weight_outlined,
-            color: AppColors.textMuted, size: 32),
+        Icon(Icons.monitor_weight_outlined,
+            color: tc.textMuted, size: 32),
         const SizedBox(height: 8),
         Text('Sin registros aún',
-            style: AppTextStyles.bodySmall
-                .copyWith(color: AppColors.textSecondary)),
+            style: AppTextStyles.bodySmallOf(context)
+                .copyWith(color: tc.textSecondary)),
         const SizedBox(height: 8),
         GestureDetector(
           onTap: onAdd,
           child: Text('+ Registrar primer peso',
-              style: AppTextStyles.caption.copyWith(
+              style: AppTextStyles.captionOf(context).copyWith(
                   color: AppColors.accentOrange,
                   fontWeight: FontWeight.w600)),
         ),
       ]),
     ),
   );
+  }
 }
 
 class _DialogAdjBtn extends StatelessWidget {
@@ -1374,23 +1399,34 @@ class _DialogAdjBtn extends StatelessWidget {
   final VoidCallback onTap;
   const _DialogAdjBtn({required this.icon, required this.onTap});
   @override
-  Widget build(BuildContext context) => GestureDetector(
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return GestureDetector(
     onTap: onTap,
     child: Container(
       width: 36, height: 36,
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
+        color: tc.surfaceVariant,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border, width: 0.5),
+        border: Border.all(color: tc.border, width: 0.5),
       ),
-      child: Icon(icon, color: AppColors.textSecondary, size: 18),
+      child: Icon(icon, color: tc.textSecondary, size: 18),
     ),
   );
+  }
 }
 
 class _WeightLinePainter extends CustomPainter {
   final List<WeightEntry> entries; // cronológico: el primero es el más antiguo
-  const _WeightLinePainter({required this.entries});
+  final Color bgColor;
+  final Color labelColor;
+  final Color mutedColor;
+  const _WeightLinePainter({
+    required this.entries,
+    required this.bgColor,
+    required this.labelColor,
+    required this.mutedColor,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1461,9 +1497,9 @@ class _WeightLinePainter extends CustomPainter {
 
     // Puntos y etiquetas de peso
     final dotPaint  = Paint()..color = AppColors.accentOrange;
-    final bgPaint   = Paint()..color = AppColors.surface;
-    final textStyle = const TextStyle(
-        fontSize: 9, color: AppColors.textSecondary,
+    final bgPaint   = Paint()..color = bgColor;
+    final textStyle = TextStyle(
+        fontSize: 9, color: labelColor,
         fontWeight: FontWeight.w600);
     const meses = ['ene','feb','mar','abr','may','jun',
                    'jul','ago','sep','oct','nov','dic'];
@@ -1493,7 +1529,7 @@ class _WeightLinePainter extends CustomPainter {
         final tp  = TextPainter(
           text: TextSpan(
               text: lbl,
-              style: textStyle.copyWith(color: AppColors.textMuted)),
+              style: textStyle.copyWith(color: mutedColor)),
           textDirection: TextDirection.ltr,
         )..layout();
         tp.paint(canvas,
@@ -1506,7 +1542,11 @@ class _WeightLinePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_WeightLinePainter old) => old.entries != entries;
+  bool shouldRepaint(_WeightLinePainter old) =>
+      old.entries != entries ||
+      old.bgColor != bgColor ||
+      old.labelColor != labelColor ||
+      old.mutedColor != mutedColor;
 }
 
 // ── Frase motivacional ─────────────────────────────────────────────
@@ -1523,11 +1563,11 @@ class _MotivationCard extends StatelessWidget {
       const SizedBox(width: 14),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Motivación del día', style: AppTextStyles.caption.copyWith(
+          Text('Motivación del día', style: AppTextStyles.captionOf(context).copyWith(
               color: AppColors.accentOrange, fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),
           Text(MockData.motivationalQuotes[0],
-              style: AppTextStyles.bodyMedium
+              style: AppTextStyles.bodyMediumOf(context)
                   .copyWith(fontStyle: FontStyle.italic, height: 1.4)),
         ],
       )),
@@ -1562,9 +1602,9 @@ class _QuickActions extends StatelessWidget {
           child: Column(children: [
             BoxedIcon(icon: a.$1, color: a.$3),
             const SizedBox(height: 8),
-            Text(a.$2, style: AppTextStyles.caption.copyWith(
+            Text(a.$2, style: AppTextStyles.captionOf(context).copyWith(
                 fontSize: 11, fontWeight: FontWeight.w500,
-                color: AppColors.textSecondary)),
+                color: AppThemeColors.of(context).textSecondary)),
           ]),
         ),
       )).toList(),
@@ -1603,6 +1643,7 @@ class _WeeklyProgress extends StatelessWidget {
       return (label: labels[i], progress: progress, isToday: isToday);
     });
 
+    final tc = AppThemeColors.of(context);
     return DarkCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionHeader(title: 'Esta semana',
@@ -1611,7 +1652,7 @@ class _WeeklyProgress extends StatelessWidget {
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: days.map((d) => Column(children: [
             Container(width: 32, height: 60,
-              decoration: BoxDecoration(color: AppColors.surfaceVariant,
+              decoration: BoxDecoration(color: tc.surfaceVariant,
                   borderRadius: BorderRadius.circular(8)),
               alignment: Alignment.bottomCenter,
               clipBehavior: Clip.antiAlias,
@@ -1624,8 +1665,8 @@ class _WeeklyProgress extends StatelessWidget {
                   gradient: d.isToday
                       ? AppColors.primaryGradient
                       : LinearGradient(colors: [
-                          AppColors.textMuted.withOpacity(0.6),
-                          AppColors.textMuted.withOpacity(0.4),
+                          tc.textMuted.withOpacity(0.6),
+                          tc.textMuted.withOpacity(0.4),
                         ], begin: Alignment.topCenter, end: Alignment.bottomCenter),
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -1635,7 +1676,7 @@ class _WeeklyProgress extends StatelessWidget {
             Text(d.label, style: TextStyle(
               fontSize: 11,
               fontWeight: d.isToday ? FontWeight.w700 : FontWeight.w400,
-              color: d.isToday ? AppColors.primary : AppColors.textMuted,
+              color: d.isToday ? AppColors.primary : tc.textMuted,
             )),
           ])).toList(),
         ),
@@ -1669,11 +1710,11 @@ class _StatCard extends StatelessWidget {
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           RichText(text: TextSpan(children: [
             TextSpan(text: value,
-                style: AppTextStyles.statNumber.copyWith(fontSize: 22)),
-            TextSpan(text: ' $unit', style: AppTextStyles.statUnit),
+                style: AppTextStyles.statNumberOf(context).copyWith(fontSize: 22)),
+            TextSpan(text: ' $unit', style: AppTextStyles.statUnitOf(context)),
           ])),
           const SizedBox(height: 4),
-          Text(label, style: AppTextStyles.caption),
+          Text(label, style: AppTextStyles.captionOf(context)),
           const SizedBox(height: 6),
           NeonProgressBar(
               progress: progress.clamp(0.0, 1.0),
@@ -1794,7 +1835,7 @@ class _ActiveWorkoutBannerState extends State<_ActiveWorkoutBanner> {
                       .copyWith(color: AppColors.primary, fontWeight: FontWeight.w700)),
               const SizedBox(height: 2),
               Text(session.name,
-                  style: AppTextStyles.bodyMedium
+                  style: AppTextStyles.bodyMediumOf(context)
                       .copyWith(fontWeight: FontWeight.w600),
                   overflow: TextOverflow.ellipsis),
             ],

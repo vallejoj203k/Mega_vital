@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../core/constants/app_colors.dart';
+import '../core/constants/app_theme_colors.dart';
 import '../core/providers/nav_provider.dart';
 import '../core/providers/auth_provider.dart';
 import '../core/providers/community_provider.dart';
@@ -41,6 +42,7 @@ final _darkTheme = ThemeData(
     color: AppColors.divider,
     thickness: 0.5,
   ),
+  extensions: [AppThemeColors.dark()],
   useMaterial3: true,
 );
 
@@ -67,6 +69,7 @@ final _lightTheme = ThemeData(
     color: Color(0xFFE0E0E0),
     thickness: 0.5,
   ),
+  extensions: [AppThemeColors.light()],
   useMaterial3: true,
 );
 

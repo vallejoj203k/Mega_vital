@@ -12,6 +12,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_theme_colors.dart';
 
 /// Modelo de cada ítem en la barra de navegación
 class NavItem {
@@ -76,10 +77,11 @@ class CustomBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
     return Container(
       // Sombra exterior con toque de verde
       decoration: BoxDecoration(
-        color: AppColors.navBackground,
+        color: tc.navBackground,
         borderRadius: const BorderRadius.vertical(
           top: Radius.circular(24),
         ),
@@ -242,7 +244,7 @@ class _NavBarItemState extends State<_NavBarItem>
                           size: 24,
                           color: widget.isActive
                               ? AppColors.primary
-                              : AppColors.navInactive,
+                              : AppThemeColors.of(context).navInactive,
                         ),
                       ),
                     ),
@@ -261,7 +263,7 @@ class _NavBarItemState extends State<_NavBarItem>
                         : FontWeight.w400,
                     color: widget.isActive
                         ? AppColors.primary
-                        : AppColors.navInactive,
+                        : AppThemeColors.of(context).navInactive,
                     letterSpacing: 0.2,
                   ),
                   child: Text(widget.item.label),
