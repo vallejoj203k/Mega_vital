@@ -14,28 +14,73 @@ import '../core/providers/stories_provider.dart';
 import '../core/providers/challenges_provider.dart';
 import '../core/providers/premium_provider.dart';
 import '../core/providers/weight_provider.dart';
+import '../core/providers/theme_provider.dart';
 import '../services/api_key_manager.dart';
 import '../presentation/screens/auth/auth_wrapper.dart';
+
+final _darkTheme = ThemeData(
+  brightness: Brightness.dark,
+  scaffoldBackgroundColor: AppColors.background,
+  colorScheme: const ColorScheme.dark(
+    primary: AppColors.primary,
+    secondary: AppColors.accentBlue,
+    surface: AppColors.surface,
+    error: AppColors.error,
+    onPrimary: AppColors.background,
+    onSecondary: AppColors.background,
+    onSurface: AppColors.textPrimary,
+  ),
+  splashColor: Colors.transparent,
+  highlightColor: Colors.transparent,
+  appBarTheme: const AppBarTheme(
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    iconTheme: IconThemeData(color: AppColors.textPrimary),
+  ),
+  dividerTheme: const DividerThemeData(
+    color: AppColors.divider,
+    thickness: 0.5,
+  ),
+  useMaterial3: true,
+);
+
+final _lightTheme = ThemeData(
+  brightness: Brightness.light,
+  scaffoldBackgroundColor: const Color(0xFFF2F2F7),
+  colorScheme: const ColorScheme.light(
+    primary: Color(0xFF00AA5B),
+    secondary: Color(0xFF0288D1),
+    surface: Color(0xFFFFFFFF),
+    error: Color(0xFFB00020),
+    onPrimary: Colors.white,
+    onSecondary: Colors.white,
+    onSurface: Color(0xFF0A0A0A),
+  ),
+  splashColor: Colors.transparent,
+  highlightColor: Colors.transparent,
+  appBarTheme: const AppBarTheme(
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    iconTheme: IconThemeData(color: Color(0xFF0A0A0A)),
+  ),
+  dividerTheme: const DividerThemeData(
+    color: Color(0xFFE0E0E0),
+    thickness: 0.5,
+  ),
+  useMaterial3: true,
+);
 
 class GymApp extends StatelessWidget {
   const GymApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: AppColors.navBackground,
-      systemNavigationBarIconBrightness: Brightness.light,
-    ));
-
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => NavProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        // NutritionProvider carga el día actual al inicializarse
         ChangeNotifierProvider(create: (_) => NutritionProvider()..init()),
-        // WorkoutLogProvider carga historial y pesos guardados
         ChangeNotifierProvider(create: (_) => WorkoutLogProvider()..init()),
         ChangeNotifierProvider(create: (_) => CommunityProvider()),
         ChangeNotifierProvider(create: (_) => StoriesProvider()),
@@ -45,36 +90,26 @@ class GymApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PremiumProvider()),
         ChangeNotifierProvider(create: (_) => WeightProvider()),
       ],
-      child: MaterialApp(
-        title: 'Mega Vital',
-        debugShowCheckedModeBanner: false,
-        themeMode: ThemeMode.dark,
-        theme: ThemeData(
-          brightness: Brightness.dark,
-          scaffoldBackgroundColor: AppColors.background,
-          colorScheme: const ColorScheme.dark(
-            primary: AppColors.primary,
-            secondary: AppColors.accentBlue,
-            surface: AppColors.surface,
-            error: AppColors.error,
-            onPrimary: AppColors.background,
-            onSecondary: AppColors.background,
-            onSurface: AppColors.textPrimary,
-          ),
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-          appBarTheme: const AppBarTheme(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            iconTheme: IconThemeData(color: AppColors.textPrimary),
-          ),
-          dividerTheme: const DividerThemeData(
-            color: AppColors.divider,
-            thickness: 0.5,
-          ),
-          useMaterial3: true,
-        ),
-        home: const AuthWrapper(),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          final isDark = themeProvider.isDark;
+          SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+            systemNavigationBarColor:
+                isDark ? AppColors.navBackground : const Color(0xFFF2F2F7),
+            systemNavigationBarIconBrightness:
+                isDark ? Brightness.light : Brightness.dark,
+          ));
+          return MaterialApp(
+            title: 'Mega Vital',
+            debugShowCheckedModeBanner: false,
+            themeMode: themeProvider.themeMode,
+            theme: _lightTheme,
+            darkTheme: _darkTheme,
+            home: const AuthWrapper(),
+          );
+        },
       ),
     );
   }

@@ -11,6 +11,7 @@ import '../../../core/mock/mock_data.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/nav_provider.dart';
 import '../../../core/providers/nutrition_provider.dart';
+import '../../../core/providers/theme_provider.dart';
 import '../../../core/providers/weight_provider.dart';
 import '../../../core/providers/workout_log_provider.dart';
 import '../../../services/fitness_calculator.dart';
@@ -181,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen>
     final _grasasHoy = nutrition.totalFat;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
@@ -432,36 +433,66 @@ class _TopBar extends StatelessWidget {
     required this.streak, this.photoUrl});
 
   @override
-  Widget build(BuildContext context) => Row(children: [
-    InitialsAvatar(initials: iniciales, photoUrl: photoUrl),
-    const SizedBox(width: 12),
-    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(children: [
-          Icon(saludoIcon, size: 12, color: AppColors.accentOrange),
-          const SizedBox(width: 4),
-          Text(saludo, style: AppTextStyles.bodySmall
-              .copyWith(color: AppColors.textSecondary)),
-        ]),
-        Text(nombre, style: AppTextStyles.headingSmall,
-            overflow: TextOverflow.ellipsis),
-        const SizedBox(height: 1),
-        Text(fecha, style: AppTextStyles.caption
-            .copyWith(color: AppColors.textMuted, fontSize: 11)),
-      ],
-    )),
-    StreakBadge(days: streak),
-    const SizedBox(width: 10),
-    GestureDetector(
-      onTap: () {},
-      child: Container(width: 40, height: 40,
-          decoration: BoxDecoration(color: AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border, width: 0.5)),
-          child: const Icon(Icons.notifications_outlined,
-              color: AppColors.textSecondary, size: 20)),
-    ),
-  ]);
+  Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = themeProvider.isDark;
+    return Row(children: [
+      InitialsAvatar(initials: iniciales, photoUrl: photoUrl),
+      const SizedBox(width: 12),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(saludoIcon, size: 12, color: AppColors.accentOrange),
+            const SizedBox(width: 4),
+            Text(saludo, style: AppTextStyles.bodySmall
+                .copyWith(color: AppColors.textSecondary)),
+          ]),
+          Text(nombre, style: AppTextStyles.headingSmall,
+              overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 1),
+          Text(fecha, style: AppTextStyles.caption
+              .copyWith(color: AppColors.textMuted, fontSize: 11)),
+        ],
+      )),
+      StreakBadge(days: streak),
+      const SizedBox(width: 8),
+      GestureDetector(
+        onTap: () => context.read<ThemeProvider>().toggle(),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: isDark
+                ? const Color(0xFFFFF8E1)
+                : const Color(0xFF1C1C2E),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDark
+                  ? const Color(0xFFFFD54F)
+                  : const Color(0xFF3A3A5C),
+              width: 0.8,
+            ),
+          ),
+          child: Icon(
+            isDark ? Icons.wb_sunny_rounded : Icons.bedtime_rounded,
+            color: isDark ? const Color(0xFFFFA000) : const Color(0xFF9E9EC8),
+            size: 19,
+          ),
+        ),
+      ),
+      const SizedBox(width: 8),
+      GestureDetector(
+        onTap: () {},
+        child: Container(width: 40, height: 40,
+            decoration: BoxDecoration(color: AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border, width: 0.5)),
+            child: const Icon(Icons.notifications_outlined,
+                color: AppColors.textSecondary, size: 20)),
+      ),
+    ]);
+  }
 }
 
 // ── Tarjeta de bienvenida ──────────────────────────────────────────
