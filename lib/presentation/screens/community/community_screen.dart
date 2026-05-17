@@ -457,7 +457,7 @@ class _PostCard extends StatelessWidget {
                     color: tc.surfaceVariant,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Icon(Icons.broken_image_outlined,
                         color: tc.textMuted, size: 32),
                   ),
