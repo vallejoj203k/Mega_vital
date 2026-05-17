@@ -2507,6 +2507,7 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
         style: AppTextStyles.labelLargeOf(context).copyWith(color: tc.textSecondary)),
   );
 }
+}
 
 // ─── Create challenge sheet ───────────────────────────────────────────────────
 
