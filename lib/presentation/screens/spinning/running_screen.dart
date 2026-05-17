@@ -561,7 +561,7 @@ class _RunningScreenState extends State<RunningScreen>
                         ),
                         child: const Text('PRO',
                             style: TextStyle(
-                                fontSize: 10,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w800,
                                 color: Colors.white,
                                 letterSpacing: 1.2)),
@@ -652,9 +652,9 @@ class _RunningScreenState extends State<RunningScreen>
         labelColor: Colors.white,
         unselectedLabelColor: tc.textSecondary,
         labelStyle:
-            const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         unselectedLabelStyle:
-            const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
+            const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
         tabs: const [
           Tab(text: 'Horarios'),
           Tab(text: 'Entrenadores'),
@@ -681,7 +681,7 @@ class _CredBadge extends StatelessWidget {
           Flexible(
               child: Text(label,
                   style: TextStyle(
-                      fontSize: 10, fontWeight: FontWeight.w600, color: color),
+                      fontSize: 13, fontWeight: FontWeight.w600, color: color),
                   overflow: TextOverflow.ellipsis)),
         ]),
       );
@@ -708,7 +708,7 @@ class _StatChip extends StatelessWidget {
           const SizedBox(width: 5),
           Text(label,
               style: TextStyle(
-                  fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+                  fontSize: 13, color: color, fontWeight: FontWeight.w600)),
         ]),
       );
 }
@@ -836,7 +836,7 @@ class _RunClassCard extends StatelessWidget {
                   const SizedBox(width: 4),
                   Text(levelLabel(cls.level),
                       style: TextStyle(
-                          fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+                          fontSize: 13, fontWeight: FontWeight.w700, color: color)),
                 ]),
               ),
             ),
@@ -861,7 +861,7 @@ class _RunClassCard extends StatelessWidget {
                               ? 'Trot. ${_spotFromIndex(bookedSpot!)}'
                               : 'Reservado',
                           style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: color),
                         ),
@@ -883,7 +883,7 @@ class _RunClassCard extends StatelessWidget {
                         SizedBox(width: 4),
                         Text('CERTIFICADA',
                             style: TextStyle(
-                                fontSize: 9,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w800,
                                 color: AppColors.accentBlue,
                                 letterSpacing: 0.8)),
@@ -905,7 +905,7 @@ class _RunClassCard extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(cls.description,
                 style: TextStyle(
-                    fontSize: 12, color: tc.textSecondary, height: 1.45)),
+                    fontSize: 13, color: tc.textSecondary, height: 1.45)),
             const SizedBox(height: 10),
             Wrap(
               spacing: 6,
@@ -927,7 +927,7 @@ class _RunClassCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           Text(f,
                               style: const TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.accentBlue)),
                         ]),
@@ -969,12 +969,12 @@ class _RunClassCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                   child: Text(cls.days,
-                      style: TextStyle(fontSize: 12, color: tc.textSecondary))),
+                      style: TextStyle(fontSize: 13, color: tc.textSecondary))),
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 Text(
                   isFull ? 'Lleno' : '${cls.availableSpots} lugares',
                   style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: isFull ? AppColors.error : AppColors.primary),
                 ),
@@ -1001,7 +1001,7 @@ class _RunClassCard extends StatelessWidget {
                   Icon(Icons.directions_run_rounded, size: 14, color: color),
                   const SizedBox(width: 8),
                   Text('Tu trotadora reservada:',
-                      style: TextStyle(fontSize: 12, color: tc.textSecondary)),
+                      style: TextStyle(fontSize: 13, color: tc.textSecondary)),
                   const Spacer(),
                   Text('Trot. ${_spotFromIndex(bookedSpot!)}',
                       style: TextStyle(
@@ -1100,7 +1100,7 @@ class _InfoPill extends StatelessWidget {
           const SizedBox(width: 4),
           Text(label,
               style: TextStyle(
-                  fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+                  fontSize: 13, color: color, fontWeight: FontWeight.w600)),
         ]),
       );
 }
@@ -1350,8 +1350,8 @@ class _RunInstructorCard extends StatelessWidget {
                           const SizedBox(height: 3),
                           Text(inst.specialty,
                               style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
                                   color: inst.color)),
                         ])),
                     Container(
@@ -1369,7 +1369,7 @@ class _RunInstructorCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text('Certificado/a',
                             style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w700,
                                 color: inst.color)),
                       ]),
@@ -1439,7 +1439,7 @@ class _RunInstructorCard extends StatelessWidget {
             const SizedBox(height: 10),
             Text(inst.bio,
                 style: TextStyle(
-                    fontSize: 13, color: tc.textSecondary, height: 1.6)),
+                    fontSize: 14, color: tc.textSecondary, height: 1.6)),
             const SizedBox(height: 14),
             Wrap(spacing: 8, runSpacing: 8, children: [
               _SpecChip(label: 'Cardio Progresivo', color: inst.color),
@@ -1473,7 +1473,7 @@ class _StatColumn extends StatelessWidget {
           style: TextStyle(
               fontSize: 16, fontWeight: FontWeight.w800, color: color)),
       const SizedBox(height: 2),
-      Text(label, style: TextStyle(fontSize: 10, color: tc.textMuted)),
+      Text(label, style: TextStyle(fontSize: 13, color: tc.textMuted)),
     ]);
   }
 }
@@ -1493,7 +1493,7 @@ class _SpecChip extends StatelessWidget {
         ),
         child: Text(label,
             style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+                fontSize: 13, fontWeight: FontWeight.w600, color: color)),
       );
 }
 
@@ -1574,9 +1574,9 @@ class _RunMyBookingsTab extends StatelessWidget {
                             .copyWith(color: tc.textPrimary)),
                     const SizedBox(height: 2),
                     Text(cls.time,
-                        style: TextStyle(fontSize: 12, color: tc.textSecondary)),
+                        style: TextStyle(fontSize: 13, color: tc.textSecondary)),
                     Text(cls.days,
-                        style: TextStyle(fontSize: 11, color: tc.textMuted)),
+                        style: TextStyle(fontSize: 13, color: tc.textMuted)),
                   ])),
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 Container(
@@ -1587,7 +1587,7 @@ class _RunMyBookingsTab extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8)),
                   child: Text(levelLabel(cls.level),
                       style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 13,
                           color: color,
                           fontWeight: FontWeight.w700)),
                 ),
@@ -1598,7 +1598,7 @@ class _RunMyBookingsTab extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                         color: color)),
                 Text('${cls.caloriesMin}–${cls.caloriesMax} kcal',
-                    style: TextStyle(fontSize: 11, color: tc.textSecondary)),
+                    style: TextStyle(fontSize: 13, color: tc.textSecondary)),
               ]),
             ]),
             const SizedBox(height: 12),
@@ -1623,7 +1623,7 @@ class _RunMyBookingsTab extends StatelessWidget {
                         const SizedBox(width: 5),
                         Text('Cambiar trotadora',
                             style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w700,
                                 color: color)),
                       ]),
@@ -1649,7 +1649,7 @@ class _RunMyBookingsTab extends StatelessWidget {
                         SizedBox(width: 5),
                         Text('Cancelar',
                             style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.error)),
                       ]),

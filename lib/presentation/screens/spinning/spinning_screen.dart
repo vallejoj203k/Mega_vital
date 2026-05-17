@@ -532,13 +532,13 @@ class _SpinningScreenState extends State<SpinningScreen>
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Text('PRO', style: TextStyle(
-                            fontSize: 10, fontWeight: FontWeight.w800,
+                            fontSize: 13, fontWeight: FontWeight.w800,
                             color: Colors.white, letterSpacing: 1.2)),
                       ),
                     ]),
                     const SizedBox(height: 2),
                     Text('Sesiones certificadas con instructores profesionales',
-                        style: AppTextStyles.bodySmall.copyWith(color: tc.textSecondary)),
+                        style: AppTextStyles.bodyMedium.copyWith(color: tc.textSecondary)),
                   ],
                 ),
               ),
@@ -596,8 +596,8 @@ class _SpinningScreenState extends State<SpinningScreen>
         dividerColor: Colors.transparent,
         labelColor: Colors.white,
         unselectedLabelColor: tc.textSecondary,
-        labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
+        labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
         tabs: const [
           Tab(text: 'Horarios'),
           Tab(text: 'Entrenadores'),
@@ -622,7 +622,7 @@ class _CredBadge extends StatelessWidget {
       Icon(icon, size: 12, color: color),
       const SizedBox(width: 4),
       Flexible(child: Text(label,
-          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color),
           overflow: TextOverflow.ellipsis)),
     ]),
   );
@@ -647,7 +647,7 @@ class _StatChip extends StatelessWidget {
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       Icon(icon, size: 13, color: color),
       const SizedBox(width: 5),
-      Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+      Text(label, style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.w600)),
     ]),
   );
 }
@@ -757,7 +757,7 @@ class _ClassCard extends StatelessWidget {
                   Icon(_levelIcon(cls.level), size: 12, color: color),
                   const SizedBox(width: 4),
                   Text(levelLabel(cls.level),
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
                 ]),
               )),
             Positioned(top: 12, right: 12,
@@ -773,7 +773,7 @@ class _ClassCard extends StatelessWidget {
                         Icon(Icons.event_seat_rounded, size: 12, color: color),
                         const SizedBox(width: 4),
                         Text(bookedSeat != null ? 'Bici ${_seatFromIndex(bookedSeat!)}' : 'Reservado',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
                       ]))
                   : Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -786,7 +786,7 @@ class _ClassCard extends StatelessWidget {
                         Icon(Icons.verified_rounded, size: 11, color: AppColors.accentOrange),
                         SizedBox(width: 4),
                         Text('CERTIFICADA', style: TextStyle(
-                            fontSize: 9, fontWeight: FontWeight.w800,
+                            fontSize: 13, fontWeight: FontWeight.w800,
                             color: AppColors.accentOrange, letterSpacing: 0.8)),
                       ]))),
             Positioned(bottom: 12, left: 14, right: 14,
@@ -800,7 +800,7 @@ class _ClassCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(cls.description,
-                style: TextStyle(fontSize: 12, color: tc.textSecondary, height: 1.45)),
+                style: TextStyle(fontSize: 13, color: tc.textSecondary, height: 1.45)),
             const SizedBox(height: 10),
             Wrap(
               spacing: 6, runSpacing: 6,
@@ -815,7 +815,7 @@ class _ClassCard extends StatelessWidget {
                   const Icon(Icons.check_circle_outline_rounded, size: 10, color: AppColors.accentOrange),
                   const SizedBox(width: 4),
                   Text(f, style: const TextStyle(
-                      fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.accentOrange)),
+                      fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.accentOrange)),
                 ]),
               )).toList(),
             ),
@@ -840,12 +840,12 @@ class _ClassCard extends StatelessWidget {
               Icon(Icons.calendar_today_rounded, size: 15, color: tc.textSecondary),
               const SizedBox(width: 8),
               Expanded(child: Text(cls.days,
-                  style: TextStyle(fontSize: 12, color: tc.textSecondary))),
+                  style: TextStyle(fontSize: 13, color: tc.textSecondary))),
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 Text(
                   isFull ? 'Lleno' : '${cls.availableSpots} lugares',
                   style: TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w700,
+                      fontSize: 13, fontWeight: FontWeight.w700,
                       color: isFull ? AppColors.error : AppColors.primary),
                 ),
                 _SpotsBar(total: cls.totalSpots, booked: cls.bookedSpots, border: tc.border),
@@ -866,7 +866,7 @@ class _ClassCard extends StatelessWidget {
                   Icon(Icons.event_seat_rounded, size: 14, color: color),
                   const SizedBox(width: 8),
                   Text('Tu puesto reservado:',
-                      style: TextStyle(fontSize: 12, color: tc.textSecondary)),
+                      style: TextStyle(fontSize: 13, color: tc.textSecondary)),
                   const Spacer(),
                   Text('Bici ${_seatFromIndex(bookedSeat!)}',
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: color)),
@@ -949,7 +949,7 @@ class _InfoPill extends StatelessWidget {
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       Icon(icon, size: 11, color: color),
       const SizedBox(width: 4),
-      Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+      Text(label, style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.w600)),
     ]),
   );
 }
@@ -1130,7 +1130,7 @@ class _InstructorCard extends StatelessWidget {
                       color: Colors.white, letterSpacing: 0.3)),
                   const SizedBox(height: 3),
                   Text(inst.specialty, style: TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w500, color: inst.color)),
+                      fontSize: 14, fontWeight: FontWeight.w600, color: inst.color)),
                 ])),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -1143,7 +1143,7 @@ class _InstructorCard extends StatelessWidget {
                     Icon(Icons.verified_rounded, size: 13, color: inst.color),
                     const SizedBox(width: 4),
                     Text('Certificado/a', style: TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.w700, color: inst.color)),
+                        fontSize: 13, fontWeight: FontWeight.w700, color: inst.color)),
                   ]),
                 ),
               ])),
@@ -1179,12 +1179,12 @@ class _InstructorCard extends StatelessWidget {
                   decoration: BoxDecoration(color: inst.color, borderRadius: BorderRadius.circular(2))),
               const SizedBox(width: 8),
               Text('Perfil profesional', style: TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w700,
+                  fontSize: 15, fontWeight: FontWeight.w700,
                   color: tc.textPrimary, letterSpacing: 0.3)),
             ]),
             const SizedBox(height: 10),
             Text(inst.bio, style: TextStyle(
-                fontSize: 13, color: tc.textSecondary, height: 1.6)),
+                fontSize: 14, color: tc.textSecondary, height: 1.6)),
             const SizedBox(height: 14),
             Wrap(spacing: 8, runSpacing: 8, children: [
               _SpecChip(label: 'Ciclismo Indoor', color: inst.color),
@@ -1212,7 +1212,7 @@ class _StatColumn extends StatelessWidget {
       const SizedBox(height: 4),
       Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
       const SizedBox(height: 2),
-      Text(label, style: TextStyle(fontSize: 10, color: tc.textMuted)),
+      Text(label, style: TextStyle(fontSize: 13, color: tc.textMuted)),
     ]);
   }
 }
@@ -1230,7 +1230,7 @@ class _SpecChip extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       border: Border.all(color: color.withOpacity(0.3), width: 0.5),
     ),
-    child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+    child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color)),
   );
 }
 
@@ -1298,8 +1298,8 @@ class _MyBookingsTab extends StatelessWidget {
                 Text(cls.name,
                     style: AppTextStyles.headingSmall.copyWith(color: tc.textPrimary)),
                 const SizedBox(height: 2),
-                Text(cls.time, style: TextStyle(fontSize: 12, color: tc.textSecondary)),
-                Text(cls.days, style: TextStyle(fontSize: 11, color: tc.textMuted)),
+                Text(cls.time, style: TextStyle(fontSize: 13, color: tc.textSecondary)),
+                Text(cls.days, style: TextStyle(fontSize: 13, color: tc.textMuted)),
               ])),
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 Container(
@@ -1307,13 +1307,13 @@ class _MyBookingsTab extends StatelessWidget {
                   decoration: BoxDecoration(
                       color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
                   child: Text(levelLabel(cls.level),
-                      style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w700)),
+                      style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.w700)),
                 ),
                 const SizedBox(height: 4),
                 Text('Bici $label',
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color)),
                 Text('${cls.caloriesMin}–${cls.caloriesMax} kcal',
-                    style: TextStyle(fontSize: 11, color: tc.textSecondary)),
+                    style: TextStyle(fontSize: 13, color: tc.textSecondary)),
               ]),
             ]),
             const SizedBox(height: 12),
@@ -1333,7 +1333,7 @@ class _MyBookingsTab extends StatelessWidget {
                     Icon(Icons.swap_horiz_rounded, size: 15, color: color),
                     const SizedBox(width: 5),
                     Text('Cambiar lugar',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
                   ]),
                 ),
               )),
@@ -1351,7 +1351,7 @@ class _MyBookingsTab extends StatelessWidget {
                     Icon(Icons.cancel_outlined, size: 15, color: AppColors.error),
                     SizedBox(width: 5),
                     Text('Cancelar', style: TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.error)),
+                        fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.error)),
                   ]),
                 ),
               )),
