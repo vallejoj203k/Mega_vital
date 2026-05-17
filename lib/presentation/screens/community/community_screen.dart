@@ -121,7 +121,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: tc.border, width: 0.5),
                           ),
-                          child: const Icon(Icons.notifications_outlined,
+                          child: Icon(Icons.notifications_outlined,
                               color: tc.textSecondary, size: 20),
                         ),
                         if (np.unreadCount > 0)
@@ -253,7 +253,7 @@ class _FeedTab extends StatelessWidget {
             currentUserAvatarUrl:  currentUserAvatarUrl,
           ),
         ),
-        const Divider(height: 1, thickness: 0.5, color: tc.divider),
+        Divider(height: 1, thickness: 0.5, color: tc.divider),
         const SizedBox(height: 4),
         // ── Posts ──
         Expanded(
@@ -402,7 +402,7 @@ class _PostCard extends StatelessWidget {
               if (isOwn)
                 GestureDetector(
                   onTap: () => _confirmDelete(context, provider),
-                  child: const Icon(Icons.more_horiz_rounded,
+                  child: Icon(Icons.more_horiz_rounded,
                       color: tc.textMuted, size: 20),
                 ),
             ],
@@ -511,6 +511,7 @@ class _PostCard extends StatelessWidget {
 
   Future<void> _confirmDelete(
       BuildContext context, CommunityProvider provider) async {
+    final tc = AppThemeColors.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
@@ -1823,7 +1824,7 @@ class _ChallengeCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   GestureDetector(
                     onTap: () => _confirmDelete(context),
-                    child: const Icon(Icons.more_horiz,
+                    child: Icon(Icons.more_horiz,
                         size: 18, color: tc.textMuted),
                   ),
                 ],
@@ -1953,12 +1954,12 @@ class _ChallengeCard extends StatelessWidget {
       context: ctx,
       builder: (d) => AlertDialog(
         backgroundColor: tc.surface,
-        title: const Text('Eliminar reto', style: TextStyle(color: tc.textPrimary)),
-        content: const Text('Se borrarán todos los registros. ¿Continuar?',
+        title: Text('Eliminar reto', style: TextStyle(color: tc.textPrimary)),
+        content: Text('Se borrarán todos los registros. ¿Continuar?',
             style: TextStyle(color: tc.textSecondary)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(d, false),
-              child: const Text('Cancelar', style: TextStyle(color: tc.textSecondary))),
+              child: Text('Cancelar', style: TextStyle(color: tc.textSecondary))),
           TextButton(onPressed: () => Navigator.pop(d, true),
               child: const Text('Eliminar', style: TextStyle(color: AppColors.error))),
         ],
@@ -2075,7 +2076,7 @@ class _ChallengeDetailSheetState extends State<_ChallengeDetailSheet> {
               ),
             ),
             const SizedBox(height: 8),
-            const Divider(color: tc.divider, height: 1),
+            Divider(color: tc.divider, height: 1),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
               child: Row(
@@ -2084,7 +2085,7 @@ class _ChallengeDetailSheetState extends State<_ChallengeDetailSheet> {
                   const Spacer(),
                   GestureDetector(
                     onTap: () => setState(_reload),
-                    child: const Icon(Icons.refresh,
+                    child: Icon(Icons.refresh,
                         size: 18, color: tc.textMuted),
                   ),
                 ],
@@ -2111,7 +2112,7 @@ class _ChallengeDetailSheetState extends State<_ChallengeDetailSheet> {
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                     itemCount: records.length,
                     separatorBuilder: (_, __) =>
-                        const Divider(color: tc.divider, height: 1),
+                        Divider(color: tc.divider, height: 1),
                     itemBuilder: (_, i) => _RecordRow(
                       record: records[i],
                       unit: ch.unit,
@@ -2403,7 +2404,7 @@ class _SubmitRecordSheetState extends State<_SubmitRecordSheet> {
                 const SizedBox(width: 10),
                 _unitLabel('kg'),
                 const SizedBox(width: 16),
-                const Text('×', style: TextStyle(fontSize: 22, color: tc.textMuted)),
+                Text('×', style: TextStyle(fontSize: 22, color: tc.textMuted)),
                 const SizedBox(width: 16),
                 Expanded(child: _numField(_repsCtrl, '0', decimal: false)),
                 const SizedBox(width: 10),
@@ -2733,7 +2734,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.calendar_today,
+                        Icon(Icons.calendar_today,
                             size: 14, color: tc.textSecondary),
                         const SizedBox(width: 6),
                         Text('Cambiar',
@@ -2854,7 +2855,9 @@ class _InfoChip extends StatelessWidget {
   const _InfoChip({required this.icon, required this.label});
 
   @override
-  Widget build(BuildContext context) => Row(
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 12, color: tc.textMuted),
@@ -2864,6 +2867,7 @@ class _InfoChip extends StatelessWidget {
                   .copyWith(color: tc.textMuted)),
         ],
       );
+  }
 }
 
 String _formatValue(double v, String unit) {
@@ -3057,7 +3061,7 @@ class _VideoPostPlayerState extends State<_VideoPostPlayer> {
             color: tc.surfaceVariant,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Center(
+          child: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
