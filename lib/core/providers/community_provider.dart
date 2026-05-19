@@ -98,6 +98,9 @@ class CommunityProvider extends ChangeNotifier {
   Future<List<CommunityComment>> fetchComments(String postId) =>
       _service.fetchComments(postId);
 
+  Future<List<PostReactor>> fetchPostReactors(String postId) =>
+      _service.fetchPostReactors(postId);
+
   Future<bool> addComment(
     String postId,
     String userName,
