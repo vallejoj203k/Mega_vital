@@ -5,6 +5,10 @@ import '../../../core/constants/app_theme_colors.dart';
 import 'spinning_screen.dart';
 import 'running_screen.dart';
 
+const _kOrange = Color(0xFFD94E1F);
+const _kBlue   = Color(0xFF0277BD);
+const _kPurple = Color(0xFF6A1B9A);
+
 class ActividadesScreen extends StatelessWidget {
   const ActividadesScreen({super.key});
 
@@ -28,7 +32,7 @@ class ActividadesScreen extends StatelessWidget {
                     description:
                         'Sesiones de ciclismo de alta intensidad con instructores certificados. Elige tu bicicleta y reserva tu puesto.',
                     icon: Icons.directions_bike_rounded,
-                    accentColor: AppColors.accentOrange,
+                    accentColor: _kOrange,
                     gradient: AppColors.burnGradient,
                     features: const ['18 bicicletas', 'Keiser M3+', 'Monitor cardíaco'],
                     calRange: '400–800 kcal',
@@ -45,9 +49,9 @@ class ActividadesScreen extends StatelessWidget {
                     description:
                         'Entrena en trotadoras profesionales con planes progresivos guiados. Reserva tu trotadora y corre a tu ritmo.',
                     icon: Icons.directions_run_rounded,
-                    accentColor: AppColors.accentBlue,
+                    accentColor: _kBlue,
                     gradient: LinearGradient(
-                      colors: [AppColors.accentBlue, AppColors.primary],
+                      colors: [_kBlue, AppColors.primary],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -75,7 +79,7 @@ class ActividadesScreen extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.accentOrange.withOpacity(0.12), tc.background],
+          colors: [_kOrange.withOpacity(0.12), tc.background],
         ),
       ),
       child: Column(
@@ -91,7 +95,7 @@ class ActividadesScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.accentOrange.withOpacity(0.5),
+                      color: _kOrange.withOpacity(0.5),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     )
@@ -135,12 +139,12 @@ class ActividadesScreen extends StatelessWidget {
             _StatChip(
                 icon: Icons.event_available_rounded,
                 label: '2 actividades',
-                color: AppColors.accentOrange),
+                color: _kOrange),
             const SizedBox(width: 10),
             _StatChip(
                 icon: Icons.verified_rounded,
                 label: 'Instructores certificados',
-                color: AppColors.accentBlue),
+                color: _kBlue),
           ]),
         ],
       ),
@@ -327,12 +331,12 @@ class _ActivityCard extends StatelessWidget {
                 _InfoPill(
                     icon: Icons.local_fire_department_rounded,
                     label: calRange,
-                    color: AppColors.accentOrange),
+                    color: _kOrange),
                 const SizedBox(width: 8),
                 _InfoPill(
                     icon: Icons.timer_rounded,
                     label: duration,
-                    color: AppColors.accentPurple),
+                    color: _kPurple),
                 const Spacer(),
                 Container(
                   padding:
