@@ -84,6 +84,36 @@ class CommunityPost {
   }
 }
 
+class PostReactor {
+  final String userId;
+  final String userName;
+  final String userInitials;
+  final String? avatarUrl;
+
+  const PostReactor({
+    required this.userId,
+    required this.userName,
+    required this.userInitials,
+    this.avatarUrl,
+  });
+
+  static String _initials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+  }
+
+  factory PostReactor.fromProfile(String uid, Map<String, dynamic>? profile) {
+    final name = profile?['name'] as String? ?? 'Usuario';
+    return PostReactor(
+      userId: uid,
+      userName: name,
+      userInitials: _initials(name),
+      avatarUrl: profile?['avatar_url'] as String?,
+    );
+  }
+}
+
 class CommunityComment {
   final String id;
   final String userId;
@@ -315,6 +345,38 @@ class CommunityService {
       return true;
     } catch (_) {
       return false;
+    }
+  }
+
+  Future<List<PostReactor>> fetchPostReactors(String postId) async {
+    try {
+      final likes = await _db
+          .from('post_likes')
+          .select('user_id')
+          .eq('post_id', postId)
+          .order('created_at', ascending: false)
+          .limit(100);
+
+      final userIds =
+          (likes as List).map((l) => l['user_id'] as String).toList();
+      if (userIds.isEmpty) return [];
+
+      final profiles = await _db
+          .from('user_profiles')
+          .select('uid, name, avatar_url')
+          .inFilter('uid', userIds);
+
+      final profileMap = <String, Map<String, dynamic>>{
+        for (final p in profiles as List)
+          p['uid'] as String: p as Map<String, dynamic>,
+      };
+
+      return [
+        for (final uid in userIds)
+          PostReactor.fromProfile(uid, profileMap[uid]),
+      ];
+    } catch (_) {
+      return [];
     }
   }
 

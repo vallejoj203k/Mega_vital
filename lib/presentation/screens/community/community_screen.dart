@@ -370,6 +370,15 @@ class _PostCard extends StatelessWidget {
     );
   }
 
+  void _showReactors(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ReactorsSheet(post: post),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tc = AppThemeColors.of(context);
@@ -514,6 +523,9 @@ class _PostCard extends StatelessWidget {
                 color:
                     post.likedByMe ? AppColors.error : tc.textMuted,
                 onTap: () => provider.toggleLike(post.id),
+                onLabelTap: post.likesCount > 0
+                    ? () => _showReactors(context)
+                    : null,
               ),
               const SizedBox(width: 20),
               _ActionButton(
@@ -572,17 +584,37 @@ class _ActionButton extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback onTap;
+  final VoidCallback? onLabelTap;
 
   const _ActionButton({
     required this.icon,
     required this.label,
     required this.color,
     required this.onTap,
+    this.onLabelTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final tc = AppThemeColors.of(context);
+    if (onLabelTap != null) {
+      return Row(
+        children: [
+          GestureDetector(
+            onTap: onTap,
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(width: 5),
+          GestureDetector(
+            onTap: onLabelTap,
+            child: Text(
+              label,
+              style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w500, color: color),
+            ),
+          ),
+        ],
+      );
+    }
     return GestureDetector(
       onTap: onTap,
       child: Row(
@@ -1163,6 +1195,143 @@ class _PublishSheetState extends State<_PublishSheet> {
                   : Text('Publicar',
                       style: AppTextStyles.labelLargeOf(context)
                           .copyWith(color: AppColors.background)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Reactors sheet ───────────────────────────────────────────────────────────
+
+class _ReactorsSheet extends StatefulWidget {
+  final CommunityPost post;
+  const _ReactorsSheet({required this.post});
+
+  @override
+  State<_ReactorsSheet> createState() => _ReactorsSheetState();
+}
+
+class _ReactorsSheetState extends State<_ReactorsSheet> {
+  late Future<List<PostReactor>> _reactorsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _reactorsFuture =
+        context.read<CommunityProvider>().fetchPostReactors(widget.post.id);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.6,
+      decoration: BoxDecoration(
+        color: tc.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Handle + title
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+            child: Column(
+              children: [
+                Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: tc.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(Icons.favorite_rounded,
+                        color: AppColors.error, size: 18),
+                    const SizedBox(width: 8),
+                    Text('Le gustó a', style: AppTextStyles.headingSmallOf(context)),
+                    const Spacer(),
+                    Text(
+                      '${widget.post.likesCount}',
+                      style: AppTextStyles.captionOf(context)
+                          .copyWith(color: tc.textMuted),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Divider(color: tc.divider, height: 1),
+
+          Expanded(
+            child: FutureBuilder<List<PostReactor>>(
+              future: _reactorsFuture,
+              builder: (context, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  );
+                }
+                final reactors = snap.data ?? [];
+                if (reactors.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.favorite_border_rounded,
+                            size: 48, color: tc.textMuted),
+                        const SizedBox(height: 12),
+                        Text('Aún no hay reacciones',
+                            style: AppTextStyles.captionOf(context)
+                                .copyWith(color: tc.textMuted)),
+                      ],
+                    ),
+                  );
+                }
+                return ListView.separated(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  itemCount: reactors.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 4),
+                  itemBuilder: (_, i) {
+                    final r = reactors[i];
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: tc.background,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          InitialsAvatar(
+                            initials: r.userInitials,
+                            size: 40,
+                            bgColor: tc.surfaceVariant,
+                            photoUrl: r.avatarUrl,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              r.userName,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: tc.textPrimary,
+                              ),
+                            ),
+                          ),
+                          Icon(Icons.favorite_rounded,
+                              color: AppColors.error, size: 16),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
             ),
           ),
         ],
