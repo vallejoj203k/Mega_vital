@@ -86,16 +86,11 @@ class PremiumService {
     final now = DateTime.now();
     final trialExpiry = accountCreatedAt.add(Duration(days: kPremiumTrialDays));
 
-    // Primero verificar si está en período de prueba
-    if (now.isBefore(trialExpiry)) {
-      return PremiumStatus.trial(trialExpiry);
-    }
-
-    // Verificar suscripción activa via RPC
+    // Primero verificar suscripción activa (tiene prioridad sobre el trial)
     try {
-      final result = await _db.rpc('get_my_premium_subscription');
-      final map = result as Map<String, dynamic>;
-      if (map['found'] == true && map['is_active'] == true) {
+      final raw = await _db.rpc('get_my_premium_subscription');
+      final map = _toMap(raw);
+      if (map != null && map['found'] == true && map['is_active'] == true) {
         return PremiumStatus.active(
           expiresAt: DateTime.parse(map['expires_at'] as String),
           type:      map['type'] as String,
@@ -103,25 +98,42 @@ class PremiumService {
       }
     } catch (_) {}
 
+    // Si no hay suscripción activa, verificar periodo de prueba
+    if (now.isBefore(trialExpiry)) {
+      return PremiumStatus.trial(trialExpiry);
+    }
+
     return PremiumStatus.expired();
+  }
+
+  // Convierte la respuesta del RPC a Map, manejando tanto Map directo como List
+  Map<String, dynamic>? _toMap(dynamic raw) {
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is List && raw.isNotEmpty && raw.first is Map) {
+      return raw.first as Map<String, dynamic>;
+    }
+    return null;
   }
 
   // ── Canjear un código premium ─────────────────────────────────
   Future<RedeemResult> redeemCode(String code) async {
     try {
-      final result = await _db.rpc('redeem_premium_code', params: {'code_text': code.trim()});
-      final map = result as Map<String, dynamic>;
+      final raw = await _db.rpc('redeem_premium_code', params: {'code_text': code.trim().toUpperCase()});
+      final map = _toMap(raw);
+      if (map == null) {
+        return RedeemResult.fail('Respuesta inesperada del servidor.');
+      }
       if (map['success'] == true) {
         return RedeemResult.ok(
           expiresAt: DateTime.parse(map['expires_at'] as String),
           type:      map['type'] as String,
         );
       }
-      return RedeemResult.fail(map['message'] as String? ?? 'Error al canjear el código.');
+      return RedeemResult.fail(map['message'] as String? ?? 'Código no válido.');
     } on PostgrestException catch (e) {
       return RedeemResult.fail(e.message);
-    } catch (_) {
-      return RedeemResult.fail('Error de conexión. Intenta de nuevo.');
+    } catch (e) {
+      return RedeemResult.fail('Error de conexión: ${e.toString()}');
     }
   }
 

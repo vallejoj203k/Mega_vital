@@ -1472,4 +1472,8 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.admin_list_users() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_list_users()               TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_my_premium_subscription()    TO authenticated;
+GRANT EXECUTE ON FUNCTION public.redeem_premium_code(TEXT)        TO authenticated;
+GRANT EXECUTE ON FUNCTION public.generate_premium_code(TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.list_premium_codes(TEXT)         TO authenticated;
