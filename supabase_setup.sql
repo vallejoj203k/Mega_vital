@@ -1034,8 +1034,16 @@ BEGIN
 
   v_expires := NOW() + (v_duration || ' days')::INTERVAL;
 
-  INSERT INTO public.premium_subscriptions (user_id, type, expires_at, code_id)
-  VALUES (auth.uid(), v_code_type, v_expires, v_code_id);
+  -- Actualiza si ya existe una suscripción para este usuario, inserta si no.
+  -- Esto evita errores de clave duplicada si la tabla tiene UNIQUE en user_id.
+  UPDATE public.premium_subscriptions
+  SET type = v_code_type, expires_at = v_expires, code_id = v_code_id
+  WHERE user_id = auth.uid();
+
+  IF NOT FOUND THEN
+    INSERT INTO public.premium_subscriptions (user_id, type, expires_at, code_id)
+    VALUES (auth.uid(), v_code_type, v_expires, v_code_id);
+  END IF;
 
   UPDATE public.premium_codes
   SET is_used = TRUE,

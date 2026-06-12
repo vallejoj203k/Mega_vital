@@ -46,14 +46,13 @@ class ExerciseDatabase {
   static const Map<String, List<ExerciseItem>> byMuscle = {
 
     'Pectoral': [
-      ExerciseItem(id:'p1', name:'Press de banca plano', muscle:'Pectoral', defaultSets:4, defaultReps:'8-10', restSeconds:90, tip:'Baja la barra despacio (2 seg), empuja explosivo.', icon:Icons.fitness_center_rounded),
-      ExerciseItem(id:'p2', name:'Press de banca inclinado', muscle:'Pectoral', defaultSets:3, defaultReps:'10-12', restSeconds:75, tip:'Ángulo de 30-45°. Activa el pectoral superior.', icon:Icons.fitness_center_rounded),
-      ExerciseItem(id:'p3', name:'Press de banca declinado', muscle:'Pectoral', defaultSets:3, defaultReps:'10-12', restSeconds:75, tip:'Trabajo el pectoral inferior. Usa spotter si es pesado.', icon:Icons.fitness_center_rounded),
-      ExerciseItem(id:'p4', name:'Aperturas con mancuernas', muscle:'Pectoral', defaultSets:3, defaultReps:'12-15', restSeconds:60, tip:'Codos ligeramente flexionados. Estira bien en la apertura.', icon:Icons.sports_gymnastics_rounded),
-      ExerciseItem(id:'p5', name:'Crossover en polea alta', muscle:'Pectoral', defaultSets:3, defaultReps:'12-15', restSeconds:60, tip:'Aprieta en el centro. Control en el excéntrico.', icon:Icons.sports_gymnastics_rounded),
-      ExerciseItem(id:'p6', name:'Fondos en paralelas', muscle:'Pectoral', defaultSets:3, defaultReps:'10-12', restSeconds:75, tip:'Inclínate hacia adelante para mayor activación pectoral.', icon:Icons.sports_gymnastics_rounded),
-      ExerciseItem(id:'p7', name:'Press con mancuernas plano', muscle:'Pectoral', defaultSets:3, defaultReps:'10-12', restSeconds:75, tip:'Mayor rango de movimiento que con barra.', icon:Icons.fitness_center_rounded),
-      ExerciseItem(id:'p8', name:'Aperturas en polea baja', muscle:'Pectoral', defaultSets:3, defaultReps:'12-15', restSeconds:60, tip:'El cable en la parte inferior activa el pectoral superior.', icon:Icons.sports_gymnastics_rounded),
+      ExerciseItem(id:'p1', name:'Press plano en máquina', muscle:'Pectoral', defaultSets:4, defaultReps:'10-12', restSeconds:75, tip:'Ajusta el asiento para que los mangos queden a la altura del pecho.', icon:Icons.fitness_center_rounded),
+      ExerciseItem(id:'p2', name:'Press en máquina iso-lateral', muscle:'Pectoral', defaultSets:4, defaultReps:'10-12', restSeconds:75, tip:'Trabaja cada lado de forma independiente. Controla el excéntrico.', icon:Icons.fitness_center_rounded),
+      ExerciseItem(id:'p3', name:'Press inclinado en máquina', muscle:'Pectoral', defaultSets:3, defaultReps:'10-12', restSeconds:75, tip:'Activa el pectoral superior. Mantén la espalda apoyada en el respaldo.', icon:Icons.fitness_center_rounded),
+      ExerciseItem(id:'p4', name:'Aperturas en polea', muscle:'Pectoral', defaultSets:3, defaultReps:'12-15', restSeconds:60, tip:'Ajusta la polea a la altura del pecho. Aprieta en el centro del movimiento.', icon:Icons.sports_gymnastics_rounded),
+      ExerciseItem(id:'p5', name:'Pec Deck', muscle:'Pectoral', defaultSets:3, defaultReps:'12-15', restSeconds:60, tip:'Mantén los codos a la altura del pecho. Aprieta al cerrar.', icon:Icons.sports_gymnastics_rounded),
+      ExerciseItem(id:'p6', name:'Press plano con barra', muscle:'Pectoral', defaultSets:4, defaultReps:'8-10', restSeconds:90, tip:'Baja la barra despacio (2 seg), empuja explosivo.', icon:Icons.fitness_center_rounded),
+      ExerciseItem(id:'p7', name:'Press inclinado con barra', muscle:'Pectoral', defaultSets:3, defaultReps:'10-12', restSeconds:75, tip:'Ángulo de 30-45°. Activa el pectoral superior.', icon:Icons.fitness_center_rounded),
     ],
 
     'Hombros': [
