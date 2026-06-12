@@ -32,7 +32,12 @@ class PremiumProvider extends ChangeNotifier {
     _error     = null;
     notifyListeners();
 
-    _status    = await _service.checkStatus(userId, accountCreatedAt);
+    try {
+      _status = await _service.checkStatus(userId, accountCreatedAt);
+    } catch (e) {
+      _error  = e.toString();
+      _status = PremiumStatus.expired();
+    }
     _isLoading = false;
     notifyListeners();
   }
