@@ -87,16 +87,14 @@ class PremiumService {
     final trialExpiry = accountCreatedAt.add(Duration(days: kPremiumTrialDays));
 
     // Primero verificar suscripción activa (tiene prioridad sobre el trial)
-    try {
-      final raw = await _db.rpc('get_my_premium_subscription');
-      final map = _toMap(raw);
-      if (map != null && map['found'] == true && map['is_active'] == true) {
-        return PremiumStatus.active(
-          expiresAt: DateTime.parse(map['expires_at'] as String),
-          type:      map['type'] as String,
-        );
-      }
-    } catch (_) {}
+    final raw = await _db.rpc('get_my_premium_subscription');
+    final map = _toMap(raw);
+    if (map != null && map['found'] == true && map['is_active'] == true) {
+      return PremiumStatus.active(
+        expiresAt: DateTime.parse(map['expires_at'] as String),
+        type:      map['type'] as String,
+      );
+    }
 
     // Si no hay suscripción activa, verificar periodo de prueba
     if (now.isBefore(trialExpiry)) {

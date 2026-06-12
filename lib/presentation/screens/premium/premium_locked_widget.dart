@@ -163,6 +163,32 @@ class _PremiumLockedWidgetState extends State<PremiumLockedWidget>
                   ),
                 ),
 
+                // Error de conexión con Supabase
+                Builder(builder: (context) {
+                  final err = context.watch<PremiumProvider>().error;
+                  if (err == null) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.red.withOpacity(0.3)),
+                      ),
+                      child: Row(children: [
+                        const Icon(Icons.error_outline_rounded, color: Colors.red, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(err,
+                            style: const TextStyle(fontSize: 11, color: Colors.red),
+                          ),
+                        ),
+                      ]),
+                    ),
+                  );
+                }),
+
                 const SizedBox(height: 28),
 
                 // Botón activar código
