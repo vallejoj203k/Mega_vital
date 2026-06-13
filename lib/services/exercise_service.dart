@@ -63,4 +63,22 @@ class ExerciseService {
       return false;
     }
   }
+
+  // Inserta todos los ejercicios hardcodeados en Supabase (primera vez).
+  Future<void> seedAll(List<ExerciseItem> exercises) async {
+    try {
+      final rows = exercises.asMap().entries.map((e) => {
+        'id':            e.value.id,
+        'name':          e.value.name,
+        'muscle_id':     e.value.muscleId,
+        'sets':          e.value.sets,
+        'reps':          e.value.reps,
+        'rest_seconds':  e.value.restSeconds,
+        if (e.value.tip != null && e.value.tip!.isNotEmpty) 'tip': e.value.tip,
+        'difficulty':    e.value.difficulty.name,
+        'display_order': e.key,
+      }).toList();
+      await _db.from('exercises').upsert(rows);
+    } catch (_) {}
+  }
 }
