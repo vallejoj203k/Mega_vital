@@ -12,6 +12,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/constants/app_theme_colors.dart';
 import '../../../core/data/muscle_data.dart';
+import '../../../core/providers/exercise_provider.dart';
 import '../../../core/providers/premium_provider.dart';
 import '../../../services/exercise_service.dart';
 import '../../../services/registration_code_service.dart';
@@ -1413,30 +1414,8 @@ class _ExercisesTab extends StatefulWidget {
 class _ExercisesTabState extends State<_ExercisesTab> {
   final _service = ExerciseService();
   String _selectedMuscle = kMuscleGroups.first.id;
-  List<ExerciseItem> _all = [];
-  bool _loading = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    setState(() => _loading = true);
-    var exs = await _service.fetchAll();
-    if (exs.isEmpty) {
-      // Primera vez: migrar ejercicios hardcodeados a Supabase
-      await _service.seedAll(kAllExercises);
-      exs = await _service.fetchAll();
-      // Si sigue vacío (sin permisos, sin conexión), mostrar los hardcodeados
-      if (exs.isEmpty) exs = List.of(kAllExercises);
-    }
-    if (mounted) setState(() { _all = exs; _loading = false; });
-  }
-
-  List<ExerciseItem> get _filtered =>
-      _all.where((e) => e.muscleId == _selectedMuscle).toList();
+  Future<void> _reload() => context.read<ExerciseProvider>().reload();
 
   // ── Diálogo crear / editar ──────────────────────────────────────
   void _showForm({ExerciseItem? editing}) {
@@ -1589,15 +1568,17 @@ class _ExercisesTabState extends State<_ExercisesTab> {
                   difficulty:  selDiff,
                 );
 
+                final provider = context.read<ExerciseProvider>();
+                final currentCount = provider.exercises
+                    .where((e) => e.muscleId == selMuscle).length;
                 final ok = isEdit
                     ? await _service.update(ex)
-                    : await _service.create(ex,
-                        displayOrder: _all.where((e) => e.muscleId == selMuscle).length);
+                    : await _service.create(ex, displayOrder: currentCount);
 
                 if (!mounted) return;
                 Navigator.pop(ctx);
                 if (ok) {
-                  await _load();
+                  await provider.reload();
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Error al guardar el ejercicio.')),
@@ -1645,7 +1626,7 @@ class _ExercisesTabState extends State<_ExercisesTab> {
       final deleted = await _service.delete(ex.id);
       if (mounted) {
         if (deleted) {
-          await _load();
+          await _reload();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Error al eliminar el ejercicio.')),
@@ -1657,7 +1638,9 @@ class _ExercisesTabState extends State<_ExercisesTab> {
 
   @override
   Widget build(BuildContext context) {
-    final items = _filtered;
+    final provider = context.watch<ExerciseProvider>();
+    final items = provider.exercises
+        .where((e) => e.muscleId == _selectedMuscle).toList();
     return Scaffold(
       backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton(
@@ -1702,7 +1685,7 @@ class _ExercisesTabState extends State<_ExercisesTab> {
         ),
         // Lista
         Expanded(
-          child: _loading
+          child: provider.loading
               ? const Center(child: CircularProgressIndicator(
                   color: AppColors.accentOrange))
               : items.isEmpty
@@ -1722,7 +1705,7 @@ class _ExercisesTabState extends State<_ExercisesTab> {
                     )
                   : RefreshIndicator(
                       color: AppColors.accentOrange,
-                      onRefresh: _load,
+                      onRefresh: _reload,
                       child: ListView.builder(
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
                         itemCount: items.length,
