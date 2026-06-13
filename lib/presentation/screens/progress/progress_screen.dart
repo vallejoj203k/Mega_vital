@@ -297,7 +297,6 @@ class _ExerciseChart extends StatelessWidget {
       case 'pecho':
         return AppColors.accentOrange;
       case 'espalda':
-      case 'dorsales':
         return AppColors.accentBlue;
       case 'hombros':
         return const Color(0xFF80DEEA);

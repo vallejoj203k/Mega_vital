@@ -525,13 +525,15 @@ Path _imgGemelos() {
   return p;
 }
 
-Path _imgEspaldaAlta() => Path()
-  ..moveTo(111, 70)..lineTo(185, 70)..lineTo(188, 116)..lineTo(101, 121)..close();
-
-Path _imgDorsales() {
+Path _imgEspalda() {
   final p = Path();
+  // Espalda alta
+  p.moveTo(111, 70); p.lineTo(185, 70); p.lineTo(188, 116); p.lineTo(101, 121); p.close();
+  // Dorsales
   p.moveTo(98, 125); p.lineTo(143, 123); p.lineTo(140, 153); p.lineTo(99, 158); p.close();
   p.moveTo(151, 124); p.lineTo(186, 121); p.lineTo(187, 152); p.lineTo(149, 152); p.close();
+  // Lumbar
+  p.moveTo(101, 162); p.lineTo(186, 159); p.lineTo(191, 198); p.lineTo(98, 199); p.close();
   return p;
 }
 
@@ -541,9 +543,6 @@ Path _imgTriceps() {
   p.moveTo(188, 113); p.lineTo(215, 115); p.lineTo(224, 175); p.lineTo(197, 195); p.close();
   return p;
 }
-
-Path _imgLumbar() => Path()
-  ..moveTo(101, 162)..lineTo(186, 159)..lineTo(191, 198)..lineTo(98, 199)..close();
 
 Path _imgGluteos() => Path()
   ..moveTo(97, 202)..lineTo(198, 201)..lineTo(196, 243)..lineTo(93, 253)..close();
@@ -561,8 +560,8 @@ Map<String, Path> _frontPaths() => {
 };
 
 Map<String, Path> _backPaths() => {
-  'espalda': _imgEspaldaAlta(), 'dorsales': _imgDorsales(), 'triceps': _imgTriceps(),
-  'lumbar': _imgLumbar(), 'gluteos': _imgGluteos(), 'isquio': _imgIsquiotibiales(),
+  'espalda': _imgEspalda(), 'triceps': _imgTriceps(),
+  'gluteos': _imgGluteos(), 'isquio': _imgIsquiotibiales(),
   'gemelos': _imgGemelos(),
 };
 
