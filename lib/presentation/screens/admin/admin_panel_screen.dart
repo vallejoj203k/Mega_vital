@@ -1424,7 +1424,14 @@ class _ExercisesTabState extends State<_ExercisesTab> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    final exs = await _service.fetchAll();
+    var exs = await _service.fetchAll();
+    if (exs.isEmpty) {
+      // Primera vez: migrar ejercicios hardcodeados a Supabase
+      await _service.seedAll(kAllExercises);
+      exs = await _service.fetchAll();
+      // Si sigue vacío (sin permisos, sin conexión), mostrar los hardcodeados
+      if (exs.isEmpty) exs = List.of(kAllExercises);
+    }
     if (mounted) setState(() { _all = exs; _loading = false; });
   }
 
