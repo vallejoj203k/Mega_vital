@@ -931,6 +931,10 @@ CREATE POLICY "spinning_delete" ON public.spinning_bookings
 ALTER TABLE public.user_profiles
   ADD COLUMN IF NOT EXISTS nutrition_level INTEGER NOT NULL DEFAULT 1;
 
+-- Acceso al panel de administración (se activa manualmente en Supabase)
+ALTER TABLE public.user_profiles
+  ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
+
 
 -- ─── PREMIUM ────────────────────────────────────────────────────────────────
 -- Patrón igual que spinning_bookings: user_id UUID sin FK a user_profiles,

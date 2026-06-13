@@ -58,6 +58,7 @@ class UserProfile {
   final String? referredBy;
   final String? avatarUrl;
   final int nutritionLevel;
+  final bool isAdmin;
 
   const UserProfile({
     required this.uid,
@@ -73,6 +74,7 @@ class UserProfile {
     this.referredBy,
     this.avatarUrl,
     this.nutritionLevel = 1,
+    this.isAdmin = false,
   });
 
   bool get isMale => gender == 'hombre';
@@ -91,6 +93,7 @@ class UserProfile {
     String? referredBy,
     String? avatarUrl,
     int? nutritionLevel,
+    bool? isAdmin,
   }) => UserProfile(
     uid:            uid            ?? this.uid,
     name:           name           ?? this.name,
@@ -105,6 +108,7 @@ class UserProfile {
     referredBy:     referredBy     ?? this.referredBy,
     avatarUrl:      avatarUrl      ?? this.avatarUrl,
     nutritionLevel: nutritionLevel ?? this.nutritionLevel,
+    isAdmin:        isAdmin        ?? this.isAdmin,
   );
 
   Map<String, dynamic> toMap() => {
@@ -143,6 +147,7 @@ class UserProfile {
       referredBy:     m['referred_by'],
       avatarUrl:      m['avatar_url']    as String?,
       nutritionLevel: (m['nutrition_level'] as int?) ?? 1,
+      isAdmin:        m['is_admin']      as bool? ?? false,
     );
   }
 }
