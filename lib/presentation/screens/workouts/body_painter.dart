@@ -17,10 +17,8 @@ List<BodyRegion> buildBodyRegions() => [
   BodyRegion(muscleId: 'abs',        isFront: true,  path: _abs()),
   BodyRegion(muscleId: 'cuadriceps', isFront: true,  path: _cuads()),
   BodyRegion(muscleId: 'gemelos',    isFront: true,  path: _gemF()),
-  BodyRegion(muscleId: 'espalda',    isFront: false, path: _espaldaAlta()),
-  BodyRegion(muscleId: 'dorsales',   isFront: false, path: _dorsales()),
+  BodyRegion(muscleId: 'espalda',    isFront: false, path: _espalda()),
   BodyRegion(muscleId: 'triceps',    isFront: false, path: _triceps()),
-  BodyRegion(muscleId: 'lumbar',     isFront: false, path: _lumbar()),
   BodyRegion(muscleId: 'gluteos',    isFront: false, path: _gluteos()),
   BodyRegion(muscleId: 'isquio',     isFront: false, path: _isquios()),
   BodyRegion(muscleId: 'gemelos',    isFront: false, path: _gemB()),
@@ -65,14 +63,15 @@ Path _gemF() {
   return p;
 }
 
-Path _espaldaAlta() => Path()
-  ..moveTo(70, 105)..lineTo(130, 105)
-  ..lineTo(128, 152)..lineTo(72, 152)..close();
-
-Path _dorsales() {
+Path _espalda() {
   final p = Path();
+  // Espalda alta / trapecio
+  p.moveTo(70, 105); p.lineTo(130, 105); p.lineTo(128, 152); p.lineTo(72, 152); p.close();
+  // Dorsales / lats (ambos lados)
   p.moveTo(55, 152); p.lineTo(76, 152); p.lineTo(78, 210); p.lineTo(52, 208); p.close();
   p.moveTo(124, 152); p.lineTo(145, 152); p.lineTo(148, 208); p.lineTo(122, 210); p.close();
+  // Lumbar
+  p.moveTo(76, 210); p.lineTo(124, 210); p.lineTo(122, 250); p.lineTo(78, 250); p.close();
   return p;
 }
 
@@ -82,10 +81,6 @@ Path _triceps() {
   p.moveTo(132, 105); p.lineTo(150, 105); p.lineTo(154, 198); p.lineTo(130, 200); p.close();
   return p;
 }
-
-Path _lumbar() => Path()
-  ..moveTo(76, 210)..lineTo(124, 210)
-  ..lineTo(122, 250)..lineTo(78, 250)..close();
 
 Path _gluteos() => Path()
   ..moveTo(74, 252)..lineTo(126, 252)
