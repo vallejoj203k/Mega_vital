@@ -11,6 +11,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -1141,7 +1142,32 @@ class _Step3 extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+          child: GestureDetector(
+            onTap: () => launchUrl(
+              Uri.parse('https://vallejoj203k.github.io/Mega_vital/privacidad.html'),
+              mode: LaunchMode.externalApplication,
+            ),
+            child: RichText(
+              textAlign: TextAlign.center,
+              text: TextSpan(children: [
+                TextSpan(
+                  text: 'Al registrarte aceptas nuestra ',
+                  style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                ),
+                TextSpan(
+                  text: 'Política de Privacidad',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.primary,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ]),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
           child: Consumer<AuthProvider>(
             builder: (_, auth, __) => _StepButton(
               label: auth.isLoading ? '' : '¡Comenzar mi viaje! 🚀',

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/constants/app_theme_colors.dart';
@@ -355,6 +356,15 @@ class _SettingsList extends StatelessWidget {
         label: 'Claves de IA (análisis fotos)',
         color: AppColors.primary,
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ApiKeysScreen())),
+      ),
+      _SI(
+        icon: Icons.privacy_tip_outlined,
+        label: 'Política de Privacidad',
+        color: AppColors.textSecondary,
+        onTap: () => launchUrl(
+          Uri.parse('https://vallejoj203k.github.io/Mega_vital/privacidad.html'),
+          mode: LaunchMode.externalApplication,
+        ),
       ),
       if (isAdmin)
         _SI(
