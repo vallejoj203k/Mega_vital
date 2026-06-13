@@ -10,11 +10,14 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 // ── Supabase Storage ──────────────────────────────────────────────
-// Bucket público: exercise-animations
-// Sube el video con el nombre del ID: pectoral/pec1.mp4, hombros/hom1.mp4…
-// Sin cambios de código al agregar nuevos videos.
+// Bucket público: exercise-animations  → videos (.mp4)
+// Bucket público: exercise-images      → fotos de máquinas (.jpg)
+// Misma estructura de carpetas: {folder}/{exerciseId}.mp4 / .jpg
 const _kStorageBase =
     'https://ntxbjwmkxnewzzducfzz.supabase.co/storage/v1/object/public/exercise-animations';
+
+const _kImageBase =
+    'https://ntxbjwmkxnewzzducfzz.supabase.co/storage/v1/object/public/exercise-images';
 
 const _kPrefixToFolder = <String, String>{
   'pec': 'pectoral',
@@ -36,6 +39,13 @@ String? _videoUrl(String exerciseId) {
   final folder  = _kPrefixToFolder[prefix];
   if (folder == null) return null;
   return '$_kStorageBase/$folder/$exerciseId.mp4';
+}
+
+String? _imageUrl(String exerciseId) {
+  final prefix = exerciseId.replaceAll(RegExp(r'[0-9]'), '');
+  final folder  = _kPrefixToFolder[prefix];
+  if (folder == null) return null;
+  return '$_kImageBase/$folder/$exerciseId.jpg';
 }
 
 // ── Widget principal ──────────────────────────────────────────────
@@ -63,8 +73,8 @@ class ExerciseAnimationWidget extends StatefulWidget {
 
 class _ExerciseAnimationWidgetState extends State<ExerciseAnimationWidget> {
   VideoPlayerController? _controller;
-  bool _hasError  = false;
-  bool _isPlaying = false;
+  bool _hasVideoError = false;
+  bool _isPlaying     = false;
 
   @override
   void initState() {
@@ -100,12 +110,11 @@ class _ExerciseAnimationWidgetState extends State<ExerciseAnimationWidget> {
       }
       controller.setLooping(true);
       controller.setVolume(0);
-      // Queda pausado en el primer frame como miniatura
       await controller.seekTo(Duration.zero);
       setState(() => _controller = controller);
     } catch (_) {
       controller.dispose();
-      if (mounted) setState(() => _hasError = true);
+      if (mounted) setState(() => _hasVideoError = true);
     }
   }
 
@@ -131,48 +140,70 @@ class _ExerciseAnimationWidgetState extends State<ExerciseAnimationWidget> {
       size:       widget.size,
     );
 
-    final url = _videoUrl(widget.exerciseId);
-    if (url == null || _hasError) return stickman;
-
+    // 1️⃣ Si hay video inicializado, mostrarlo
     final ctrl = _controller;
-    if (ctrl == null || !ctrl.value.isInitialized) return stickman;
-
-    return GestureDetector(
-      onTap: _togglePlay,
-      child: SizedBox(
-        width:  widget.size,
-        height: widget.size * 1.15,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            ClipRect(
-              child: FittedBox(
-                fit: BoxFit.contain,
-                child: SizedBox(
-                  width:  ctrl.value.size.width,
-                  height: ctrl.value.size.height,
-                  child:  VideoPlayer(ctrl),
+    if (ctrl != null && ctrl.value.isInitialized) {
+      return GestureDetector(
+        onTap: _togglePlay,
+        child: SizedBox(
+          width:  widget.size,
+          height: widget.size * 1.15,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              ClipRect(
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox(
+                    width:  ctrl.value.size.width,
+                    height: ctrl.value.size.height,
+                    child:  VideoPlayer(ctrl),
+                  ),
                 ),
               ),
-            ),
-            if (!_isPlaying)
-              Container(
-                width:  widget.size * 0.38,
-                height: widget.size * 0.38,
-                decoration: BoxDecoration(
-                  color:  Colors.black.withOpacity(0.55),
-                  shape:  BoxShape.circle,
+              if (!_isPlaying)
+                Container(
+                  width:  widget.size * 0.38,
+                  height: widget.size * 0.38,
+                  decoration: BoxDecoration(
+                    color:  Colors.black.withOpacity(0.55),
+                    shape:  BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.play_arrow_rounded,
+                    color: widget.color,
+                    size:  widget.size * 0.24,
+                  ),
                 ),
-                child: Icon(
-                  Icons.play_arrow_rounded,
-                  color: widget.color,
-                  size:  widget.size * 0.24,
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    }
+
+    // 2️⃣ Si no hay video, intentar mostrar imagen de la máquina
+    if (_hasVideoError || _controller == null) {
+      final imgUrl = _imageUrl(widget.exerciseId);
+      if (imgUrl != null) {
+        return SizedBox(
+          width:  widget.size,
+          height: widget.size * 1.15,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              imgUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => stickman,
+              loadingBuilder: (_, child, progress) =>
+                  progress == null ? child : stickman,
+            ),
+          ),
+        );
+      }
+    }
+
+    // 3️⃣ Fallback: stickman animado
+    return stickman;
   }
 }
 
