@@ -348,8 +348,7 @@ class _SettingsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tc    = AppThemeColors.of(context);
-    final email = context.read<AuthProvider>().profile?.email ?? '';
-    final isAdmin = AppConfig.adminEmails.contains(email.toLowerCase().trim());
+    final isAdmin = context.read<AuthProvider>().profile?.isAdmin ?? false;
     final items = [
       _SI(
         icon: Icons.auto_awesome_rounded,
@@ -362,7 +361,7 @@ class _SettingsList extends StatelessWidget {
           icon: Icons.admin_panel_settings_outlined,
           label: 'Administración',
           color: AppColors.accentPurple,
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminAccessScreen())),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminPanelScreen())),
         ),
     ];
     return DarkCard(
