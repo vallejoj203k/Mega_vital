@@ -31,6 +31,38 @@ class ExerciseItem {
     required this.icon,
     this.difficulty = ExerciseDifficulty.medio,
   });
+
+  static IconData iconFor(String muscleId) {
+    switch (muscleId) {
+      case 'cuadriceps':
+      case 'isquio':
+      case 'gemelos':
+      case 'gluteos':
+        return Icons.directions_run_rounded;
+      case 'abs':
+        return Icons.sports_gymnastics_rounded;
+      default:
+        return Icons.fitness_center_rounded;
+    }
+  }
+
+  factory ExerciseItem.fromMap(Map<String, dynamic> m) {
+    final muscleId = m['muscle_id'] as String? ?? '';
+    return ExerciseItem(
+      id:          m['id'] as String,
+      name:        m['name'] as String,
+      muscleId:    muscleId,
+      sets:        m['sets'] as String? ?? '3-4',
+      reps:        m['reps'] as String? ?? '10-12',
+      restSeconds: m['rest_seconds'] as int? ?? 60,
+      tip:         m['tip'] as String?,
+      icon:        ExerciseItem.iconFor(muscleId),
+      difficulty:  ExerciseDifficulty.values.firstWhere(
+        (d) => d.name == (m['difficulty'] as String? ?? 'medio'),
+        orElse: () => ExerciseDifficulty.medio,
+      ),
+    );
+  }
 }
 
 // ── Modelo de grupo muscular ───────────────────────────────────────
