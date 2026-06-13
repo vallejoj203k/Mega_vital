@@ -11,7 +11,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/constants/app_theme_colors.dart';
+import '../../../core/data/muscle_data.dart';
 import '../../../core/providers/premium_provider.dart';
+import '../../../services/exercise_service.dart';
 import '../../../services/registration_code_service.dart';
 
 // ── Panel principal ───────────────────────────────────────────────
@@ -29,7 +31,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -57,6 +59,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
             Tab(text: 'Premium'),
             Tab(text: 'Acceso'),
             Tab(text: 'Usuarios'),
+            Tab(text: 'Ejercicios'),
           ],
         ),
       ),
@@ -66,6 +69,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
           _PremiumTab(),
           _AccessTab(),
           _UsersTab(),
+          _ExercisesTab(),
         ],
       ),
     );
@@ -1394,6 +1398,378 @@ class _NotificationTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Pestaña de ejercicios ─────────────────────────────────────────
+class _ExercisesTab extends StatefulWidget {
+  const _ExercisesTab();
+
+  @override
+  State<_ExercisesTab> createState() => _ExercisesTabState();
+}
+
+class _ExercisesTabState extends State<_ExercisesTab> {
+  final _service = ExerciseService();
+  String _selectedMuscle = kMuscleGroups.first.id;
+  List<ExerciseItem> _all = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    final exs = await _service.fetchAll();
+    if (mounted) setState(() { _all = exs; _loading = false; });
+  }
+
+  List<ExerciseItem> get _filtered =>
+      _all.where((e) => e.muscleId == _selectedMuscle).toList();
+
+  // ── Diálogo crear / editar ──────────────────────────────────────
+  void _showForm({ExerciseItem? editing}) {
+    final isEdit   = editing != null;
+    final idCtrl   = TextEditingController(text: editing?.id   ?? '');
+    final nameCtrl = TextEditingController(text: editing?.name ?? '');
+    final setsCtrl = TextEditingController(text: editing?.sets ?? '3-4');
+    final repsCtrl = TextEditingController(text: editing?.reps ?? '10-12');
+    final restCtrl = TextEditingController(
+        text: (editing?.restSeconds ?? 60).toString());
+    final tipCtrl  = TextEditingController(text: editing?.tip ?? '');
+    String selMuscle = editing?.muscleId ?? _selectedMuscle;
+    ExerciseDifficulty selDiff = editing?.difficulty ?? ExerciseDifficulty.medio;
+
+    final diffLabels = {
+      ExerciseDifficulty.facil: 'Fácil',
+      ExerciseDifficulty.medio: 'Medio',
+      ExerciseDifficulty.duro:  'Difícil',
+    };
+
+    InputDecoration _dec(String label, {String? hint, String? helper}) =>
+        InputDecoration(
+          labelText: label,
+          hintText: hint,
+          helperText: helper,
+          labelStyle: const TextStyle(color: AppColors.textSecondary),
+          hintStyle: const TextStyle(color: AppColors.textMuted),
+          helperStyle: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+          filled: true,
+          fillColor: AppColors.background,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.accentOrange, width: 1.5)),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        );
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSt) {
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(isEdit ? 'Editar ejercicio' : 'Nuevo ejercicio',
+              style: AppTextStyles.headingSmall),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                if (!isEdit) ...[
+                  TextField(
+                    controller: idCtrl,
+                    style: const TextStyle(color: AppColors.textPrimary),
+                    decoration: _dec('ID del ejercicio',
+                        hint: 'pec8, hom7, esp5…',
+                        helper: 'Define la carpeta del video/imagen en Storage'),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                TextField(
+                  controller: nameCtrl,
+                  style: const TextStyle(color: AppColors.textPrimary),
+                  decoration: _dec('Nombre del ejercicio'),
+                ),
+                const SizedBox(height: 10),
+                // Músculo
+                DropdownButtonFormField<String>(
+                  value: selMuscle,
+                  dropdownColor: AppColors.surface,
+                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                  decoration: _dec('Grupo muscular'),
+                  items: kMuscleGroups.map((g) => DropdownMenuItem(
+                    value: g.id,
+                    child: Text(g.name),
+                  )).toList(),
+                  onChanged: (v) { if (v != null) setSt(() => selMuscle = v); },
+                ),
+                const SizedBox(height: 10),
+                Row(children: [
+                  Expanded(child: TextField(
+                    controller: setsCtrl,
+                    style: const TextStyle(color: AppColors.textPrimary),
+                    decoration: _dec('Series', hint: '3-4'),
+                  )),
+                  const SizedBox(width: 8),
+                  Expanded(child: TextField(
+                    controller: repsCtrl,
+                    style: const TextStyle(color: AppColors.textPrimary),
+                    decoration: _dec('Reps', hint: '10-12'),
+                  )),
+                ]),
+                const SizedBox(height: 10),
+                Row(children: [
+                  Expanded(child: TextField(
+                    controller: restCtrl,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: AppColors.textPrimary),
+                    decoration: _dec('Descanso (seg)', hint: '60'),
+                  )),
+                  const SizedBox(width: 8),
+                  Expanded(child: DropdownButtonFormField<ExerciseDifficulty>(
+                    value: selDiff,
+                    dropdownColor: AppColors.surface,
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                    decoration: _dec('Dificultad'),
+                    items: ExerciseDifficulty.values.map((d) => DropdownMenuItem(
+                      value: d,
+                      child: Text(diffLabels[d]!),
+                    )).toList(),
+                    onChanged: (v) { if (v != null) setSt(() => selDiff = v); },
+                  )),
+                ]),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: tipCtrl,
+                  maxLines: 2,
+                  style: const TextStyle(color: AppColors.textPrimary),
+                  decoration: _dec('Tip (opcional)'),
+                ),
+              ]),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar',
+                  style: TextStyle(color: AppColors.textMuted)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentOrange,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                final idVal   = idCtrl.text.trim();
+                final nameVal = nameCtrl.text.trim();
+                if (nameVal.isEmpty || (!isEdit && idVal.isEmpty)) return;
+
+                final ex = ExerciseItem(
+                  id:          isEdit ? editing!.id : idVal,
+                  name:        nameVal,
+                  muscleId:    selMuscle,
+                  sets:        setsCtrl.text.trim().isEmpty ? '3-4' : setsCtrl.text.trim(),
+                  reps:        repsCtrl.text.trim().isEmpty ? '10-12' : repsCtrl.text.trim(),
+                  restSeconds: int.tryParse(restCtrl.text.trim()) ?? 60,
+                  tip:         tipCtrl.text.trim().isEmpty ? null : tipCtrl.text.trim(),
+                  icon:        ExerciseItem.iconFor(selMuscle),
+                  difficulty:  selDiff,
+                );
+
+                final ok = isEdit
+                    ? await _service.update(ex)
+                    : await _service.create(ex,
+                        displayOrder: _all.where((e) => e.muscleId == selMuscle).length);
+
+                if (!mounted) return;
+                Navigator.pop(ctx);
+                if (ok) {
+                  await _load();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Error al guardar el ejercicio.')),
+                  );
+                }
+              },
+              child: Text(isEdit ? 'Guardar' : 'Crear'),
+            ),
+          ],
+        );
+      }),
+    );
+  }
+
+  Future<void> _confirmDelete(ExerciseItem ex) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Eliminar ejercicio',
+            style: TextStyle(color: AppColors.textPrimary)),
+        content: Text('¿Eliminar "${ex.name}"?\nEsto no elimina el video/imagen en Storage.',
+            style: const TextStyle(color: AppColors.textSecondary)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar',
+                style: TextStyle(color: AppColors.textMuted)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok == true) {
+      final deleted = await _service.delete(ex.id);
+      if (mounted) {
+        if (deleted) {
+          await _load();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Error al eliminar el ejercicio.')),
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = _filtered;
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showForm(),
+        backgroundColor: AppColors.accentOrange,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+      body: Column(children: [
+        // Selector de grupo muscular
+        SizedBox(
+          height: 48,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            itemCount: kMuscleGroups.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (_, i) {
+              final g = kMuscleGroups[i];
+              final sel = g.id == _selectedMuscle;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedMuscle = g.id),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: sel ? AppColors.accentOrange : AppColors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: sel ? AppColors.accentOrange : AppColors.surface,
+                    ),
+                  ),
+                  child: Text(g.nameShort,
+                      style: TextStyle(
+                        color: sel ? Colors.white : AppColors.textSecondary,
+                        fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                        fontSize: 13,
+                      )),
+                ),
+              );
+            },
+          ),
+        ),
+        // Lista
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator(
+                  color: AppColors.accentOrange))
+              : items.isEmpty
+                  ? Center(
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.fitness_center_rounded,
+                            size: 48, color: AppColors.textMuted.withOpacity(0.4)),
+                        const SizedBox(height: 12),
+                        Text('Sin ejercicios en este grupo',
+                            style: AppTextStyles.bodySmall
+                                .copyWith(color: AppColors.textMuted)),
+                        const SizedBox(height: 8),
+                        Text('Usa el botón + para agregar',
+                            style: AppTextStyles.caption
+                                .copyWith(color: AppColors.textMuted)),
+                      ]),
+                    )
+                  : RefreshIndicator(
+                      color: AppColors.accentOrange,
+                      onRefresh: _load,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+                        itemCount: items.length,
+                        itemBuilder: (_, i) {
+                          final ex = items[i];
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 4),
+                              leading: Container(
+                                width: 40, height: 40,
+                                decoration: BoxDecoration(
+                                  color: AppColors.accentOrange.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(Icons.fitness_center_rounded,
+                                    color: AppColors.accentOrange, size: 20),
+                              ),
+                              title: Text(ex.name,
+                                  style: const TextStyle(
+                                      color: AppColors.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14)),
+                              subtitle: Text(
+                                '${ex.id}  ·  ${ex.sets} series  ·  ${ex.reps} reps  ·  ${ex.restSeconds}s',
+                                style: const TextStyle(
+                                    color: AppColors.textMuted, fontSize: 11),
+                              ),
+                              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit_rounded,
+                                      color: AppColors.accentOrange, size: 20),
+                                  onPressed: () => _showForm(editing: ex),
+                                  tooltip: 'Editar',
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.delete_outline_rounded,
+                                      color: Colors.red.shade400, size: 20),
+                                  onPressed: () => _confirmDelete(ex),
+                                  tooltip: 'Eliminar',
+                                ),
+                              ]),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+        ),
+      ]),
     );
   }
 }

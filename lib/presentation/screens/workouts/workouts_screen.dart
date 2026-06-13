@@ -9,6 +9,7 @@ import '../../../core/constants/app_theme_colors.dart';
 import '../../../core/data/muscle_data.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/workout_log_provider.dart';
+import '../../../services/exercise_service.dart';
 import '../../../services/routine_service.dart';
 import '../../../services/workout_log_service.dart';
 import '../../widgets/shared_widgets.dart';
@@ -30,8 +31,10 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
   bool    _isFront         = true;
   String? _selectedMuscleId;
   final Set<String> _selectedExIds = {};
-  final _routineService = RoutineService();
-  List<SavedRoutine> _routines = [];
+  final _routineService   = RoutineService();
+  final _exerciseService  = ExerciseService();
+  List<SavedRoutine>  _routines       = [];
+  List<ExerciseItem>? _liveExercises;
   late TabController _tabCtrl;
 
   late AnimationController _bodyCtrl;
@@ -46,6 +49,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
     super.initState();
     _tabCtrl = TabController(length: 3, vsync: this);
     _loadRoutines();
+    _loadExercises();
 
     _bodyCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 300));
@@ -72,6 +76,13 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
     final r = await _routineService.loadRoutines();
     if (mounted) setState(() => _routines = r);
   }
+
+  Future<void> _loadExercises() async {
+    final exs = await _exerciseService.fetchAll();
+    if (mounted && exs.isNotEmpty) setState(() => _liveExercises = exs);
+  }
+
+  List<ExerciseItem> get _allExercises => _liveExercises ?? kAllExercises;
 
   void _onMuscleTap(String muscleId) {
     HapticFeedback.mediumImpact();
@@ -116,7 +127,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
     final muscle  = getMuscleById(_selectedMuscleId ?? '');
     final nameCtrl = TextEditingController(text: 'Rutina ${muscle?.name ?? ""}');
     final exList   = _selectedExIds
-        .map((id) => kAllExercises.cast<ExerciseItem?>()
+        .map((id) => _allExercises.cast<ExerciseItem?>()
             .firstWhere((e) => e?.id == id, orElse: () => null))
         .whereType<ExerciseItem>().toList();
     final weightCtrls = {for (final ex in exList) ex.id: TextEditingController()};
@@ -241,7 +252,8 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
     final tc = AppThemeColors.of(context);
     final muscle    = _selectedMuscleId != null ? getMuscleById(_selectedMuscleId!) : null;
     final exercises = _selectedMuscleId != null
-        ? exercisesForMuscle(_selectedMuscleId!) : <ExerciseItem>[];
+        ? _allExercises.where((e) => e.muscleId == _selectedMuscleId!).toList()
+        : <ExerciseItem>[];
 
     final isMale =
         context.watch<AuthProvider>().profile?.isMale ?? false;

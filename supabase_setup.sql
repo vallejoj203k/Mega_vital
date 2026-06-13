@@ -1489,3 +1489,52 @@ GRANT EXECUTE ON FUNCTION public.get_my_premium_subscription()    TO authenticat
 GRANT EXECUTE ON FUNCTION public.redeem_premium_code(TEXT)        TO authenticated;
 GRANT EXECUTE ON FUNCTION public.generate_premium_code(TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.list_premium_codes(TEXT)         TO authenticated;
+
+
+-- ─── EXERCISES ──────────────────────────────────────────────────────────────
+-- Los admins gestionan ejercicios desde el panel; los usuarios solo leen.
+-- Los videos e imágenes se suben a Supabase Storage por separado.
+
+CREATE TABLE IF NOT EXISTS public.exercises (
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  muscle_id     TEXT NOT NULL,
+  sets          TEXT NOT NULL DEFAULT '3-4',
+  reps          TEXT NOT NULL DEFAULT '10-12',
+  rest_seconds  INTEGER NOT NULL DEFAULT 60,
+  tip           TEXT,
+  difficulty    TEXT NOT NULL DEFAULT 'medio',
+  display_order INTEGER NOT NULL DEFAULT 0,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.exercises ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated can view exercises"  ON public.exercises;
+DROP POLICY IF EXISTS "Admins can insert exercises"       ON public.exercises;
+DROP POLICY IF EXISTS "Admins can update exercises"       ON public.exercises;
+DROP POLICY IF EXISTS "Admins can delete exercises"       ON public.exercises;
+
+CREATE POLICY "Authenticated can view exercises"
+  ON public.exercises FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Admins can insert exercises"
+  ON public.exercises FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_profiles
+            WHERE uid = auth.uid()::text AND is_admin = true)
+  );
+
+CREATE POLICY "Admins can update exercises"
+  ON public.exercises FOR UPDATE TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.user_profiles
+            WHERE uid = auth.uid()::text AND is_admin = true)
+  );
+
+CREATE POLICY "Admins can delete exercises"
+  ON public.exercises FOR DELETE TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.user_profiles
+            WHERE uid = auth.uid()::text AND is_admin = true)
+  );
