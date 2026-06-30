@@ -1538,3 +1538,171 @@ CREATE POLICY "Admins can delete exercises"
     EXISTS (SELECT 1 FROM public.user_profiles
             WHERE uid = auth.uid()::text AND is_admin = true)
   );
+
+-- ─── CLASS SCHEDULES (Spinning / Running) ───────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.class_schedules (
+  id               UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
+  activity         TEXT    NOT NULL CHECK (activity IN ('spinning', 'running')),
+  name             TEXT    NOT NULL,
+  schedule_type    TEXT    NOT NULL CHECK (schedule_type IN ('daily', 'weekly', 'monthly', 'custom')),
+  days_of_week     INTEGER[] NOT NULL DEFAULT '{}',
+  day_of_month     INTEGER,
+  time_of_day      TIME    NOT NULL,
+  duration_minutes INTEGER NOT NULL DEFAULT 60,
+  capacity         INTEGER NOT NULL DEFAULT 18,
+  active           BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.class_schedules ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can view class_schedules"    ON public.class_schedules;
+DROP POLICY IF EXISTS "Admins can insert class_schedules"  ON public.class_schedules;
+DROP POLICY IF EXISTS "Admins can update class_schedules"  ON public.class_schedules;
+DROP POLICY IF EXISTS "Admins can delete class_schedules"  ON public.class_schedules;
+
+CREATE POLICY "Anyone can view class_schedules"
+  ON public.class_schedules FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Admins can insert class_schedules"
+  ON public.class_schedules FOR INSERT TO authenticated
+  WITH CHECK (EXISTS (SELECT 1 FROM public.user_profiles WHERE uid = auth.uid()::text AND is_admin = true));
+CREATE POLICY "Admins can update class_schedules"
+  ON public.class_schedules FOR UPDATE TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.user_profiles WHERE uid = auth.uid()::text AND is_admin = true));
+CREATE POLICY "Admins can delete class_schedules"
+  ON public.class_schedules FOR DELETE TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.user_profiles WHERE uid = auth.uid()::text AND is_admin = true));
+
+-- ─── CLASS SESSIONS ──────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.class_sessions (
+  id            UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
+  schedule_id   UUID    NOT NULL REFERENCES public.class_schedules(id) ON DELETE CASCADE,
+  session_date  DATE    NOT NULL,
+  starts_at     TIMESTAMPTZ NOT NULL,
+  capacity      INTEGER NOT NULL,
+  booked_count  INTEGER NOT NULL DEFAULT 0,
+  status        TEXT    NOT NULL DEFAULT 'open',
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(schedule_id, session_date)
+);
+
+ALTER TABLE public.class_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.class_sessions REPLICA IDENTITY FULL;
+
+DROP POLICY IF EXISTS "Anyone can view class_sessions" ON public.class_sessions;
+CREATE POLICY "Anyone can view class_sessions"
+  ON public.class_sessions FOR SELECT TO authenticated USING (true);
+
+-- ─── CLASS BOOKINGS ──────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.class_bookings (
+  id          UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id  UUID    NOT NULL REFERENCES public.class_sessions(id) ON DELETE CASCADE,
+  user_id     TEXT    NOT NULL,
+  user_name   TEXT    NOT NULL,
+  booked_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(session_id, user_id)
+);
+
+ALTER TABLE public.class_bookings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can view class_bookings"      ON public.class_bookings;
+DROP POLICY IF EXISTS "Users can insert own class_bookings" ON public.class_bookings;
+DROP POLICY IF EXISTS "Users can delete own class_bookings" ON public.class_bookings;
+
+CREATE POLICY "Anyone can view class_bookings"
+  ON public.class_bookings FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Users can insert own class_bookings"
+  ON public.class_bookings FOR INSERT TO authenticated
+  WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "Users can delete own class_bookings"
+  ON public.class_bookings FOR DELETE TO authenticated
+  USING (auth.uid()::text = user_id);
+
+-- ─── RPC FUNCTIONS ───────────────────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION public.ensure_class_sessions(
+  p_schedule_id UUID,
+  p_dates       DATE[]
+) RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_sched RECORD;
+  v_date  DATE;
+BEGIN
+  SELECT capacity, time_of_day INTO v_sched
+  FROM public.class_schedules WHERE id = p_schedule_id;
+  FOREACH v_date IN ARRAY p_dates LOOP
+    INSERT INTO public.class_sessions (schedule_id, session_date, starts_at, capacity)
+    VALUES (
+      p_schedule_id,
+      v_date,
+      (v_date::TEXT || ' ' || v_sched.time_of_day::TEXT)::TIMESTAMPTZ,
+      v_sched.capacity
+    )
+    ON CONFLICT (schedule_id, session_date) DO NOTHING;
+  END LOOP;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.complete_expired_sessions()
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  UPDATE public.class_sessions
+  SET status = 'completed'
+  WHERE status IN ('open', 'full')
+    AND starts_at + INTERVAL '1 hour' <= NOW();
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.book_class_session(
+  p_session_id UUID,
+  p_user_name  TEXT
+) RETURNS TEXT LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_sess RECORD;
+  v_uid  TEXT := auth.uid()::text;
+BEGIN
+  SELECT * INTO v_sess FROM public.class_sessions
+  WHERE id = p_session_id FOR UPDATE;
+  IF NOT FOUND                          THEN RETURN 'not_found';     END IF;
+  IF v_sess.status = 'completed'        THEN RETURN 'completed';     END IF;
+  IF v_sess.status = 'cancelled'        THEN RETURN 'cancelled';     END IF;
+  IF v_sess.booked_count >= v_sess.capacity THEN RETURN 'full';      END IF;
+  IF EXISTS (SELECT 1 FROM public.class_bookings
+             WHERE session_id = p_session_id AND user_id = v_uid)
+    THEN RETURN 'already_booked'; END IF;
+  INSERT INTO public.class_bookings (session_id, user_id, user_name)
+  VALUES (p_session_id, v_uid, p_user_name);
+  UPDATE public.class_sessions
+  SET booked_count = booked_count + 1,
+      status = CASE WHEN booked_count + 1 >= capacity THEN 'full' ELSE 'open' END
+  WHERE id = p_session_id;
+  RETURN 'ok';
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.cancel_class_booking(
+  p_session_id UUID
+) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_uid TEXT := auth.uid()::text;
+BEGIN
+  DELETE FROM public.class_bookings
+  WHERE session_id = p_session_id AND user_id = v_uid;
+  IF NOT FOUND THEN RETURN FALSE; END IF;
+  UPDATE public.class_sessions
+  SET booked_count = GREATEST(booked_count - 1, 0), status = 'open'
+  WHERE id = p_session_id;
+  RETURN TRUE;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.ensure_class_sessions(UUID, DATE[])  TO authenticated;
+GRANT EXECUTE ON FUNCTION public.complete_expired_sessions()           TO authenticated;
+GRANT EXECUTE ON FUNCTION public.book_class_session(UUID, TEXT)        TO authenticated;
+GRANT EXECUTE ON FUNCTION public.cancel_class_booking(UUID)            TO authenticated;
+
+-- Opcional: pg_cron para auto-completar (ejecutar manualmente si el plan lo soporta):
+-- SELECT cron.schedule('complete-classes', '0 * * * *', 'SELECT complete_expired_sessions()');

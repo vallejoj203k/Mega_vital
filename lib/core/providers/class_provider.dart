@@ -1,0 +1,88 @@
+import 'package:flutter/material.dart';
+import '../../services/class_schedule_service.dart';
+
+class ClassProvider extends ChangeNotifier {
+  final _service = ClassScheduleService();
+
+  List<ClassSchedule> _schedules = [];
+  List<ClassSession>  _spinningSessions = [];
+  List<ClassSession>  _runningSessions  = [];
+  bool _loading = false;
+
+  List<ClassSchedule> get schedules        => _schedules;
+  List<ClassSession>  get spinningSessions => _spinningSessions;
+  List<ClassSession>  get runningSessions  => _runningSessions;
+  bool                get loading          => _loading;
+
+  Future<void> init() async {
+    await _service.completeExpiredSessions();
+    await loadSchedules();
+  }
+
+  Future<void> loadSchedules() async {
+    _schedules = await _service.fetchSchedules();
+    notifyListeners();
+  }
+
+  Future<void> loadSessions(String activity) async {
+    _loading = true;
+    notifyListeners();
+
+    // Ensure sessions exist for upcoming dates
+    final relevant = _schedules.where((s) => s.activity == activity && s.active);
+    for (final sched in relevant) {
+      final dates = sched.upcomingDates(lookAheadDays: 14);
+      if (dates.isNotEmpty) await _service.ensureSessions(sched.id, dates);
+    }
+
+    final sessions = await _service.fetchSessions(activity: activity);
+    if (activity == 'spinning') {
+      _spinningSessions = sessions;
+    } else {
+      _runningSessions = sessions;
+    }
+    _loading = false;
+    notifyListeners();
+  }
+
+  Future<String> bookSession(String sessionId, String userName) async {
+    final result = await _service.bookSession(sessionId, userName);
+    if (result == 'ok') {
+      await _refreshBoth();
+    }
+    return result;
+  }
+
+  Future<bool> cancelBooking(String sessionId) async {
+    final ok = await _service.cancelBooking(sessionId);
+    if (ok) await _refreshBoth();
+    return ok;
+  }
+
+  Future<void> _refreshBoth() async {
+    final sp = await _service.fetchSessions(activity: 'spinning');
+    final ru = await _service.fetchSessions(activity: 'running');
+    _spinningSessions = sp;
+    _runningSessions  = ru;
+    notifyListeners();
+  }
+
+  // Admin
+  Future<bool> createSchedule(ClassSchedule s) async {
+    final ok = await _service.createSchedule(s);
+    if (ok) await loadSchedules();
+    return ok;
+  }
+
+  Future<bool> updateSchedule(ClassSchedule s) async {
+    final ok = await _service.updateSchedule(s);
+    if (ok) await loadSchedules();
+    return ok;
+  }
+
+  Future<bool> deleteSchedule(String id) async {
+    final ok = await _service.deleteSchedule(id);
+    if (ok) await loadSchedules();
+    return ok;
+  }
+}
