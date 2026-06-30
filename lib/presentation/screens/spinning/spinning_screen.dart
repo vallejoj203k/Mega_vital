@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/constants/app_theme_colors.dart';
+import '../../../services/class_schedule_service.dart';
 import 'class_sessions_screen.dart';
 import 'seat_selection_screen.dart';
 
@@ -94,68 +95,37 @@ final _instructors = [
   ),
 ];
 
-List<SpinClass> _buildClasses() => [
-  SpinClass(
-    id: 'c1',
-    name: 'Morning Power',
-    description: 'La sesión más exigente del día. Activa el metabolismo desde temprano con tabatas y sprints guiados por instructora certificada. Para los que hacen la diferencia antes que el resto despierte.',
-    features: ['Bicicleta Keiser M3+', 'Monitor cardíaco', 'Protocolo HIIT'],
-    instructor: _instructors[0],
-    level: SpinLevel.avanzado,
-    time: '05:00 AM',
-    days: 'Lun · Mar · Mié · Jue · Vie',
-    durationMinutes: 60,
-    caloriesMin: 550,
-    caloriesMax: 750,
-    totalSpots: 18,
-    bookedSpots: 0,
-  ),
-  SpinClass(
-    id: 'c2',
-    name: 'Evening Burn',
-    description: 'La sesión perfecta para desconectarte del trabajo. Cardio de precisión con música en vivo y retroalimentación en tiempo real. Quema calórica sostenida de inicio a fin.',
-    features: ['Bicicleta Keiser M3', 'Monitor cardíaco', 'Música en vivo'],
-    instructor: _instructors[1],
-    level: SpinLevel.intermedio,
-    time: '06:00 PM',
-    days: 'Lun · Mar · Mié · Jue · Vie',
-    durationMinutes: 60,
-    caloriesMin: 450,
-    caloriesMax: 600,
-    totalSpots: 18,
-    bookedSpots: 0,
-  ),
-  SpinClass(
-    id: 'c3',
-    name: 'Night Storm',
-    description: 'Cierra el día con todo. Intervalos de alta intensidad guiados por instructora certificada para maximizar la quema calórica y desafiar tus límites cada sesión.',
-    features: ['Bicicleta Keiser M3+', 'Potenciómetro watt', 'Métricas en tiempo real'],
-    instructor: _instructors[0],
-    level: SpinLevel.avanzado,
-    time: '07:00 PM',
-    days: 'Lun · Mar · Mié · Jue · Vie',
-    durationMinutes: 60,
-    caloriesMin: 550,
-    caloriesMax: 700,
-    totalSpots: 18,
-    bookedSpots: 0,
-  ),
-  SpinClass(
-    id: 'c4',
-    name: 'Saturday Ride',
-    description: 'Arranca el fin de semana con energía. Sesión de ciclismo indoor para todos los niveles con ritmo progresivo y ambiente motivador. El mejor plan para el sábado.',
-    features: ['Bicicleta Keiser M3', 'Monitor cardíaco', 'Todos los niveles'],
-    instructor: _instructors[1],
-    level: SpinLevel.intermedio,
-    time: '09:00 AM',
-    days: 'Sáb',
-    durationMinutes: 60,
-    caloriesMin: 450,
-    caloriesMax: 600,
-    totalSpots: 18,
-    bookedSpots: 0,
-  ),
-];
+// Helpers para convertir ClassSchedule → SpinClass
+const _kSpinDayNames = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+String _spinFmtTime(TimeOfDay t) {
+  final h = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
+  final m = t.minute.toString().padLeft(2, '0');
+  return '$h:$m ${t.period == DayPeriod.am ? 'AM' : 'PM'}';
+}
+
+String _spinFmtDays(ClassSchedule s) {
+  if (s.scheduleType == 'daily') return 'Todos los días';
+  if (s.scheduleType == 'monthly') return 'Día ${s.dayOfMonth} de cada mes';
+  if (s.daysOfWeek.isEmpty) return '';
+  return s.daysOfWeek.map((d) => _kSpinDayNames[d]).join(' · ');
+}
+
+SpinClass _scheduleToSpinClass(ClassSchedule s) => SpinClass(
+  id: s.id,
+  name: s.name,
+  description: 'Clase de ${s.durationMinutes} min · ${_spinFmtDays(s)}',
+  features: ['Bicicleta Keiser M3+', 'Monitor cardíaco'],
+  instructor: _instructors[0],
+  level: SpinLevel.intermedio,
+  time: _spinFmtTime(s.timeOfDay),
+  days: _spinFmtDays(s),
+  durationMinutes: s.durationMinutes,
+  caloriesMin: 400,
+  caloriesMax: 650,
+  totalSpots: s.capacity,
+  bookedSpots: 0,
+);
 
 // ── Main Screen ────────────────────────────────────────
 
@@ -183,9 +153,26 @@ class _SpinningScreenState extends State<SpinningScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _classes = _buildClasses();
-    _loadBookings();
+    _classes = [];
+    _loadSchedules();
     _subscribeRealtime();
+  }
+
+  Future<void> _loadSchedules() async {
+    try {
+      final all = await ClassScheduleService().fetchSchedules();
+      if (!mounted) return;
+      setState(() {
+        _classes = all
+            .where((s) => s.activity == 'spinning')
+            .map(_scheduleToSpinClass)
+            .toList();
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+    await _loadBookings();
   }
 
   @override
