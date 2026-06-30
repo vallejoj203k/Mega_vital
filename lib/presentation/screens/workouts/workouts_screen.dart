@@ -77,7 +77,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
   void _onMuscleTap(String muscleId) {
     HapticFeedback.mediumImpact();
     if (_selectedMuscleId == muscleId) {
-      // Tap same muscle → close panel and clear all selections
+      // Tap same muscle → just close panel, keep selections
       _closeExercises();
     } else if (_selectedMuscleId == null) {
       // No panel open → open for this muscle
@@ -89,7 +89,16 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
     }
   }
 
+  // Closes the exercise panel but keeps selections (user wants to pick another muscle)
   void _closeExercises() {
+    _listCtrl.reverse().then((_) {
+      setState(() => _selectedMuscleId = null);
+      _bodyCtrl.reverse();
+    });
+  }
+
+  // Closes panel AND clears all selections (explicit reset)
+  void _resetSelection() {
     _listCtrl.reverse().then((_) {
       setState(() { _selectedMuscleId = null; _selectedExIds.clear(); });
       _bodyCtrl.reverse();
@@ -283,7 +292,23 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
                           color: muscle?.color ?? tc.textSecondary),
                     )),
               ])),
-              if (_selectedExIds.isNotEmpty)
+              if (_selectedExIds.isNotEmpty) ...[
+                GestureDetector(
+                  onTap: () => setState(() {
+                    _selectedExIds.clear();
+                    if (_selectedMuscleId != null) _closeExercises();
+                  }),
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: tc.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: tc.border),
+                    ),
+                    child: Icon(Icons.close_rounded, size: 14, color: tc.textSecondary),
+                  ),
+                ),
                 GestureDetector(
                   onTap: _showSaveDialog,
                   child: Container(
@@ -304,6 +329,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
                     ]),
                   ),
                 ),
+              ],
             ])),
         const SizedBox(height: 10),
 
