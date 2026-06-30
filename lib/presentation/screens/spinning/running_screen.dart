@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/constants/app_theme_colors.dart';
+import '../../../services/class_schedule_service.dart';
 import 'class_sessions_screen.dart';
 import 'treadmill_selection_screen.dart';
 
@@ -94,72 +95,37 @@ final _runInstructors = [
   ),
 ];
 
-List<RunClass> _buildRunClasses() => [
-  RunClass(
-    id: 'r1',
-    name: 'Morning Run',
-    description:
-        'Activa el día con una sesión de cardio progresivo en trotadora. Desde calentamiento hasta sprints guiados, perfecta para despertar el metabolismo y arrancar con energía.',
-    features: ['NordicTrack X32i', 'Inclinación automática', 'Plan progresivo'],
-    instructor: _runInstructors[0],
-    level: RunLevel.basico,
-    time: '06:00 AM',
-    days: 'Lun · Mié · Vie',
-    durationMinutes: 45,
-    caloriesMin: 300,
-    caloriesMax: 500,
-    totalSpots: 6,
-    bookedSpots: 0,
-  ),
-  RunClass(
-    id: 'r2',
-    name: 'Interval Storm',
-    description:
-        'Sesión de intervalos de alta intensidad: sprints explosivos alternados con recuperación activa. Diseñada para quemar calorías y mejorar la capacidad aeróbica al máximo.',
-    features: ['NordicTrack X32i', 'Monitor cardíaco', 'Protocolo HIIT'],
-    instructor: _runInstructors[1],
-    level: RunLevel.avanzado,
-    time: '07:00 PM',
-    days: 'Lun · Mar · Mié · Jue · Vie',
-    durationMinutes: 60,
-    caloriesMin: 450,
-    caloriesMax: 650,
-    totalSpots: 6,
-    bookedSpots: 0,
-  ),
-  RunClass(
-    id: 'r3',
-    name: 'Evening Pace',
-    description:
-        'El cierre perfecto para el día. Carrera a ritmo sostenido con inclinación variable para trabajar resistencia aeróbica y definición muscular. Para todos los niveles.',
-    features: ['NordicTrack X32i', 'Inclinación variable', 'Ritmo adaptado'],
-    instructor: _runInstructors[0],
-    level: RunLevel.intermedio,
-    time: '06:30 PM',
-    days: 'Mar · Jue',
-    durationMinutes: 50,
-    caloriesMin: 380,
-    caloriesMax: 550,
-    totalSpots: 6,
-    bookedSpots: 0,
-  ),
-  RunClass(
-    id: 'r4',
-    name: 'Weekend Sprint',
-    description:
-        'Arranca el fin de semana con velocidad. Sesión de sprints y recuperación activa para todos los niveles, con música motivadora y retroalimentación en tiempo real.',
-    features: ['NordicTrack X32i', 'Monitor cardíaco', 'Todos los niveles'],
-    instructor: _runInstructors[1],
-    level: RunLevel.intermedio,
-    time: '09:00 AM',
-    days: 'Sáb',
-    durationMinutes: 45,
-    caloriesMin: 350,
-    caloriesMax: 500,
-    totalSpots: 6,
-    bookedSpots: 0,
-  ),
-];
+// Helpers para convertir ClassSchedule → RunClass
+const _kRunDayNames = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+String _runFmtTime(TimeOfDay t) {
+  final h = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
+  final m = t.minute.toString().padLeft(2, '0');
+  return '$h:$m ${t.period == DayPeriod.am ? 'AM' : 'PM'}';
+}
+
+String _runFmtDays(ClassSchedule s) {
+  if (s.scheduleType == 'daily') return 'Todos los días';
+  if (s.scheduleType == 'monthly') return 'Día ${s.dayOfMonth} de cada mes';
+  if (s.daysOfWeek.isEmpty) return '';
+  return s.daysOfWeek.map((d) => _kRunDayNames[d]).join(' · ');
+}
+
+RunClass _scheduleToRunClass(ClassSchedule s) => RunClass(
+  id: s.id,
+  name: s.name,
+  description: 'Sesión de ${s.durationMinutes} min · ${_runFmtDays(s)}',
+  features: ['NordicTrack X32i', 'Monitor cardíaco'],
+  instructor: _runInstructors[0],
+  level: RunLevel.intermedio,
+  time: _runFmtTime(s.timeOfDay),
+  days: _runFmtDays(s),
+  durationMinutes: s.durationMinutes,
+  caloriesMin: 300,
+  caloriesMax: 550,
+  totalSpots: s.capacity,
+  bookedSpots: 0,
+);
 
 // ── Main Screen ────────────────────────────────────────
 
@@ -187,9 +153,26 @@ class _RunningScreenState extends State<RunningScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _classes = _buildRunClasses();
-    _loadBookings();
+    _classes = [];
+    _loadSchedules();
     _subscribeRealtime();
+  }
+
+  Future<void> _loadSchedules() async {
+    try {
+      final all = await ClassScheduleService().fetchSchedules();
+      if (!mounted) return;
+      setState(() {
+        _classes = all
+            .where((s) => s.activity == 'running')
+            .map(_scheduleToRunClass)
+            .toList();
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+    await _loadBookings();
   }
 
   @override
