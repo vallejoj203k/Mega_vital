@@ -28,6 +28,9 @@ class ClassProvider extends ChangeNotifier {
     _loading = true;
     notifyListeners();
 
+    // Always reload schedules first to ensure they're fresh
+    _schedules = await _service.fetchSchedules();
+
     // Ensure sessions exist for upcoming dates
     final relevant = _schedules.where((s) => s.activity == activity && s.active);
     for (final sched in relevant) {
