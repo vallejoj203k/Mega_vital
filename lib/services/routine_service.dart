@@ -58,6 +58,7 @@ class RoutineService {
         'name':        routine.name,
         'muscle_id':   routine.muscleId,
         'muscle_name': routine.muscleName,
+        'muscle_ids':  routine.muscleIds,
         'exercise_ids': routine.exercises.map((e) {
           final w = routine.exerciseWeights[e.id];
           return w != null && w > 0
@@ -98,9 +99,16 @@ class RoutineService {
         .toList();
     final weightsRaw = (m['exerciseWeights'] as Map?)?.cast<String, dynamic>() ?? {};
     final weights = weightsRaw.map((k, v) => MapEntry(k, (v as num).toDouble()));
+    // Support new muscleIds list or fall back to legacy single muscleId
+    final muscleIds   = m['muscleIds']   != null
+        ? List<String>.from(m['muscleIds'])
+        : [m['muscleId'] as String? ?? ''];
+    final muscleNames = m['muscleNames'] != null
+        ? List<String>.from(m['muscleNames'])
+        : [m['muscleName'] as String? ?? ''];
     return SavedRoutine(
       id: m['id'] ?? '', name: m['name'] ?? 'Rutina',
-      muscleId: m['muscleId'] ?? '', muscleName: m['muscleName'] ?? '',
+      muscleIds: muscleIds, muscleNames: muscleNames,
       exercises: exercises, exerciseWeights: weights,
       createdAt: DateTime.tryParse(m['createdAt'] ?? '') ?? DateTime.now(),
     );
@@ -128,11 +136,21 @@ class RoutineService {
             .firstWhere((e) => e?.id == id, orElse: () => null))
         .whereType<ExerciseItem>()
         .toList();
+    // Support new muscle_ids array or fall back to single muscle_id
+    final muscleIds   = r['muscle_ids'] != null
+        ? List<String>.from(r['muscle_ids'] as List)
+        : [r['muscle_id'] as String? ?? ''];
+    final muscleNames = muscleIds.map((id) {
+      if (id.isEmpty) return r['muscle_name'] as String? ?? '';
+      return kMuscleGroups.cast<MuscleGroup?>()
+          .firstWhere((m) => m?.id == id, orElse: () => null)?.name
+          ?? (r['muscle_name'] as String? ?? '');
+    }).toList();
     return SavedRoutine(
       id:              r['id'] as String,
       name:            r['name'] as String,
-      muscleId:        r['muscle_id'] as String,
-      muscleName:      r['muscle_name'] as String,
+      muscleIds:       muscleIds,
+      muscleNames:     muscleNames,
       exercises:       exercises,
       exerciseWeights: weights,
       createdAt:       DateTime.parse(r['created_at'] as String),

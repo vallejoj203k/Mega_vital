@@ -77,10 +77,15 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
   void _onMuscleTap(String muscleId) {
     HapticFeedback.mediumImpact();
     if (_selectedMuscleId == muscleId) {
+      // Tap same muscle → close panel and clear all selections
       _closeExercises();
-    } else {
-      setState(() { _selectedMuscleId = muscleId; _selectedExIds.clear(); });
+    } else if (_selectedMuscleId == null) {
+      // No panel open → open for this muscle
+      setState(() => _selectedMuscleId = muscleId);
       _bodyCtrl.forward().then((_) => _listCtrl.forward());
+    } else {
+      // Panel open for different muscle → switch without clearing selections
+      setState(() => _selectedMuscleId = muscleId);
     }
   }
 
@@ -114,13 +119,23 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
   void _showSaveDialog() {
     if (_selectedExIds.isEmpty) return;
     final tc = AppThemeColors.of(context);
-    final muscle  = getMuscleById(_selectedMuscleId ?? '');
-    final nameCtrl = TextEditingController(text: 'Rutina ${muscle?.name ?? ""}');
     final allExs = context.read<ExerciseProvider>().exercises;
     final exList   = _selectedExIds
         .map((id) => allExs.cast<ExerciseItem?>()
             .firstWhere((e) => e?.id == id, orElse: () => null))
         .whereType<ExerciseItem>().toList();
+
+    // Compute muscle groups represented in the selected exercises
+    final muscleIds = exList.map((e) => e.muscleId).toSet().toList();
+    final muscles   = muscleIds
+        .map((id) => getMuscleById(id))
+        .whereType<MuscleGroup>().toList();
+    final muscleNames = muscles.map((m) => m.name).toList();
+    final muscleLabel = muscleNames.isEmpty ? ''
+        : muscleNames.length == 1 ? muscleNames.first
+        : muscleNames.length <= 3 ? muscleNames.join(' + ')
+        : 'Full Body';
+    final nameCtrl = TextEditingController(text: 'Rutina $muscleLabel');
     final weightCtrls = {for (final ex in exList) ex.id: TextEditingController()};
 
     showDialog(
@@ -217,8 +232,8 @@ class _WorkoutsScreenState extends State<WorkoutsScreen>
               await _routineService.saveRoutine(SavedRoutine(
                 id: DateTime.now().millisecondsSinceEpoch.toString(),
                 name: name,
-                muscleId: muscle?.id ?? '',
-                muscleName: muscle?.name ?? '',
+                muscleIds:   muscleIds,
+                muscleNames: muscleNames,
                 exercises: exList,
                 exerciseWeights: weights,
                 createdAt: DateTime.now(),
@@ -966,7 +981,7 @@ class _RoutineCard extends StatelessWidget {
                 children: [
                   Text(routine.name,
                       style: AppTextStyles.labelLarge.copyWith(color: tc.textPrimary)),
-                  Text('${routine.exercises.length} ejercicios · ${routine.muscleName}',
+                  Text('${routine.exercises.length} ejercicios · ${routine.muscleLabel}',
                       style: AppTextStyles.caption.copyWith(color: tc.textSecondary)),
                 ])),
             GestureDetector(onTap: onDelete,

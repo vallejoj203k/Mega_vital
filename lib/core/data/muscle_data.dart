@@ -88,30 +88,44 @@ class MuscleGroup {
 class SavedRoutine {
   final String              id;
   final String              name;
-  final String              muscleId;
-  final String              muscleName;
+  final List<String>        muscleIds;
+  final List<String>        muscleNames;
   final List<ExerciseItem>  exercises;
-  final Map<String, double> exerciseWeights; // exerciseId → kg
+  final Map<String, double> exerciseWeights;
   final DateTime            createdAt;
+
+  // Backward-compat getters
+  String get muscleId   => muscleIds.isNotEmpty   ? muscleIds.first   : '';
+  String get muscleName => muscleNames.isNotEmpty ? muscleNames.first : '';
+  String get muscleLabel => muscleNames.isEmpty
+      ? ''
+      : muscleNames.length == 1
+          ? muscleNames.first
+          : muscleNames.length <= 3
+              ? muscleNames.join(' + ')
+              : 'Full Body';
 
   const SavedRoutine({
     required this.id,
     required this.name,
-    required this.muscleId,
-    required this.muscleName,
+    required this.muscleIds,
+    required this.muscleNames,
     required this.exercises,
     this.exerciseWeights = const {},
     required this.createdAt,
   });
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'name': name,
-    'muscleId': muscleId,
-    'muscleName': muscleName,
-    'exerciseIds': exercises.map((e) => e.id).toList(),
+    'id':             id,
+    'name':           name,
+    'muscleIds':      muscleIds,
+    'muscleNames':    muscleNames,
+    // legacy fields for older cache reads
+    'muscleId':       muscleId,
+    'muscleName':     muscleName,
+    'exerciseIds':    exercises.map((e) => e.id).toList(),
     'exerciseWeights': exerciseWeights,
-    'createdAt': createdAt.toIso8601String(),
+    'createdAt':      createdAt.toIso8601String(),
   };
 }
 
