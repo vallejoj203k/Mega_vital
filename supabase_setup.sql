@@ -1706,3 +1706,6 @@ GRANT EXECUTE ON FUNCTION public.cancel_class_booking(UUID)            TO authen
 
 -- Opcional: pg_cron para auto-completar (ejecutar manualmente si el plan lo soporta):
 -- SELECT cron.schedule('complete-classes', '0 * * * *', 'SELECT complete_expired_sessions()');
+
+-- Multi-muscle routines support
+ALTER TABLE public.user_routines ADD COLUMN IF NOT EXISTS muscle_ids JSONB DEFAULT '[]'::jsonb;
