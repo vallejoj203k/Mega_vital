@@ -78,6 +78,20 @@ class _ExerciseAnimationWidgetState extends State<ExerciseAnimationWidget> {
   }
 
   @override
+  void didUpdateWidget(ExerciseAnimationWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.exerciseId != widget.exerciseId) {
+      widget.activeVideoNotifier?.removeListener(_onActiveChanged);
+      widget.activeVideoNotifier?.addListener(_onActiveChanged);
+      _controller?.dispose();
+      _controller = null;
+      _hasVideoError = false;
+      _isPlaying = false;
+      _initVideo();
+    }
+  }
+
+  @override
   void dispose() {
     widget.activeVideoNotifier?.removeListener(_onActiveChanged);
     _controller?.dispose();

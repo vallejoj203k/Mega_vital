@@ -13,6 +13,7 @@ import '../core/providers/nutrition_provider.dart';
 import '../core/providers/workout_log_provider.dart';
 import '../core/providers/stories_provider.dart';
 import '../core/providers/challenges_provider.dart';
+import '../core/providers/class_provider.dart';
 import '../core/providers/exercise_provider.dart';
 import '../core/providers/premium_provider.dart';
 import '../core/providers/weight_provider.dart';
@@ -94,6 +95,7 @@ class GymApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PremiumProvider()),
         ChangeNotifierProvider(create: (_) => WeightProvider()),
         ChangeNotifierProvider(create: (_) => ExerciseProvider()..init()),
+        ChangeNotifierProvider(create: (_) => ClassProvider()..init()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {

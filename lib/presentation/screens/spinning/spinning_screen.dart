@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/constants/app_theme_colors.dart';
+import 'class_sessions_screen.dart';
 import 'seat_selection_screen.dart';
 
 // ── Models ─────────────────────────────────────────────
@@ -578,6 +579,29 @@ class _SpinningScreenState extends State<SpinningScreen>
             const SizedBox(width: 10),
             _StatChip(icon: Icons.timer_rounded, label: '60 min', color: AppColors.accentBlue),
           ]),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ClassSessionsScreen(
+                  activity: 'spinning',
+                  accentColor: Color(0xFFFF6B35),
+                )),
+              ),
+              icon: const Icon(Icons.event_available_rounded, size: 18),
+              label: const Text('Ver horarios y reservar cupo'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentOrange,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+                textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+              ),
+            ),
+          ),
         ],
       ),
     );

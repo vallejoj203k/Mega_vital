@@ -12,8 +12,10 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/constants/app_theme_colors.dart';
 import '../../../core/data/muscle_data.dart';
+import '../../../core/providers/class_provider.dart';
 import '../../../core/providers/exercise_provider.dart';
 import '../../../core/providers/premium_provider.dart';
+import '../../../services/class_schedule_service.dart';
 import '../../../services/exercise_service.dart';
 import '../../../services/registration_code_service.dart';
 
@@ -32,7 +34,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -61,6 +63,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
             Tab(text: 'Acceso'),
             Tab(text: 'Usuarios'),
             Tab(text: 'Ejercicios'),
+            Tab(text: 'Clases'),
           ],
         ),
       ),
@@ -71,6 +74,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
           _AccessTab(),
           _UsersTab(),
           _ExercisesTab(),
+          _ClassSchedulesTab(),
         ],
       ),
     );
@@ -1760,6 +1764,573 @@ class _ExercisesTabState extends State<_ExercisesTab> {
                     ),
         ),
       ]),
+    );
+  }
+}
+
+// ── Pestaña de horarios de clases ─────────────────────────────────
+
+class _ClassSchedulesTab extends StatefulWidget {
+  const _ClassSchedulesTab();
+
+  @override
+  State<_ClassSchedulesTab> createState() => _ClassSchedulesTabState();
+}
+
+class _ClassSchedulesTabState extends State<_ClassSchedulesTab> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ClassProvider>().loadSchedules();
+    });
+  }
+
+  void _showForm({ClassSchedule? editing}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ScheduleFormSheet(
+        editing: editing,
+        onSave: (s) async {
+          final provider = context.read<ClassProvider>();
+          final ok = editing == null
+              ? await provider.createSchedule(s)
+              : await provider.updateSchedule(s);
+          if (!context.mounted) return;
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(ok
+                ? (editing == null ? 'Horario creado.' : 'Horario actualizado.')
+                : 'Error al guardar.'),
+            backgroundColor: ok ? AppColors.primary : AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ));
+        },
+      ),
+    );
+  }
+
+  void _confirmDelete(ClassSchedule s) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text('Eliminar horario', style: AppTextStyles.headingSmall),
+        content: Text('¿Deseas eliminar "${s.name}"?',
+            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final ok = await context.read<ClassProvider>().deleteSchedule(s.id);
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text(ok ? 'Horario eliminado.' : 'Error al eliminar.'),
+                behavior: SnackBarBehavior.floating,
+              ));
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static const _dayLabels = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+  String _scheduleDescription(ClassSchedule s) {
+    switch (s.scheduleType) {
+      case 'daily':   return 'Todos los días';
+      case 'monthly': return 'Día ${s.dayOfMonth} de cada mes';
+      case 'weekly':
+      case 'custom':
+        final days = s.daysOfWeek.map((d) => _dayLabels[d]).join(', ');
+        return days.isEmpty ? 'Sin días' : days;
+      default: return s.scheduleType;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<ClassProvider>();
+    final schedules = provider.schedules;
+    final spinning = schedules.where((s) => s.activity == 'spinning').toList();
+    final running  = schedules.where((s) => s.activity == 'running').toList();
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showForm(),
+        backgroundColor: AppColors.primary,
+        child: const Icon(Icons.add_rounded, color: Colors.white),
+      ),
+      body: schedules.isEmpty
+          ? Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.event_note_rounded,
+                    size: 48, color: AppColors.textMuted),
+                const SizedBox(height: 12),
+                Text('Sin horarios creados',
+                    style: AppTextStyles.headingSmall.copyWith(
+                        color: AppColors.textSecondary)),
+                const SizedBox(height: 8),
+                Text('Pulsa + para agregar un horario.',
+                    style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textMuted)),
+              ]),
+            )
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+              children: [
+                if (spinning.isNotEmpty) ...[
+                  _SectionHeader(
+                    icon: Icons.directions_bike_rounded,
+                    label: 'Spinning',
+                    color: const Color(0xFFFF6B35),
+                  ),
+                  ...spinning.map((s) => _ScheduleTile(
+                    schedule:    s,
+                    description: _scheduleDescription(s),
+                    onEdit:      () => _showForm(editing: s),
+                    onDelete:    () => _confirmDelete(s),
+                  )),
+                  const SizedBox(height: 8),
+                ],
+                if (running.isNotEmpty) ...[
+                  _SectionHeader(
+                    icon: Icons.directions_run_rounded,
+                    label: 'Running',
+                    color: AppColors.accentBlue,
+                  ),
+                  ...running.map((s) => _ScheduleTile(
+                    schedule:    s,
+                    description: _scheduleDescription(s),
+                    onEdit:      () => _showForm(editing: s),
+                    onDelete:    () => _confirmDelete(s),
+                  )),
+                ],
+              ],
+            ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final IconData icon;
+  final String   label;
+  final Color    color;
+  const _SectionHeader({required this.icon, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, top: 4),
+      child: Row(children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 8),
+        Text(label, style: AppTextStyles.headingSmall.copyWith(color: color)),
+      ]),
+    );
+  }
+}
+
+class _ScheduleTile extends StatelessWidget {
+  final ClassSchedule schedule;
+  final String        description;
+  final VoidCallback  onEdit;
+  final VoidCallback  onDelete;
+
+  const _ScheduleTile({
+    required this.schedule,
+    required this.description,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  String _timeLabel() {
+    final h = schedule.timeOfDay.hour.toString().padLeft(2, '0');
+    final m = schedule.timeOfDay.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: AppColors.surface,
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.border, width: 0.5),
+      ),
+      elevation: 0,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        title: Text(schedule.name,
+            style: AppTextStyles.labelLarge.copyWith(color: AppColors.textPrimary)),
+        subtitle: Text(
+          '$description · ${_timeLabel()} · ${schedule.durationMinutes} min · ${schedule.capacity} cupos',
+          style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+        ),
+        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+          IconButton(
+            icon: const Icon(Icons.edit_rounded,
+                color: AppColors.accentOrange, size: 20),
+            onPressed: onEdit,
+            tooltip: 'Editar',
+          ),
+          IconButton(
+            icon: Icon(Icons.delete_outline_rounded,
+                color: Colors.red.shade400, size: 20),
+            onPressed: onDelete,
+            tooltip: 'Eliminar',
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ── Formulario de horario (bottom sheet) ─────────────────────────
+
+class _ScheduleFormSheet extends StatefulWidget {
+  final ClassSchedule? editing;
+  final void Function(ClassSchedule) onSave;
+
+  const _ScheduleFormSheet({this.editing, required this.onSave});
+
+  @override
+  State<_ScheduleFormSheet> createState() => _ScheduleFormSheetState();
+}
+
+class _ScheduleFormSheetState extends State<_ScheduleFormSheet> {
+  final _nameCtrl     = TextEditingController();
+  final _capacityCtrl = TextEditingController();
+  final _durationCtrl = TextEditingController();
+  final _domCtrl      = TextEditingController();
+
+  String       _activity     = 'spinning';
+  String       _scheduleType = 'weekly';
+  Set<int>     _daysOfWeek   = {};
+  TimeOfDay    _time         = const TimeOfDay(hour: 7, minute: 0);
+
+  static const _dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.editing;
+    if (e != null) {
+      _nameCtrl.text     = e.name;
+      _capacityCtrl.text = e.capacity.toString();
+      _durationCtrl.text = e.durationMinutes.toString();
+      _activity          = e.activity;
+      _scheduleType      = e.scheduleType;
+      _daysOfWeek        = e.daysOfWeek.toSet();
+      _time              = e.timeOfDay;
+      if (e.dayOfMonth != null) _domCtrl.text = e.dayOfMonth.toString();
+    } else {
+      _capacityCtrl.text = '18';
+      _durationCtrl.text = '60';
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _capacityCtrl.dispose();
+    _durationCtrl.dispose();
+    _domCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickTime() async {
+    final t = await showTimePicker(context: context, initialTime: _time);
+    if (t != null) setState(() => _time = t);
+  }
+
+  void _submit() {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) return;
+
+    final schedule = ClassSchedule(
+      id:              widget.editing?.id ?? '',
+      activity:        _activity,
+      name:            name,
+      scheduleType:    _scheduleType,
+      daysOfWeek:      _daysOfWeek.toList()..sort(),
+      dayOfMonth:      _scheduleType == 'monthly'
+                         ? int.tryParse(_domCtrl.text)
+                         : null,
+      timeOfDay:       _time,
+      durationMinutes: int.tryParse(_durationCtrl.text) ?? 60,
+      capacity:        int.tryParse(_capacityCtrl.text) ?? 18,
+      active:          true,
+    );
+    widget.onSave(schedule);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEditing = widget.editing != null;
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+          20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+      child: SingleChildScrollView(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(isEditing ? 'Editar horario' : 'Nuevo horario',
+              style: AppTextStyles.headingSmall.copyWith(
+                  color: AppColors.textPrimary)),
+          const SizedBox(height: 20),
+
+          // Actividad
+          Text('Actividad', style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary)),
+          const SizedBox(height: 6),
+          Row(children: [
+            _ActivityChip(
+              label: 'Spinning',
+              icon: Icons.directions_bike_rounded,
+              selected: _activity == 'spinning',
+              onTap: () => setState(() => _activity = 'spinning'),
+            ),
+            const SizedBox(width: 8),
+            _ActivityChip(
+              label: 'Running',
+              icon: Icons.directions_run_rounded,
+              selected: _activity == 'running',
+              onTap: () => setState(() => _activity = 'running'),
+            ),
+          ]),
+          const SizedBox(height: 16),
+
+          // Nombre
+          TextField(
+            controller: _nameCtrl,
+            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
+            decoration: _inputDecoration('Nombre de la clase'),
+          ),
+          const SizedBox(height: 12),
+
+          // Tipo de horario
+          Text('Tipo de horario', style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary)),
+          const SizedBox(height: 6),
+          DropdownButtonFormField<String>(
+            value: _scheduleType,
+            dropdownColor: AppColors.surface,
+            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
+            decoration: _inputDecoration('Tipo'),
+            items: const [
+              DropdownMenuItem(value: 'daily',   child: Text('Diario')),
+              DropdownMenuItem(value: 'weekly',  child: Text('Semanal')),
+              DropdownMenuItem(value: 'monthly', child: Text('Mensual')),
+              DropdownMenuItem(value: 'custom',  child: Text('Personalizado')),
+            ],
+            onChanged: (v) => setState(() => _scheduleType = v!),
+          ),
+          const SizedBox(height: 12),
+
+          // Días de semana (weekly / custom)
+          if (_scheduleType == 'weekly' || _scheduleType == 'custom') ...[
+            Text('Días de la semana', style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary)),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              children: List.generate(7, (i) {
+                final dayNum = i + 1; // 1=Mon..7=Sun
+                final selected = _daysOfWeek.contains(dayNum);
+                return FilterChip(
+                  label: Text(_dayNames[i]),
+                  selected: selected,
+                  onSelected: (v) => setState(() {
+                    if (v) _daysOfWeek.add(dayNum);
+                    else   _daysOfWeek.remove(dayNum);
+                  }),
+                  selectedColor: AppColors.primary.withOpacity(0.2),
+                  checkmarkColor: AppColors.primary,
+                  labelStyle: TextStyle(
+                    color: selected ? AppColors.primary : AppColors.textSecondary,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                    fontSize: 12,
+                  ),
+                  backgroundColor: AppColors.background,
+                  side: BorderSide(
+                    color: selected ? AppColors.primary : AppColors.border,
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Día del mes (monthly)
+          if (_scheduleType == 'monthly') ...[
+            TextField(
+              controller: _domCtrl,
+              keyboardType: TextInputType.number,
+              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
+              decoration: _inputDecoration('Día del mes (1–28)'),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Hora
+          GestureDetector(
+            onTap: _pickTime,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(children: [
+                const Icon(Icons.access_time_rounded,
+                    size: 18, color: AppColors.textSecondary),
+                const SizedBox(width: 10),
+                Text(
+                  '${_time.hour.toString().padLeft(2,'0')}:${_time.minute.toString().padLeft(2,'0')}',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textPrimary),
+                ),
+                const Spacer(),
+                Text('Toca para cambiar',
+                    style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textMuted)),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Duración y capacidad
+          Row(children: [
+            Expanded(
+              child: TextField(
+                controller: _durationCtrl,
+                keyboardType: TextInputType.number,
+                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
+                decoration: _inputDecoration('Duración (min)'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: _capacityCtrl,
+                keyboardType: TextInputType.number,
+                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
+                decoration: _inputDecoration('Capacidad'),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 24),
+
+          // Botón guardar
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _submit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              child: Text(isEditing ? 'Guardar cambios' : 'Crear horario',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 15)),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String label) => InputDecoration(
+    labelText: label,
+    labelStyle: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+    filled: true,
+    fillColor: AppColors.background,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: AppColors.border),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: AppColors.border),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+  );
+}
+
+class _ActivityChip extends StatelessWidget {
+  final String     label;
+  final IconData   icon;
+  final bool       selected;
+  final VoidCallback onTap;
+
+  const _ActivityChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary.withOpacity(0.15) : AppColors.background,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.border,
+            width: selected ? 1.5 : 0.5,
+          ),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 16,
+              color: selected ? AppColors.primary : AppColors.textSecondary),
+          const SizedBox(width: 6),
+          Text(label,
+              style: TextStyle(
+                color: selected ? AppColors.primary : AppColors.textSecondary,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                fontSize: 13,
+              )),
+        ]),
+      ),
     );
   }
 }

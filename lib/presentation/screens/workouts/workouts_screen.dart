@@ -698,6 +698,7 @@ class _ExercisePanelState extends State<_ExercisePanel> {
         ),
         itemCount: exercises.length,
         itemBuilder: (_, i) => _ExerciseCard(
+          key:                 ValueKey(exercises[i].id),
           exercise:            exercises[i],
           muscleColor:         muscle.color,
           selected:            selectedExIds.contains(exercises[i].id),
