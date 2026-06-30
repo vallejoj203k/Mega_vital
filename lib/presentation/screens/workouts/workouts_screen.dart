@@ -739,7 +739,7 @@ class _ExerciseCard extends StatelessWidget {
   final VoidCallback           onToggle;
   final ValueNotifier<String?> activeVideoNotifier;
 
-  const _ExerciseCard({required this.exercise, required this.muscleColor,
+  const _ExerciseCard({super.key, required this.exercise, required this.muscleColor,
     required this.selected, required this.onToggle,
     required this.activeVideoNotifier});
 
