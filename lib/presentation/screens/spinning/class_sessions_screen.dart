@@ -62,6 +62,7 @@ class _ClassSessionsScreenState extends State<ClassSessionsScreen> {
       case 'full':           msg = 'La clase ya está llena.'; break;
       case 'already_booked': msg = 'Ya tienes una reserva en esta clase.'; break;
       case 'completed':      msg = 'Esta clase ya finalizó.'; break;
+      case 'no_credits':     msg = 'No tienes clases disponibles. Paga en recepción para recargar.'; break;
       default:               msg = 'Error al reservar. Intenta de nuevo.';
     }
 
@@ -107,6 +108,24 @@ class _ClassSessionsScreenState extends State<ClassSessionsScreen> {
               ),
               Expanded(child: Text(_title,
                   style: AppTextStyles.headingMedium.copyWith(color: tc.textPrimary))),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: widget.accentColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: widget.accentColor.withOpacity(0.35)),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.confirmation_number_rounded,
+                      size: 13, color: widget.accentColor),
+                  const SizedBox(width: 4),
+                  Text('${provider.myCredits}',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: widget.accentColor)),
+                ]),
+              ),
               IconButton(
                 icon: Icon(Icons.refresh_rounded, color: widget.accentColor),
                 onPressed: () => provider.loadSessions(widget.activity),
@@ -114,6 +133,32 @@ class _ClassSessionsScreenState extends State<ClassSessionsScreen> {
               ),
             ]),
           ),
+          if (!provider.loading && provider.myCredits == 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.accentOrange.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: AppColors.accentOrange.withOpacity(0.35)),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.storefront_rounded,
+                      color: AppColors.accentOrange, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'No tienes clases disponibles. Paga en recepción y te recargaremos tus clases para reservar.',
+                      style: AppTextStyles.caption.copyWith(
+                          color: AppColors.accentOrange,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ]),
+              ),
+            ),
           const SizedBox(height: 8),
           // Body
           Expanded(

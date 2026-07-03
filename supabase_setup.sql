@@ -1709,3 +1709,87 @@ GRANT EXECUTE ON FUNCTION public.cancel_class_booking(UUID)            TO authen
 
 -- Multi-muscle routines support
 ALTER TABLE public.user_routines ADD COLUMN IF NOT EXISTS muscle_ids JSONB DEFAULT '[]'::jsonb;
+
+-- ─── CLASS CREDITS (pago en recepción) ───────────────────────────────────────
+-- El usuario paga en recepción y el admin le carga créditos.
+-- Cada reserva de spinning/running consume 1 crédito; cancelar lo devuelve.
+
+ALTER TABLE public.user_profiles
+  ADD COLUMN IF NOT EXISTS class_credits INTEGER NOT NULL DEFAULT 0;
+
+-- Admin ajusta créditos de un usuario (delta positivo o negativo).
+-- Llamar con p_delta = 0 para consultar el saldo actual.
+CREATE OR REPLACE FUNCTION public.admin_adjust_class_credits(
+  p_uid   TEXT,
+  p_delta INTEGER
+) RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_new INTEGER;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.user_profiles
+                 WHERE uid = auth.uid()::text AND is_admin = true) THEN
+    RAISE EXCEPTION 'not_admin';
+  END IF;
+  UPDATE public.user_profiles
+  SET class_credits = GREATEST(COALESCE(class_credits, 0) + p_delta, 0)
+  WHERE uid = p_uid
+  RETURNING class_credits INTO v_new;
+  RETURN v_new;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.admin_adjust_class_credits(TEXT, INTEGER) TO authenticated;
+
+-- Reservar ahora exige créditos: retorna 'no_credits' si el saldo es 0.
+CREATE OR REPLACE FUNCTION public.book_class_session(
+  p_session_id UUID,
+  p_user_name  TEXT
+) RETURNS TEXT LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_sess    RECORD;
+  v_uid     TEXT := auth.uid()::text;
+  v_credits INTEGER;
+BEGIN
+  SELECT * INTO v_sess FROM public.class_sessions
+  WHERE id = p_session_id FOR UPDATE;
+  IF NOT FOUND                          THEN RETURN 'not_found';     END IF;
+  IF v_sess.status = 'completed'        THEN RETURN 'completed';     END IF;
+  IF v_sess.status = 'cancelled'        THEN RETURN 'cancelled';     END IF;
+  IF v_sess.booked_count >= v_sess.capacity THEN RETURN 'full';      END IF;
+  IF EXISTS (SELECT 1 FROM public.class_bookings
+             WHERE session_id = p_session_id AND user_id = v_uid)
+    THEN RETURN 'already_booked'; END IF;
+  SELECT class_credits INTO v_credits FROM public.user_profiles WHERE uid = v_uid;
+  IF COALESCE(v_credits, 0) <= 0 THEN RETURN 'no_credits'; END IF;
+  INSERT INTO public.class_bookings (session_id, user_id, user_name)
+  VALUES (p_session_id, v_uid, p_user_name);
+  UPDATE public.class_sessions
+  SET booked_count = booked_count + 1,
+      status = CASE WHEN booked_count + 1 >= capacity THEN 'full' ELSE 'open' END
+  WHERE id = p_session_id;
+  UPDATE public.user_profiles
+  SET class_credits = class_credits - 1
+  WHERE uid = v_uid;
+  RETURN 'ok';
+END;
+$$;
+
+-- Cancelar devuelve el crédito.
+CREATE OR REPLACE FUNCTION public.cancel_class_booking(
+  p_session_id UUID
+) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_uid TEXT := auth.uid()::text;
+BEGIN
+  DELETE FROM public.class_bookings
+  WHERE session_id = p_session_id AND user_id = v_uid;
+  IF NOT FOUND THEN RETURN FALSE; END IF;
+  UPDATE public.class_sessions
+  SET booked_count = GREATEST(booked_count - 1, 0), status = 'open'
+  WHERE id = p_session_id;
+  UPDATE public.user_profiles
+  SET class_credits = class_credits + 1
+  WHERE uid = v_uid;
+  RETURN TRUE;
+END;
+$$;
