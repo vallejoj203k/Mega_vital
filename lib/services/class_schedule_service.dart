@@ -255,4 +255,28 @@ class ClassScheduleService {
       return result as bool? ?? false;
     } catch (_) { return false; }
   }
+
+  // ── Créditos de clases (pago en recepción) ────────────────────
+
+  Future<int> fetchMyCredits() async {
+    try {
+      final row = await _db
+          .from('user_profiles')
+          .select('class_credits')
+          .eq('uid', _uid)
+          .maybeSingle();
+      return (row?['class_credits'] as int?) ?? 0;
+    } catch (_) { return 0; }
+  }
+
+  // delta puede ser positivo (cargar) o negativo (quitar). delta=0 solo consulta.
+  Future<int?> adminAdjustCredits(String uid, int delta) async {
+    try {
+      final result = await _db.rpc('admin_adjust_class_credits', params: {
+        'p_uid':   uid,
+        'p_delta': delta,
+      });
+      return result as int?;
+    } catch (_) { return null; }
+  }
 }

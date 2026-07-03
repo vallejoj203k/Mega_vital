@@ -8,11 +8,13 @@ class ClassProvider extends ChangeNotifier {
   List<ClassSession>  _spinningSessions = [];
   List<ClassSession>  _runningSessions  = [];
   bool _loading = false;
+  int  _myCredits = 0;
 
   List<ClassSchedule> get schedules        => _schedules;
   List<ClassSession>  get spinningSessions => _spinningSessions;
   List<ClassSession>  get runningSessions  => _runningSessions;
   bool                get loading          => _loading;
+  int                 get myCredits        => _myCredits;
 
   Future<void> init() async {
     await _service.completeExpiredSessions();
@@ -44,6 +46,7 @@ class ClassProvider extends ChangeNotifier {
     } else {
       _runningSessions = sessions;
     }
+    _myCredits = await _service.fetchMyCredits();
     _loading = false;
     notifyListeners();
   }
@@ -67,8 +70,13 @@ class ClassProvider extends ChangeNotifier {
     final ru = await _service.fetchSessions(activity: 'running');
     _spinningSessions = sp;
     _runningSessions  = ru;
+    _myCredits = await _service.fetchMyCredits();
     notifyListeners();
   }
+
+  // Admin: ajustar créditos de un usuario (retorna nuevo saldo o null si falla)
+  Future<int?> adminAdjustCredits(String uid, int delta) =>
+      _service.adminAdjustCredits(uid, delta);
 
   // Admin
   Future<bool> createSchedule(ClassSchedule s) async {

@@ -979,6 +979,21 @@ class _UserTile extends StatelessWidget {
                     ),
                   ]),
                 ),
+              const SizedBox(width: 6),
+              GestureDetector(
+                onTap: () => _showCreditsDialog(context),
+                child: Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentBlue.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: AppColors.accentBlue.withOpacity(0.4)),
+                  ),
+                  child: const Icon(Icons.confirmation_number_rounded,
+                      color: AppColors.accentBlue, size: 16),
+                ),
+              ),
             ]),
 
             const SizedBox(height: 12),
@@ -1046,6 +1061,134 @@ class _UserTile extends StatelessWidget {
           fontSize: 16,
           fontWeight: FontWeight.w800,
           color: AppColors.primary));
+
+  // ── Diálogo de créditos de clases (pago en recepción) ────────────
+  void _showCreditsDialog(BuildContext context) {
+    final tc = AppThemeColors.of(context);
+    final service = ClassScheduleService();
+    final qtyCtrl = TextEditingController(text: '1');
+    int? balance;
+    bool busy = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDlg) {
+          // Consultar saldo actual al abrir (delta 0)
+          if (balance == null && !busy) {
+            busy = true;
+            service.adminAdjustCredits(user.uid, 0).then((v) {
+              if (dialogCtx.mounted) setDlg(() { balance = v ?? 0; busy = false; });
+            });
+          }
+
+          Future<void> apply(int sign) async {
+            final qty = int.tryParse(qtyCtrl.text.trim()) ?? 0;
+            if (qty <= 0 || busy) return;
+            setDlg(() => busy = true);
+            final v = await service.adminAdjustCredits(user.uid, sign * qty);
+            if (!dialogCtx.mounted) return;
+            setDlg(() { if (v != null) balance = v; busy = false; });
+          }
+
+          return AlertDialog(
+            backgroundColor: tc.surface,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
+            title: Row(children: [
+              const Icon(Icons.confirmation_number_rounded,
+                  color: AppColors.accentBlue, size: 20),
+              const SizedBox(width: 8),
+              Expanded(child: Text('Clases de ${user.name}',
+                  style: AppTextStyles.headingSmallOf(ctx),
+                  maxLines: 1, overflow: TextOverflow.ellipsis)),
+            ]),
+            content: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.accentBlue.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: AppColors.accentBlue.withOpacity(0.25)),
+                ),
+                child: Column(children: [
+                  Text(balance == null ? '…' : '$balance',
+                      style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.accentBlue)),
+                  Text('clases disponibles',
+                      style: TextStyle(fontSize: 11, color: tc.textSecondary)),
+                ]),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: qtyCtrl,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bodyLargeOf(ctx),
+                decoration: InputDecoration(
+                  labelText: 'Cantidad',
+                  labelStyle: TextStyle(color: tc.textMuted, fontSize: 12),
+                  filled: true,
+                  fillColor: tc.background,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: busy ? null : () => apply(1),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    icon: const Icon(Icons.add_rounded, size: 16),
+                    label: const Text('Cargar',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w700)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: busy ? null : () => apply(-1),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.error,
+                      side: BorderSide(
+                          color: AppColors.error.withOpacity(0.5)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    icon: const Icon(Icons.remove_rounded, size: 16),
+                    label: const Text('Quitar',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ]),
+            ]),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx),
+                child: Text('Cerrar',
+                    style: TextStyle(color: tc.textSecondary)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 }
 
 class _Stat extends StatelessWidget {
