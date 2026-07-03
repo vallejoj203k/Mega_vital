@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/constants/app_theme_colors.dart';
-import 'spinning_screen.dart';
-import 'running_screen.dart';
+import 'class_sessions_screen.dart';
 
 const _kOrange = Color(0xFFD94E1F);
 const _kBlue   = Color(0xFF0277BD);
@@ -39,7 +38,10 @@ class ActividadesScreen extends StatelessWidget {
                     duration: '60 min',
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const SpinningScreen()),
+                      MaterialPageRoute(builder: (_) => const ClassSessionsScreen(
+                        activity: 'spinning',
+                        accentColor: _kOrange,
+                      )),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -60,7 +62,10 @@ class ActividadesScreen extends StatelessWidget {
                     duration: '45–60 min',
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const RunningScreen()),
+                      MaterialPageRoute(builder: (_) => const ClassSessionsScreen(
+                        activity: 'running',
+                        accentColor: _kBlue,
+                      )),
                     ),
                   ),
                 ]),
