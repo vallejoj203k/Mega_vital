@@ -105,6 +105,8 @@ class ClassSession {
   final String status;
   final bool isBookedByMe;
   final List<String> bookedNames; // nombres de quienes reservaron (vista admin)
+  final List<int> takenSeats;     // puestos ya ocupados
+  final int? mySeat;              // mi puesto reservado
 
   const ClassSession({
     required this.id,
@@ -118,6 +120,8 @@ class ClassSession {
     required this.status,
     required this.isBookedByMe,
     this.bookedNames = const [],
+    this.takenSeats = const [],
+    this.mySeat,
   });
 
   int get availableSpots => capacity - bookedCount;
@@ -127,6 +131,13 @@ class ClassSession {
 
   factory ClassSession.fromMap(Map<String, dynamic> m, String myUserId) {
     final bookings = (m['class_bookings'] as List<dynamic>?) ?? [];
+    int? mySeat;
+    for (final b in bookings) {
+      if ((b as Map)['user_id'] == myUserId) {
+        mySeat = b['seat_index'] as int?;
+        break;
+      }
+    }
     return ClassSession(
       id:           m['id'] as String,
       scheduleId:   m['schedule_id'] as String,
@@ -142,6 +153,11 @@ class ClassSession {
           .map((b) => (b as Map)['user_name'] as String?)
           .whereType<String>()
           .toList(),
+      takenSeats:   bookings
+          .map((b) => (b as Map)['seat_index'] as int?)
+          .whereType<int>()
+          .toList(),
+      mySeat:       mySeat,
     );
   }
 }
@@ -226,7 +242,7 @@ class ClassScheduleService {
           .select('''
             *,
             class_schedules!inner(name, activity),
-            class_bookings(user_id)
+            class_bookings(user_id, seat_index)
           ''')
           .eq('class_schedules.activity', activity)
           .neq('status', 'completed')
@@ -243,11 +259,13 @@ class ClassScheduleService {
 
   // ── Bookings ──────────────────────────────────────────────────
 
-  Future<String> bookSession(String sessionId, String userName) async {
+  Future<String> bookSession(String sessionId, String userName,
+      {int? seatIndex}) async {
     try {
       final result = await _db.rpc('book_class_session', params: {
         'p_session_id': sessionId,
         'p_user_name':  userName,
+        if (seatIndex != null) 'p_seat_index': seatIndex,
       });
       return result as String? ?? 'error';
     } catch (_) { return 'error'; }
@@ -313,7 +331,7 @@ class ClassScheduleService {
           .select('''
             *,
             class_schedules!inner(name, activity),
-            class_bookings(user_id, user_name)
+            class_bookings(user_id, user_name, seat_index)
           ''')
           .gte('session_date', fmt(weekStart))
           .lte('session_date', fmt(weekEnd))

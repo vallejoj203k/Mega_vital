@@ -51,8 +51,10 @@ class ClassProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<String> bookSession(String sessionId, String userName) async {
-    final result = await _service.bookSession(sessionId, userName);
+  Future<String> bookSession(String sessionId, String userName,
+      {int? seatIndex}) async {
+    final result =
+        await _service.bookSession(sessionId, userName, seatIndex: seatIndex);
     if (result == 'ok') {
       await _refreshBoth();
     }
