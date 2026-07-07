@@ -2405,7 +2405,8 @@ class _ClassCalendarViewState extends State<_ClassCalendarView> {
       ]),
       // Filas por hora
       for (final hour in hours)
-        Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        IntrinsicHeight(
+            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Container(
             width: hourW,
             constraints: const BoxConstraints(minHeight: 54),
@@ -2422,7 +2423,7 @@ class _ClassCalendarViewState extends State<_ClassCalendarView> {
           ),
           for (int d = 0; d < 7; d++)
             _buildCell(_weekStart.add(Duration(days: d)), hour, cellW),
-        ]),
+        ])),
     ]);
   }
 
