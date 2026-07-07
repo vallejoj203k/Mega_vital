@@ -33,14 +33,15 @@ class ClassProvider extends ChangeNotifier {
     // Always reload schedules first to ensure they're fresh
     _schedules = await _service.fetchSchedules();
 
-    // Ensure sessions exist for upcoming dates
+    // Genera las sesiones del próximo mes (se renueva conforme avanza el tiempo)
     final relevant = _schedules.where((s) => s.activity == activity && s.active);
     for (final sched in relevant) {
-      final dates = sched.upcomingDates(lookAheadDays: 14);
+      final dates = sched.upcomingDates(lookAheadDays: 31);
       if (dates.isNotEmpty) await _service.ensureSessions(sched.id, dates);
     }
 
-    final sessions = await _service.fetchSessions(activity: activity);
+    final sessions =
+        await _service.fetchSessions(activity: activity, lookAheadDays: 31);
     if (activity == 'spinning') {
       _spinningSessions = sessions;
     } else {

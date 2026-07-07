@@ -238,7 +238,7 @@ class ClassScheduleService {
 
   Future<List<ClassSession>> fetchSessions({
     required String activity,
-    int lookAheadDays = 14,
+    int lookAheadDays = 31,
   }) async {
     try {
       final now   = DateTime.now();
@@ -260,7 +260,7 @@ class ClassScheduleService {
           .neq('status', 'cancelled')
           .gte('session_date', fromStr)
           .lte('session_date', untilStr)
-          .order('starts_at');
+          .order('starts_at', ascending: true); // más cercano primero
 
       return (data as List)
           .map((m) => ClassSession.fromMap(m, _uid))
