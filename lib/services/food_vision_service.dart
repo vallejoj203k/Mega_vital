@@ -12,6 +12,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../core/config/app_config.dart';
 import 'api_key_manager.dart';
+import 'remote_config_service.dart';
 
 // ── Alimento detectado en la foto ─────────────────────────────────
 class VisionFoodItem {
@@ -213,11 +214,12 @@ REGLAS CRÍTICAS:
       return result;
     }
 
-    // ── 4. Fallback: clave Groq compartida (hardcoded) ─────────
-    final groqFallback = AppConfig.groqApiKey;
-    if (groqFallback.isNotEmpty &&
-        groqFallback != 'PON_AQUI_TU_CLAVE_GROQ' &&
-        !triedKeys.contains(groqFallback)) {
+    // ── 4. Fallback: clave Groq compartida (Supabase o AppConfig) ──
+    await RemoteConfigService.instance.load();
+    final groqFallback = RemoteConfigService.instance.groqApiKey.isNotEmpty
+        ? RemoteConfigService.instance.groqApiKey
+        : AppConfig.groqApiKey;
+    if (groqFallback.isNotEmpty && !triedKeys.contains(groqFallback)) {
       print('[FoodVision] Intentando Groq (compartida)...');
       triedKeys.add(groqFallback);
       final result = await _requestGroq(imageFile, groqFallback);

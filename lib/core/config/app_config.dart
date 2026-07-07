@@ -41,11 +41,11 @@ class AppConfig {
   // Obtén la tuya gratis en: aistudio.google.com/apikey
   static const String geminiApiKey = 'AIzaSyB3roNzpuoQAhTU4BvWa74rMaxElMB1GLw';
 
-  // ── CLAVE DE GROQ COMPARTIDA (todos los usuarios) ─────────────
-  // Obtén una gratis en: console.groq.com → API Keys → Create API Key
-  // Con esto, todos los usuarios pueden analizar comida sin agregar
-  // su propia clave. Se usa como respaldo si no hay claves de Gemini.
-  static const String groqApiKey = 'PON_AQUI_TU_CLAVE_GROQ';
+  // ── CLAVE DE GROQ COMPARTIDA ─────────────────────────────────
+  // NO se pone aquí (el repo es público y GitHub bloquea secretos).
+  // Se guarda en Supabase (tabla app_settings, key = 'groq_api_key')
+  // y la app la lee al iniciar mediante RemoteConfigService.
+  static const String groqApiKey = '';
 
   // ── Estado ────────────────────────────────────────────────────
   // Habilitado si hay clave hardcoded O si el usuario agregó claves propias
