@@ -41,6 +41,12 @@ class AppConfig {
   // Obtén la tuya gratis en: aistudio.google.com/apikey
   static const String geminiApiKey = 'AIzaSyB3roNzpuoQAhTU4BvWa74rMaxElMB1GLw';
 
+  // ── CLAVE DE GROQ COMPARTIDA ─────────────────────────────────
+  // NO se pone aquí (el repo es público y GitHub bloquea secretos).
+  // Se guarda en Supabase (tabla app_settings, key = 'groq_api_key')
+  // y la app la lee al iniciar mediante RemoteConfigService.
+  static const String groqApiKey = '';
+
   // ── Estado ────────────────────────────────────────────────────
   // Habilitado si hay clave hardcoded O si el usuario agregó claves propias
   static bool get visionEnabled {
