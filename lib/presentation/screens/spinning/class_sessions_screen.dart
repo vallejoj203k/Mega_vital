@@ -46,8 +46,7 @@ class _ClassSessionsScreenState extends State<ClassSessionsScreen> {
     return '${_dayNames[d.weekday]} ${d.day} ${_monthNames[d.month]}';
   }
 
-  String _formatTime(DateTime d) =>
-      '${d.hour.toString().padLeft(2,'0')}:${d.minute.toString().padLeft(2,'0')}';
+  String _formatTime(DateTime d) => formatTime12h(d.hour, d.minute);
 
   Future<void> _onBook(ClassSession session) async {
     final provider = context.read<ClassProvider>();
@@ -185,21 +184,67 @@ class _ClassSessionsScreenState extends State<ClassSessionsScreen> {
                     : RefreshIndicator(
                         color: widget.accentColor,
                         onRefresh: () => provider.loadSessions(widget.activity),
-                        child: ListView.builder(
+                        child: ListView(
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
-                          itemCount: sessions.length,
-                          itemBuilder: (_, i) => _SessionCard(
-                            session:     sessions[i],
-                            accentColor: widget.accentColor,
-                            dateLabel:   _formatDate(sessions[i].sessionDate),
-                            timeLabel:   _formatTime(sessions[i].startsAt),
-                            onBook:      () => _onBook(sessions[i]),
-                          ),
+                          children: _buildGroupedByDay(sessions),
                         ),
                       ),
           ),
         ]),
       ),
+    );
+  }
+
+  // Agrupa las sesiones por día con un encabezado por cada fecha.
+  List<Widget> _buildGroupedByDay(List<ClassSession> sessions) {
+    final widgets = <Widget>[];
+    String? currentDayKey;
+    for (final s in sessions) {
+      final dayKey =
+          '${s.sessionDate.year}-${s.sessionDate.month}-${s.sessionDate.day}';
+      if (dayKey != currentDayKey) {
+        currentDayKey = dayKey;
+        widgets.add(_DayHeader(
+          label: _formatDate(s.sessionDate),
+          accentColor: widget.accentColor,
+        ));
+      }
+      widgets.add(_SessionCard(
+        session:     s,
+        accentColor: widget.accentColor,
+        timeLabel:   _formatTime(s.startsAt),
+        onBook:      () => _onBook(s),
+      ));
+    }
+    return widgets;
+  }
+}
+
+// ── Encabezado de día ─────────────────────────────────────────────
+class _DayHeader extends StatelessWidget {
+  final String label;
+  final Color accentColor;
+  const _DayHeader({required this.label, required this.accentColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 14, 2, 8),
+      child: Row(children: [
+        Container(
+          width: 4, height: 16,
+          decoration: BoxDecoration(
+            color: accentColor,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(label.toUpperCase(),
+            style: AppTextStyles.labelLarge.copyWith(
+                color: accentColor,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5)),
+      ]),
     );
   }
 }
@@ -231,14 +276,12 @@ class _EmptyState extends StatelessWidget {
 class _SessionCard extends StatelessWidget {
   final ClassSession session;
   final Color        accentColor;
-  final String       dateLabel;
   final String       timeLabel;
   final VoidCallback onBook;
 
   const _SessionCard({
     required this.session,
     required this.accentColor,
-    required this.dateLabel,
     required this.timeLabel,
     required this.onBook,
   });
@@ -268,30 +311,28 @@ class _SessionCard extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Row(children: [
-          // Date block
+          // Time block
           Container(
-            width: 52, height: 52,
+            width: 62, height: 58,
             decoration: BoxDecoration(
               color: accentColor.withOpacity(0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text(dateLabel.length <= 3 ? dateLabel
-                  : dateLabel.split(' ')[0],
+              Text(timeLabel.split(' ')[0], // hora (7:00)
                   style: TextStyle(
                     color: accentColor,
                     fontWeight: FontWeight.w800,
-                    fontSize: 12,
+                    fontSize: 16,
                   )),
-              if (dateLabel.contains(' '))
-                Text(dateLabel.split(' ').skip(1).join(' '),
-                    style: TextStyle(
-                      color: accentColor.withOpacity(0.7),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                    )),
+              Text(timeLabel.split(' ').length > 1 ? timeLabel.split(' ')[1] : '', // AM/PM
+                  style: TextStyle(
+                    color: accentColor.withOpacity(0.7),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  )),
             ]),
           ),
           const SizedBox(width: 14),
@@ -299,17 +340,12 @@ class _SessionCard extends StatelessWidget {
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(session.scheduleName,
                 style: AppTextStyles.labelLarge.copyWith(color: tc.textPrimary)),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Row(children: [
-              Icon(Icons.access_time_rounded, size: 13, color: tc.textSecondary),
-              const SizedBox(width: 4),
-              Text(timeLabel,
-                  style: AppTextStyles.caption.copyWith(color: tc.textSecondary)),
-              const SizedBox(width: 12),
               Icon(Icons.people_rounded, size: 13, color: spotColor),
               const SizedBox(width: 4),
               Text(
-                isFull ? 'Lleno' : '$spotsLeft cupos',
+                isFull ? 'Lleno' : '$spotsLeft cupos disponibles',
                 style: AppTextStyles.caption.copyWith(
                     color: spotColor, fontWeight: FontWeight.w700),
               ),
