@@ -102,17 +102,6 @@ class _ClassSessionsScreenState extends State<ClassSessionsScreen> {
     }
   }
 
-  Future<void> _onCancel(ClassSession session) async {
-    final ok = await context.read<ClassProvider>().cancelBooking(session.id);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(ok ? 'Reserva cancelada.' : 'Error al cancelar.'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final tc = AppThemeColors.of(context);
@@ -205,7 +194,6 @@ class _ClassSessionsScreenState extends State<ClassSessionsScreen> {
                             dateLabel:   _formatDate(sessions[i].sessionDate),
                             timeLabel:   _formatTime(sessions[i].startsAt),
                             onBook:      () => _onBook(sessions[i]),
-                            onCancel:    () => _onCancel(sessions[i]),
                           ),
                         ),
                       ),
@@ -246,7 +234,6 @@ class _SessionCard extends StatelessWidget {
   final String       dateLabel;
   final String       timeLabel;
   final VoidCallback onBook;
-  final VoidCallback onCancel;
 
   const _SessionCard({
     required this.session,
@@ -254,7 +241,6 @@ class _SessionCard extends StatelessWidget {
     required this.dateLabel,
     required this.timeLabel,
     required this.onBook,
-    required this.onCancel,
   });
 
   @override
@@ -347,14 +333,21 @@ class _SessionCard extends StatelessWidget {
           const SizedBox(width: 10),
           // Action button
           if (session.isBookedByMe)
-            TextButton(
-              onPressed: onCancel,
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.error,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: accentColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: const Text('Cancelar',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.check_circle_rounded, size: 14, color: accentColor),
+                const SizedBox(width: 4),
+                Text('Reservado',
+                    style: TextStyle(
+                        color: accentColor,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13)),
+              ]),
             )
           else if (!isFull)
             ElevatedButton(

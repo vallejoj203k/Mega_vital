@@ -52,10 +52,37 @@ class _SpotPickerScreenState extends State<SpotPickerScreen> {
                   style: AppTextStyles.headingSmall.copyWith(color: tc.textPrimary)),
             ),
           ]),
-          content: Text(
-            'Vas a reservar la $_spotLabel #$spot para "${widget.session.scheduleName}".\n\n'
-            'Una vez confirmada la reserva NO podrás cambiar de lugar.',
-            style: AppTextStyles.bodyMedium.copyWith(color: tc.textSecondary),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Vas a reservar la $_spotLabel #$spot para "${widget.session.scheduleName}".\n\n'
+                'Una vez confirmada la reserva NO podrás cambiar de lugar.',
+                style: AppTextStyles.bodyMedium.copyWith(color: tc.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.error.withOpacity(0.35)),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.warning_amber_rounded,
+                      color: AppColors.error, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Esta reserva no admite reembolsos ni cancelaciones. Se descontará 1 clase.',
+                      style: AppTextStyles.caption.copyWith(
+                          color: AppColors.error, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ]),
+              ),
+            ],
           ),
           actions: [
             TextButton(
