@@ -2197,8 +2197,7 @@ class _ClassCalendarViewState extends State<_ClassCalendarView> {
 
   void _showSessionDetail(ClassSession s) {
     final color = s.activity == 'spinning' ? _spinColor : AppColors.accentBlue;
-    final time =
-        '${s.startsAt.hour.toString().padLeft(2, '0')}:${s.startsAt.minute.toString().padLeft(2, '0')}';
+    final time = formatTime12h(s.startsAt.hour, s.startsAt.minute);
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -2536,11 +2535,8 @@ class _ScheduleTile extends StatelessWidget {
     required this.onDelete,
   });
 
-  String _timeLabel() {
-    final h = schedule.timeOfDay.hour.toString().padLeft(2, '0');
-    final m = schedule.timeOfDay.minute.toString().padLeft(2, '0');
-    return '$h:$m';
-  }
+  String _timeLabel() =>
+      formatTime12h(schedule.timeOfDay.hour, schedule.timeOfDay.minute);
 
   @override
   Widget build(BuildContext context) {
@@ -2633,7 +2629,15 @@ class _ScheduleFormSheetState extends State<_ScheduleFormSheet> {
   }
 
   Future<void> _pickTime() async {
-    final t = await showTimePicker(context: context, initialTime: _time);
+    final t = await showTimePicker(
+      context: context,
+      initialTime: _time,
+      builder: (ctx, child) => MediaQuery(
+        // Forzar formato de 12 horas (AM/PM) en el selector
+        data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: false),
+        child: child!,
+      ),
+    );
     if (t != null) setState(() => _time = t);
   }
 
@@ -2794,7 +2798,7 @@ class _ScheduleFormSheetState extends State<_ScheduleFormSheet> {
                     size: 18, color: AppColors.textSecondary),
                 const SizedBox(width: 10),
                 Text(
-                  '${_time.hour.toString().padLeft(2,'0')}:${_time.minute.toString().padLeft(2,'0')}',
+                  formatTime12h(_time.hour, _time.minute),
                   style: AppTextStyles.bodyMedium.copyWith(
                       color: AppColors.textPrimary),
                 ),

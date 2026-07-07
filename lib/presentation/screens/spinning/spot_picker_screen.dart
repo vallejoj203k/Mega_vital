@@ -123,8 +123,7 @@ class _SpotPickerScreenState extends State<SpotPickerScreen> {
   Widget build(BuildContext context) {
     final tc = AppThemeColors.of(context);
     final s = widget.session;
-    final time =
-        '${s.startsAt.hour.toString().padLeft(2, '0')}:${s.startsAt.minute.toString().padLeft(2, '0')}';
+    final time = formatTime12h(s.startsAt.hour, s.startsAt.minute);
 
     return Scaffold(
       backgroundColor: tc.background,

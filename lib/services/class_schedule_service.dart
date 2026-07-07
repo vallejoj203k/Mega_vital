@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+// Formatea una hora en formato de 12 horas con AM/PM (ej: "7:00 AM", "2:30 PM").
+String formatTime12h(int hour, int minute) {
+  final period = hour < 12 ? 'AM' : 'PM';
+  final h12 = hour % 12 == 0 ? 12 : hour % 12;
+  return '$h12:${minute.toString().padLeft(2, '0')} $period';
+}
+
 // ── Models ────────────────────────────────────────────────────────
 
 class ClassSchedule {
