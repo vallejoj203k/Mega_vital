@@ -2644,16 +2644,22 @@ class _ScheduleFormSheetState extends State<_ScheduleFormSheet> {
   void _submit() {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) return;
+    if (_daysOfWeek.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Selecciona al menos un día de la semana.'),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
 
     final schedule = ClassSchedule(
       id:              widget.editing?.id ?? '',
       activity:        _activity,
       name:            name,
-      scheduleType:    _scheduleType,
+      scheduleType:    'weekly', // siempre semanal en los días elegidos
       daysOfWeek:      _daysOfWeek.toList()..sort(),
-      dayOfMonth:      _scheduleType == 'monthly'
-                         ? int.tryParse(_domCtrl.text)
-                         : null,
+      dayOfMonth:      null,
       timeOfDay:       _time,
       durationMinutes: int.tryParse(_durationCtrl.text) ?? 60,
       capacity:        int.tryParse(_capacityCtrl.text) ?? 18,
@@ -2719,69 +2725,41 @@ class _ScheduleFormSheetState extends State<_ScheduleFormSheet> {
           ),
           const SizedBox(height: 12),
 
-          // Tipo de horario
-          Text('Tipo de horario', style: AppTextStyles.caption.copyWith(
+          // Días de la semana — la clase se repite cada semana en estos días
+          Text('Días de la semana', style: AppTextStyles.caption.copyWith(
               color: AppColors.textSecondary)),
-          const SizedBox(height: 6),
-          DropdownButtonFormField<String>(
-            value: _scheduleType,
-            dropdownColor: AppColors.surface,
-            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
-            decoration: _inputDecoration('Tipo'),
-            items: const [
-              DropdownMenuItem(value: 'daily',   child: Text('Diario')),
-              DropdownMenuItem(value: 'weekly',  child: Text('Semanal')),
-              DropdownMenuItem(value: 'monthly', child: Text('Mensual')),
-              DropdownMenuItem(value: 'custom',  child: Text('Personalizado')),
-            ],
-            onChanged: (v) => setState(() => _scheduleType = v!),
+          const SizedBox(height: 2),
+          Text('La clase se repetirá cada semana en los días que elijas.',
+              style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textMuted, fontSize: 11)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: List.generate(7, (i) {
+              final dayNum = i + 1; // 1=Mon..7=Sun
+              final selected = _daysOfWeek.contains(dayNum);
+              return FilterChip(
+                label: Text(_dayNames[i]),
+                selected: selected,
+                onSelected: (v) => setState(() {
+                  if (v) _daysOfWeek.add(dayNum);
+                  else   _daysOfWeek.remove(dayNum);
+                }),
+                selectedColor: AppColors.primary.withOpacity(0.2),
+                checkmarkColor: AppColors.primary,
+                labelStyle: TextStyle(
+                  color: selected ? AppColors.primary : AppColors.textSecondary,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                  fontSize: 12,
+                ),
+                backgroundColor: AppColors.background,
+                side: BorderSide(
+                  color: selected ? AppColors.primary : AppColors.border,
+                ),
+              );
+            }),
           ),
           const SizedBox(height: 12),
-
-          // Días de semana (weekly / custom)
-          if (_scheduleType == 'weekly' || _scheduleType == 'custom') ...[
-            Text('Días de la semana', style: AppTextStyles.caption.copyWith(
-                color: AppColors.textSecondary)),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              children: List.generate(7, (i) {
-                final dayNum = i + 1; // 1=Mon..7=Sun
-                final selected = _daysOfWeek.contains(dayNum);
-                return FilterChip(
-                  label: Text(_dayNames[i]),
-                  selected: selected,
-                  onSelected: (v) => setState(() {
-                    if (v) _daysOfWeek.add(dayNum);
-                    else   _daysOfWeek.remove(dayNum);
-                  }),
-                  selectedColor: AppColors.primary.withOpacity(0.2),
-                  checkmarkColor: AppColors.primary,
-                  labelStyle: TextStyle(
-                    color: selected ? AppColors.primary : AppColors.textSecondary,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-                    fontSize: 12,
-                  ),
-                  backgroundColor: AppColors.background,
-                  side: BorderSide(
-                    color: selected ? AppColors.primary : AppColors.border,
-                  ),
-                );
-              }),
-            ),
-            const SizedBox(height: 12),
-          ],
-
-          // Día del mes (monthly)
-          if (_scheduleType == 'monthly') ...[
-            TextField(
-              controller: _domCtrl,
-              keyboardType: TextInputType.number,
-              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
-              decoration: _inputDecoration('Día del mes (1–28)'),
-            ),
-            const SizedBox(height: 12),
-          ],
 
           // Hora
           GestureDetector(
