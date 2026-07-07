@@ -19,6 +19,10 @@ class AppColors {
   static const Color primary        = Color(0xFF00FF87); // Verde neón
   static const Color primaryDim     = Color(0xFF00CC6A); // Verde menos intenso
   static const Color primaryGlow    = Color(0x3300FF87); // Glow translúcido
+  static const Color primaryOnLight = Color(0xFF00915A); // Verde legible sobre fondo claro
+
+  // Verde legible según el tema (neón en oscuro, verde oscuro en claro)
+  static Color primaryText(bool isDark) => isDark ? primary : primaryOnLight;
 
   // ── Acentos secundarios ───────────────
   static const Color accentBlue     = Color(0xFF4FC3F7); // Azul agua

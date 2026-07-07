@@ -894,7 +894,10 @@ class _MacrosRing extends StatelessWidget {
           Text('Macros del día', style: AppTextStyles.headingSmallOf(context)),
           const Spacer(),
           Text('Meta: ${calc.metaCalorias} kcal',
-              style: AppTextStyles.neonLabel.copyWith(fontSize: 12)),
+              style: AppTextStyles.neonLabel.copyWith(
+                  fontSize: 12,
+                  color: AppColors.primaryText(
+                      Theme.of(context).brightness == Brightness.dark))),
         ]),
         const SizedBox(height: 16),
         Row(children: [
@@ -1901,8 +1904,12 @@ class _StatCard extends StatelessWidget {
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Icon(icon, color: color, size: 20),
           Text('${(progress.clamp(0.0, 1.0) * 100).toInt()}%',
-              style: AppTextStyles.neonLabel
-                  .copyWith(fontSize: 11, color: color)),
+              style: AppTextStyles.neonLabel.copyWith(
+                  fontSize: 11,
+                  color: color == AppColors.primary
+                      ? AppColors.primaryText(
+                          Theme.of(context).brightness == Brightness.dark)
+                      : color)),
         ]),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           RichText(text: TextSpan(children: [
@@ -2028,8 +2035,10 @@ class _ActiveWorkoutBannerState extends State<_ActiveWorkoutBanner> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Rutina en curso',
-                  style: AppTextStyles.caption
-                      .copyWith(color: AppColors.primary, fontWeight: FontWeight.w700)),
+                  style: AppTextStyles.caption.copyWith(
+                      color: AppColors.primaryText(
+                          Theme.of(context).brightness == Brightness.dark),
+                      fontWeight: FontWeight.w700)),
               const SizedBox(height: 2),
               Text(session.name,
                   style: AppTextStyles.bodyMediumOf(context)
@@ -2040,12 +2049,16 @@ class _ActiveWorkoutBannerState extends State<_ActiveWorkoutBanner> {
 
           // Cronómetro
           Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.timer_rounded, size: 14, color: AppColors.primary),
+            Icon(Icons.timer_rounded, size: 14,
+                color: AppColors.primaryText(
+                    Theme.of(context).brightness == Brightness.dark)),
             const SizedBox(width: 4),
             Text(_fmt(_seconds),
                 style: TextStyle(
                     fontSize: 15, fontWeight: FontWeight.w800,
-                    color: AppColors.primary, letterSpacing: 0.5)),
+                    color: AppColors.primaryText(
+                        Theme.of(context).brightness == Brightness.dark),
+                    letterSpacing: 0.5)),
           ]),
 
           const SizedBox(width: 12),
