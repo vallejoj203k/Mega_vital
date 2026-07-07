@@ -144,7 +144,10 @@ class ClassSession {
       scheduleName: (m['class_schedules'] as Map?)?['name'] as String? ?? '',
       activity:     (m['class_schedules'] as Map?)?['activity'] as String? ?? '',
       sessionDate:  DateTime.parse(m['session_date'] as String),
-      startsAt:     DateTime.parse(m['starts_at'] as String).toLocal(),
+      // starts_at se guarda como "hora de reloj" del admin en UTC.
+      // Usamos los componentes UTC para mostrar exactamente esa hora,
+      // sin desfase por la zona horaria del dispositivo.
+      startsAt:     DateTime.parse(m['starts_at'] as String).toUtc(),
       capacity:     m['capacity'] as int,
       bookedCount:  m['booked_count'] as int,
       status:       m['status'] as String,
@@ -342,6 +345,17 @@ class ClassScheduleService {
       return (data as List)
           .map((m) => ClassSession.fromMap(m as Map<String, dynamic>, _uid))
           .toList();
+    } catch (_) { return []; }
+  }
+
+  // Nombres (y puesto) de quienes reservaron una sesión — solo admin.
+  // Usa RPC SECURITY DEFINER para no depender de RLS.
+  Future<List<Map<String, dynamic>>> fetchSessionAttendees(
+      String sessionId) async {
+    try {
+      final data = await _db.rpc('admin_session_attendees',
+          params: {'p_session_id': sessionId});
+      return (data as List).cast<Map<String, dynamic>>();
     } catch (_) { return []; }
   }
 
