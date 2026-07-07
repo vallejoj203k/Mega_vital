@@ -213,6 +213,18 @@ REGLAS CRÍTICAS:
       return result;
     }
 
+    // ── 4. Fallback: clave Groq compartida (hardcoded) ─────────
+    final groqFallback = AppConfig.groqApiKey;
+    if (groqFallback.isNotEmpty &&
+        groqFallback != 'PON_AQUI_TU_CLAVE_GROQ' &&
+        !triedKeys.contains(groqFallback)) {
+      print('[FoodVision] Intentando Groq (compartida)...');
+      triedKeys.add(groqFallback);
+      final result = await _requestGroq(imageFile, groqFallback);
+      if (result != null) return result;
+      print('[FoodVision] Groq compartida 429 — sin más claves.');
+    }
+
     // ── Sin claves configuradas ────────────────────────────────
     if (triedKeys.isEmpty) {
       return const VisionAnalysisResult(
