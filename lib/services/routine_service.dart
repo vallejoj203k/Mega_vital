@@ -61,9 +61,11 @@ class RoutineService {
         'muscle_ids':  routine.muscleIds,
         'exercise_ids': routine.exercises.map((e) {
           final w = routine.exerciseWeights[e.id];
-          return w != null && w > 0
-              ? {'id': e.id, 'weight': w}
-              : {'id': e.id};
+          // Guardamos los datos completos para no depender de kAllExercises
+          return {
+            ...e.toMap(),
+            if (w != null && w > 0) 'weight': w,
+          };
         }).toList(),
         'created_at':  routine.createdAt.toIso8601String(),
       }, onConflict: 'id');
@@ -91,12 +93,21 @@ class RoutineService {
   }
 
   SavedRoutine _fromMap(Map<String, dynamic> m) {
-    final ids = List<String>.from(m['exerciseIds'] ?? []);
-    final exercises = ids
-        .map((id) => kAllExercises.cast<ExerciseItem?>()
-            .firstWhere((e) => e?.id == id, orElse: () => null))
-        .whereType<ExerciseItem>()
-        .toList();
+    List<ExerciseItem> exercises;
+    // Formato nuevo: datos completos guardados en la rutina
+    if (m['exercises'] is List && (m['exercises'] as List).isNotEmpty) {
+      exercises = (m['exercises'] as List)
+          .map((e) => ExerciseItem.fromMap(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } else {
+      // Formato antiguo: solo IDs → buscar en kAllExercises
+      final ids = List<String>.from(m['exerciseIds'] ?? []);
+      exercises = ids
+          .map((id) => kAllExercises.cast<ExerciseItem?>()
+              .firstWhere((e) => e?.id == id, orElse: () => null))
+          .whereType<ExerciseItem>()
+          .toList();
+    }
     final weightsRaw = (m['exerciseWeights'] as Map?)?.cast<String, dynamic>() ?? {};
     final weights = weightsRaw.map((k, v) => MapEntry(k, (v as num).toDouble()));
     // Support new muscleIds list or fall back to legacy single muscleId
@@ -115,27 +126,36 @@ class RoutineService {
   }
 
   SavedRoutine _fromSupabaseRow(Map<String, dynamic> r) {
-    // exercise_ids accepts both legacy ["id1"] and new [{"id":"id1","weight":80}] formats
-    final rawList = (r['exercise_ids'] as List?) ?? [];
-    final ids     = <String>[];
-    final weights = <String, double>{};
+    // exercise_ids acepta 3 formatos:
+    //   legacy string:    ["id1"]
+    //   solo id+peso:     [{"id":"id1","weight":80}]
+    //   datos completos:  [{"id","name","muscle_id",...,"weight"}]
+    final rawList  = (r['exercise_ids'] as List?) ?? [];
+    final weights  = <String, double>{};
+    final exercises = <ExerciseItem>[];
     for (final item in rawList) {
       if (item is String) {
-        ids.add(item);
+        // Solo id → buscar en kAllExercises
+        final ex = kAllExercises.cast<ExerciseItem?>()
+            .firstWhere((e) => e?.id == item, orElse: () => null);
+        if (ex != null) exercises.add(ex);
       } else if (item is Map) {
-        final id = item['id'] as String?;
-        if (id != null) {
-          ids.add(id);
-          final w = item['weight'];
-          if (w != null) weights[id] = (w as num).toDouble();
+        final map = Map<String, dynamic>.from(item);
+        final id  = map['id'] as String?;
+        if (id == null) continue;
+        final w = map['weight'];
+        if (w != null) weights[id] = (w as num).toDouble();
+        if (map.containsKey('name')) {
+          // Datos completos guardados en la rutina
+          exercises.add(ExerciseItem.fromMap(map));
+        } else {
+          // Solo id+peso → buscar en kAllExercises
+          final ex = kAllExercises.cast<ExerciseItem?>()
+              .firstWhere((e) => e?.id == id, orElse: () => null);
+          if (ex != null) exercises.add(ex);
         }
       }
     }
-    final exercises = ids
-        .map((id) => kAllExercises.cast<ExerciseItem?>()
-            .firstWhere((e) => e?.id == id, orElse: () => null))
-        .whereType<ExerciseItem>()
-        .toList();
     // Support new muscle_ids array or fall back to single muscle_id
     final muscleIds   = r['muscle_ids'] != null
         ? List<String>.from(r['muscle_ids'] as List)
