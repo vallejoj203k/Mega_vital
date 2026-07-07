@@ -1793,3 +1793,51 @@ BEGIN
   RETURN TRUE;
 END;
 $$;
+
+-- ─── PUESTO (asiento/trotadora) EN LAS RESERVAS ──────────────────────────────
+
+ALTER TABLE public.class_bookings
+  ADD COLUMN IF NOT EXISTS seat_index INTEGER;
+
+-- Se elimina la versión anterior (2 argumentos) para evitar ambigüedad
+DROP FUNCTION IF EXISTS public.book_class_session(UUID, TEXT);
+
+CREATE OR REPLACE FUNCTION public.book_class_session(
+  p_session_id UUID,
+  p_user_name  TEXT,
+  p_seat_index INTEGER DEFAULT NULL
+) RETURNS TEXT LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_sess    RECORD;
+  v_uid     TEXT := auth.uid()::text;
+  v_credits INTEGER;
+BEGIN
+  SELECT * INTO v_sess FROM public.class_sessions
+  WHERE id = p_session_id FOR UPDATE;
+  IF NOT FOUND                          THEN RETURN 'not_found';     END IF;
+  IF v_sess.status = 'completed'        THEN RETURN 'completed';     END IF;
+  IF v_sess.status = 'cancelled'        THEN RETURN 'cancelled';     END IF;
+  IF v_sess.booked_count >= v_sess.capacity THEN RETURN 'full';      END IF;
+  IF EXISTS (SELECT 1 FROM public.class_bookings
+             WHERE session_id = p_session_id AND user_id = v_uid)
+    THEN RETURN 'already_booked'; END IF;
+  IF p_seat_index IS NOT NULL AND EXISTS (
+       SELECT 1 FROM public.class_bookings
+       WHERE session_id = p_session_id AND seat_index = p_seat_index)
+    THEN RETURN 'seat_taken'; END IF;
+  SELECT class_credits INTO v_credits FROM public.user_profiles WHERE uid = v_uid;
+  IF COALESCE(v_credits, 0) <= 0 THEN RETURN 'no_credits'; END IF;
+  INSERT INTO public.class_bookings (session_id, user_id, user_name, seat_index)
+  VALUES (p_session_id, v_uid, p_user_name, p_seat_index);
+  UPDATE public.class_sessions
+  SET booked_count = booked_count + 1,
+      status = CASE WHEN booked_count + 1 >= capacity THEN 'full' ELSE 'open' END
+  WHERE id = p_session_id;
+  UPDATE public.user_profiles
+  SET class_credits = class_credits - 1
+  WHERE uid = v_uid;
+  RETURN 'ok';
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.book_class_session(UUID, TEXT, INTEGER) TO authenticated;

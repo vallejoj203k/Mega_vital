@@ -6,6 +6,7 @@ import '../../../core/constants/app_theme_colors.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/class_provider.dart';
 import '../../../services/class_schedule_service.dart';
+import 'spot_picker_screen.dart';
 
 class ClassSessionsScreen extends StatefulWidget {
   final String activity; // 'spinning' | 'running'
@@ -49,12 +50,32 @@ class _ClassSessionsScreenState extends State<ClassSessionsScreen> {
       '${d.hour.toString().padLeft(2,'0')}:${d.minute.toString().padLeft(2,'0')}';
 
   Future<void> _onBook(ClassSession session) async {
-    final profile = context.read<AuthProvider>().profile;
-    final name = profile?.name ?? 'Usuario';
     final provider = context.read<ClassProvider>();
 
-    final result = await provider.bookSession(session.id, name);
-    if (!mounted) return;
+    // Sin créditos: avisar antes de entrar a elegir puesto
+    if (provider.myCredits <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'No tienes clases disponibles. Paga en recepción para recargar.'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // Ir a elegir puesto; la reserva se confirma allá
+    final result = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SpotPickerScreen(
+          session: session,
+          accentColor: widget.accentColor,
+        ),
+      ),
+    );
+    if (!mounted || result == null) return;
 
     String msg;
     switch (result) {
@@ -63,6 +84,7 @@ class _ClassSessionsScreenState extends State<ClassSessionsScreen> {
       case 'already_booked': msg = 'Ya tienes una reserva en esta clase.'; break;
       case 'completed':      msg = 'Esta clase ya finalizó.'; break;
       case 'no_credits':     msg = 'No tienes clases disponibles. Paga en recepción para recargar.'; break;
+      case 'seat_taken':     msg = 'Ese puesto acaba de ser ocupado. Elige otro.'; break;
       default:               msg = 'Error al reservar. Intenta de nuevo.';
     }
 
@@ -73,6 +95,11 @@ class _ClassSessionsScreenState extends State<ClassSessionsScreen> {
         behavior: SnackBarBehavior.floating,
       ),
     );
+
+    if (result != 'ok') {
+      // Refrescar para ver puestos/cupos actualizados
+      provider.loadSessions(widget.activity);
+    }
   }
 
   Future<void> _onCancel(ClassSession session) async {
@@ -308,7 +335,10 @@ class _SessionCard extends StatelessWidget {
                   Icon(Icons.check_circle_rounded,
                       size: 13, color: accentColor),
                   const SizedBox(width: 4),
-                  Text('Reservado',
+                  Text(
+                      session.mySeat != null
+                          ? 'Reservado · Puesto ${session.mySeat}'
+                          : 'Reservado',
                       style: AppTextStyles.caption.copyWith(
                           color: accentColor, fontWeight: FontWeight.w700)),
                 ]),

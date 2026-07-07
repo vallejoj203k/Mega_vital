@@ -1921,6 +1921,8 @@ class _ClassSchedulesTab extends StatefulWidget {
 }
 
 class _ClassSchedulesTabState extends State<_ClassSchedulesTab> {
+  bool _showCalendar = false;
+
   @override
   void initState() {
     super.initState();
@@ -2009,58 +2011,473 @@ class _ClassSchedulesTabState extends State<_ClassSchedulesTab> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showForm(),
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add_rounded, color: Colors.white),
-      ),
-      body: schedules.isEmpty
-          ? Center(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.event_note_rounded,
-                    size: 48, color: AppColors.textMuted),
-                const SizedBox(height: 12),
-                Text('Sin horarios creados',
-                    style: AppTextStyles.headingSmall.copyWith(
-                        color: AppColors.textSecondary)),
-                const SizedBox(height: 8),
-                Text('Pulsa + para agregar un horario.',
-                    style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textMuted)),
-              ]),
-            )
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
-              children: [
-                if (spinning.isNotEmpty) ...[
-                  _SectionHeader(
-                    icon: Icons.directions_bike_rounded,
-                    label: 'Spinning',
-                    color: const Color(0xFFFF6B35),
-                  ),
-                  ...spinning.map((s) => _ScheduleTile(
-                    schedule:    s,
-                    description: _scheduleDescription(s),
-                    onEdit:      () => _showForm(editing: s),
-                    onDelete:    () => _confirmDelete(s),
-                  )),
-                  const SizedBox(height: 8),
-                ],
-                if (running.isNotEmpty) ...[
-                  _SectionHeader(
-                    icon: Icons.directions_run_rounded,
-                    label: 'Running',
-                    color: AppColors.accentBlue,
-                  ),
-                  ...running.map((s) => _ScheduleTile(
-                    schedule:    s,
-                    description: _scheduleDescription(s),
-                    onEdit:      () => _showForm(editing: s),
-                    onDelete:    () => _confirmDelete(s),
-                  )),
-                ],
-              ],
+      floatingActionButton: _showCalendar
+          ? null
+          : FloatingActionButton(
+              onPressed: () => _showForm(),
+              backgroundColor: AppColors.primary,
+              child: const Icon(Icons.add_rounded, color: Colors.white),
             ),
+      body: Column(children: [
+        // ── Toggle Horarios / Calendario ───────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border, width: 0.5),
+            ),
+            child: Row(children: [
+              _ViewToggleBtn(
+                label: 'Horarios',
+                icon: Icons.list_alt_rounded,
+                active: !_showCalendar,
+                onTap: () => setState(() => _showCalendar = false),
+              ),
+              _ViewToggleBtn(
+                label: 'Calendario',
+                icon: Icons.calendar_month_rounded,
+                active: _showCalendar,
+                onTap: () => setState(() => _showCalendar = true),
+              ),
+            ]),
+          ),
+        ),
+        Expanded(
+          child: _showCalendar
+              ? const _ClassCalendarView()
+              : schedules.isEmpty
+                  ? Center(
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.event_note_rounded,
+                            size: 48, color: AppColors.textMuted),
+                        const SizedBox(height: 12),
+                        Text('Sin horarios creados',
+                            style: AppTextStyles.headingSmall.copyWith(
+                                color: AppColors.textSecondary)),
+                        const SizedBox(height: 8),
+                        Text('Pulsa + para agregar un horario.',
+                            style: AppTextStyles.bodySmall.copyWith(
+                                color: AppColors.textMuted)),
+                      ]),
+                    )
+                  : ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+                      children: [
+                        if (spinning.isNotEmpty) ...[
+                          _SectionHeader(
+                            icon: Icons.directions_bike_rounded,
+                            label: 'Spinning',
+                            color: const Color(0xFFFF6B35),
+                          ),
+                          ...spinning.map((s) => _ScheduleTile(
+                            schedule:    s,
+                            description: _scheduleDescription(s),
+                            onEdit:      () => _showForm(editing: s),
+                            onDelete:    () => _confirmDelete(s),
+                          )),
+                          const SizedBox(height: 8),
+                        ],
+                        if (running.isNotEmpty) ...[
+                          _SectionHeader(
+                            icon: Icons.directions_run_rounded,
+                            label: 'Running',
+                            color: AppColors.accentBlue,
+                          ),
+                          ...running.map((s) => _ScheduleTile(
+                            schedule:    s,
+                            description: _scheduleDescription(s),
+                            onEdit:      () => _showForm(editing: s),
+                            onDelete:    () => _confirmDelete(s),
+                          )),
+                        ],
+                      ],
+                    ),
+        ),
+      ]),
+    );
+  }
+}
+
+class _ViewToggleBtn extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool active;
+  final VoidCallback onTap;
+  const _ViewToggleBtn({
+    required this.label,
+    required this.icon,
+    required this.active,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 9),
+            decoration: BoxDecoration(
+              color: active ? AppColors.primary : Colors.transparent,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(icon, size: 15,
+                  color: active ? Colors.black : AppColors.textMuted),
+              const SizedBox(width: 6),
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: active ? Colors.black : AppColors.textMuted)),
+            ]),
+          ),
+        ),
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// CALENDARIO SEMANAL DE CLASES (vista admin)
+// Réplica digital de la pizarra: días en columnas, horas en filas.
+// Tocar una clase muestra los nombres de quienes reservaron.
+// ─────────────────────────────────────────────────────────────────
+class _ClassCalendarView extends StatefulWidget {
+  const _ClassCalendarView();
+
+  @override
+  State<_ClassCalendarView> createState() => _ClassCalendarViewState();
+}
+
+class _ClassCalendarViewState extends State<_ClassCalendarView> {
+  final _service = ClassScheduleService();
+  late DateTime _weekStart; // lunes de la semana visible
+  List<ClassSession> _sessions = [];
+  bool _loading = true;
+
+  static const _dayNames   = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  static const _monthNames = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+                              'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  static const _spinColor = Color(0xFFFF6B35);
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    _weekStart = today.subtract(Duration(days: today.weekday - 1));
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    final sessions = await _service.fetchWeekSessionsAdmin(_weekStart);
+    if (!mounted) return;
+    setState(() { _sessions = sessions; _loading = false; });
+  }
+
+  void _changeWeek(int delta) {
+    setState(() => _weekStart = _weekStart.add(Duration(days: 7 * delta)));
+    _load();
+  }
+
+  String get _weekLabel {
+    final end = _weekStart.add(const Duration(days: 6));
+    if (_weekStart.month == end.month) {
+      return '${_weekStart.day} – ${end.day} ${_monthNames[end.month]} ${end.year}';
+    }
+    return '${_weekStart.day} ${_monthNames[_weekStart.month]} – ${end.day} ${_monthNames[end.month]} ${end.year}';
+  }
+
+  String _fmtHour(int hour) {
+    final h12 = hour % 12 == 0 ? 12 : hour % 12;
+    return '$h12 ${hour < 12 ? 'am' : 'pm'}';
+  }
+
+  void _showSessionDetail(ClassSession s) {
+    final color = s.activity == 'spinning' ? _spinColor : AppColors.accentBlue;
+    final time =
+        '${s.startsAt.hour.toString().padLeft(2, '0')}:${s.startsAt.minute.toString().padLeft(2, '0')}';
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(children: [
+          Icon(
+              s.activity == 'spinning'
+                  ? Icons.directions_bike_rounded
+                  : Icons.directions_run_rounded,
+              color: color, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+              child: Text(s.scheduleName,
+                  style: AppTextStyles.headingSmall,
+                  maxLines: 1, overflow: TextOverflow.ellipsis)),
+        ]),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Row(children: [
+              Icon(Icons.calendar_today_rounded,
+                  size: 13, color: AppColors.textSecondary),
+              const SizedBox(width: 6),
+              Text(
+                  '${_dayNames[s.sessionDate.weekday]} ${s.sessionDate.day} ${_monthNames[s.sessionDate.month]} · $time',
+                  style: AppTextStyles.bodySmall
+                      .copyWith(color: AppColors.textSecondary)),
+              const Spacer(),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text('${s.bookedCount}/${s.capacity}',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: color)),
+              ),
+            ]),
+            const SizedBox(height: 14),
+            if (s.bookedNames.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Column(children: [
+                  const Icon(Icons.person_off_rounded,
+                      size: 32, color: AppColors.textMuted),
+                  const SizedBox(height: 8),
+                  Text('Sin reservas aún',
+                      style: AppTextStyles.bodySmall
+                          .copyWith(color: AppColors.textMuted)),
+                ]),
+              )
+            else
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 300),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: s.bookedNames.length,
+                  itemBuilder: (_, i) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(children: [
+                      Container(
+                        width: 26, height: 26,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text('${i + 1}',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: color)),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                          child: Text(s.bookedNames[i],
+                              style: AppTextStyles.bodyMedium,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis)),
+                    ]),
+                  ),
+                ),
+              ),
+          ]),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Horas distintas con clases esta semana (filas de la pizarra)
+    final hours = _sessions.map((s) => s.startsAt.hour).toSet().toList()..sort();
+
+    return Column(children: [
+      // ── Navegación de semana ────────────────────────────────
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+        child: Row(children: [
+          IconButton(
+            onPressed: () => _changeWeek(-1),
+            icon: const Icon(Icons.chevron_left_rounded,
+                color: AppColors.textSecondary),
+          ),
+          Expanded(
+            child: Text(_weekLabel,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.labelLarge),
+          ),
+          IconButton(
+            onPressed: () => _changeWeek(1),
+            icon: const Icon(Icons.chevron_right_rounded,
+                color: AppColors.textSecondary),
+          ),
+        ]),
+      ),
+      Expanded(
+        child: _loading
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.primary))
+            : hours.isEmpty
+                ? Center(
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.event_busy_rounded,
+                          size: 44, color: AppColors.textMuted),
+                      const SizedBox(height: 10),
+                      Text('Sin clases esta semana',
+                          style: AppTextStyles.bodyMedium
+                              .copyWith(color: AppColors.textSecondary)),
+                    ]),
+                  )
+                : RefreshIndicator(
+                    color: AppColors.primary,
+                    onRefresh: _load,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 90),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: _buildGrid(hours),
+                      ),
+                    ),
+                  ),
+      ),
+    ]);
+  }
+
+  Widget _buildGrid(List<int> hours) {
+    const cellW = 86.0;
+    const hourW = 56.0;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    Widget headerCell(String label, {bool highlight = false}) => Container(
+          width: cellW,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: highlight
+                ? AppColors.primary.withOpacity(0.18)
+                : AppColors.surface,
+            border: Border.all(color: AppColors.border, width: 0.5),
+          ),
+          child: Text(label,
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: highlight ? AppColors.primary : AppColors.textSecondary)),
+        );
+
+    return Column(children: [
+      // Encabezado: días
+      Row(children: [
+        Container(
+          width: hourW,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border.all(color: AppColors.border, width: 0.5),
+          ),
+          child: const Text('HORA',
+              style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textMuted)),
+        ),
+        for (int d = 0; d < 7; d++)
+          headerCell(
+            '${_dayNames[d + 1]} ${_weekStart.add(Duration(days: d)).day}',
+            highlight: _weekStart.add(Duration(days: d)) == today,
+          ),
+      ]),
+      // Filas por hora
+      for (final hour in hours)
+        Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Container(
+            width: hourW,
+            constraints: const BoxConstraints(minHeight: 54),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              border: Border.all(color: AppColors.border, width: 0.5),
+            ),
+            child: Text(_fmtHour(hour),
+                style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textSecondary)),
+          ),
+          for (int d = 0; d < 7; d++)
+            _buildCell(_weekStart.add(Duration(days: d)), hour, cellW),
+        ]),
+    ]);
+  }
+
+  Widget _buildCell(DateTime day, int hour, double width) {
+    final cellSessions = _sessions.where((s) =>
+        s.sessionDate.year == day.year &&
+        s.sessionDate.month == day.month &&
+        s.sessionDate.day == day.day &&
+        s.startsAt.hour == hour).toList();
+
+    return Container(
+      width: width,
+      constraints: const BoxConstraints(minHeight: 54),
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.border, width: 0.5),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: cellSessions.map((s) {
+          final color =
+              s.activity == 'spinning' ? _spinColor : AppColors.accentBlue;
+          return GestureDetector(
+            onTap: () => _showSessionDetail(s),
+            child: Container(
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(vertical: 1.5),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+              decoration: BoxDecoration(
+                color: color.withOpacity(s.isCompleted ? 0.06 : 0.14),
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(
+                    color: color.withOpacity(s.isCompleted ? 0.2 : 0.45),
+                    width: 0.8),
+              ),
+              child: Column(children: [
+                Text(s.scheduleName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: color.withOpacity(s.isCompleted ? 0.5 : 1))),
+                const SizedBox(height: 1),
+                Text('${s.bookedCount}/${s.capacity}',
+                    style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: color.withOpacity(s.isCompleted ? 0.4 : 0.8))),
+              ]),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 }

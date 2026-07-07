@@ -104,6 +104,9 @@ class ClassSession {
   final int bookedCount;
   final String status;
   final bool isBookedByMe;
+  final List<String> bookedNames; // nombres de quienes reservaron (vista admin)
+  final List<int> takenSeats;     // puestos ya ocupados
+  final int? mySeat;              // mi puesto reservado
 
   const ClassSession({
     required this.id,
@@ -116,6 +119,9 @@ class ClassSession {
     required this.bookedCount,
     required this.status,
     required this.isBookedByMe,
+    this.bookedNames = const [],
+    this.takenSeats = const [],
+    this.mySeat,
   });
 
   int get availableSpots => capacity - bookedCount;
@@ -125,6 +131,13 @@ class ClassSession {
 
   factory ClassSession.fromMap(Map<String, dynamic> m, String myUserId) {
     final bookings = (m['class_bookings'] as List<dynamic>?) ?? [];
+    int? mySeat;
+    for (final b in bookings) {
+      if ((b as Map)['user_id'] == myUserId) {
+        mySeat = b['seat_index'] as int?;
+        break;
+      }
+    }
     return ClassSession(
       id:           m['id'] as String,
       scheduleId:   m['schedule_id'] as String,
@@ -136,6 +149,15 @@ class ClassSession {
       bookedCount:  m['booked_count'] as int,
       status:       m['status'] as String,
       isBookedByMe: bookings.any((b) => (b as Map)['user_id'] == myUserId),
+      bookedNames:  bookings
+          .map((b) => (b as Map)['user_name'] as String?)
+          .whereType<String>()
+          .toList(),
+      takenSeats:   bookings
+          .map((b) => (b as Map)['seat_index'] as int?)
+          .whereType<int>()
+          .toList(),
+      mySeat:       mySeat,
     );
   }
 }
@@ -220,7 +242,7 @@ class ClassScheduleService {
           .select('''
             *,
             class_schedules!inner(name, activity),
-            class_bookings(user_id)
+            class_bookings(user_id, seat_index)
           ''')
           .eq('class_schedules.activity', activity)
           .neq('status', 'completed')
@@ -237,11 +259,13 @@ class ClassScheduleService {
 
   // ── Bookings ──────────────────────────────────────────────────
 
-  Future<String> bookSession(String sessionId, String userName) async {
+  Future<String> bookSession(String sessionId, String userName,
+      {int? seatIndex}) async {
     try {
       final result = await _db.rpc('book_class_session', params: {
         'p_session_id': sessionId,
         'p_user_name':  userName,
+        if (seatIndex != null) 'p_seat_index': seatIndex,
       });
       return result as String? ?? 'error';
     } catch (_) { return 'error'; }
@@ -254,6 +278,69 @@ class ClassScheduleService {
       });
       return result as bool? ?? false;
     } catch (_) { return false; }
+  }
+
+  // ── Calendario semanal (vista admin) ──────────────────────────
+
+  // Fechas en las que un horario aplica dentro de un rango [start, end]
+  List<DateTime> _scheduleDatesInRange(
+      ClassSchedule s, DateTime start, DateTime end) {
+    final result = <DateTime>[];
+    for (var d = DateTime(start.year, start.month, start.day);
+        !d.isAfter(end);
+        d = d.add(const Duration(days: 1))) {
+      switch (s.scheduleType) {
+        case 'daily':
+          result.add(d);
+          break;
+        case 'weekly':
+        case 'custom':
+          if (s.daysOfWeek.contains(d.weekday)) result.add(d);
+          break;
+        case 'monthly':
+          if (d.day == (s.dayOfMonth ?? 1)) result.add(d);
+          break;
+      }
+    }
+    return result;
+  }
+
+  // Todas las sesiones de la semana (spinning + running) con los
+  // nombres de quienes reservaron. Genera las sesiones futuras que falten.
+  Future<List<ClassSession>> fetchWeekSessionsAdmin(DateTime weekStart) async {
+    try {
+      final weekEnd = weekStart.add(const Duration(days: 6));
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
+      // Generar sesiones que falten (solo de hoy en adelante)
+      final genStart = weekStart.isBefore(today) ? today : weekStart;
+      if (!genStart.isAfter(weekEnd)) {
+        final schedules = await fetchSchedules();
+        for (final s in schedules) {
+          final dates = _scheduleDatesInRange(s, genStart, weekEnd);
+          if (dates.isNotEmpty) await ensureSessions(s.id, dates);
+        }
+      }
+
+      String fmt(DateTime d) =>
+          '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+      final data = await _db
+          .from('class_sessions')
+          .select('''
+            *,
+            class_schedules!inner(name, activity),
+            class_bookings(user_id, user_name, seat_index)
+          ''')
+          .gte('session_date', fmt(weekStart))
+          .lte('session_date', fmt(weekEnd))
+          .order('starts_at');
+
+      return (data as List)
+          .map((m) => ClassSession.fromMap(m as Map<String, dynamic>, _uid))
+          .toList();
+    } catch (_) { return []; }
   }
 
   // ── Créditos de clases (pago en recepción) ────────────────────
