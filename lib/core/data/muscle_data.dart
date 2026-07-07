@@ -63,6 +63,19 @@ class ExerciseItem {
       ),
     );
   }
+
+  // Serializa los datos del ejercicio para guardarlos dentro de una rutina,
+  // de modo que no se pierdan aunque no estén en kAllExercises.
+  Map<String, dynamic> toMap() => {
+    'id':           id,
+    'name':         name,
+    'muscle_id':    muscleId,
+    'sets':         sets,
+    'reps':         reps,
+    'rest_seconds': restSeconds,
+    if (tip != null && tip!.isNotEmpty) 'tip': tip,
+    'difficulty':   difficulty.name,
+  };
 }
 
 // ── Modelo de grupo muscular ───────────────────────────────────────
@@ -124,6 +137,8 @@ class SavedRoutine {
     'muscleId':       muscleId,
     'muscleName':     muscleName,
     'exerciseIds':    exercises.map((e) => e.id).toList(),
+    // Datos completos de cada ejercicio (no dependen de kAllExercises)
+    'exercises':      exercises.map((e) => e.toMap()).toList(),
     'exerciseWeights': exerciseWeights,
     'createdAt':      createdAt.toIso8601String(),
   };
