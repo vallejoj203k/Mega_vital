@@ -241,10 +241,11 @@ class ClassScheduleService {
           .from('class_sessions')
           .select('''
             *,
-            class_schedules!inner(name, activity),
+            class_schedules!inner(name, activity, active),
             class_bookings(user_id, seat_index)
           ''')
           .eq('class_schedules.activity', activity)
+          .eq('class_schedules.active', true)
           .neq('status', 'completed')
           .neq('status', 'cancelled')
           .gte('session_date', fromStr)
@@ -330,9 +331,10 @@ class ClassScheduleService {
           .from('class_sessions')
           .select('''
             *,
-            class_schedules!inner(name, activity),
+            class_schedules!inner(name, activity, active),
             class_bookings(user_id, user_name, seat_index)
           ''')
+          .eq('class_schedules.active', true)
           .gte('session_date', fmt(weekStart))
           .lte('session_date', fmt(weekEnd))
           .order('starts_at');
