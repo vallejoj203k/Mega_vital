@@ -1841,3 +1841,22 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.book_class_session(UUID, TEXT, INTEGER) TO authenticated;
+
+-- ─── ASISTENTES DE UNA SESIÓN (vista admin, ignora RLS) ──────────────────────
+CREATE OR REPLACE FUNCTION public.admin_session_attendees(p_session_id UUID)
+RETURNS TABLE(user_name TEXT, seat_index INTEGER)
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.user_profiles
+                 WHERE uid = auth.uid()::text AND is_admin = true) THEN
+    RETURN;
+  END IF;
+  RETURN QUERY
+    SELECT b.user_name, b.seat_index
+    FROM public.class_bookings b
+    WHERE b.session_id = p_session_id
+    ORDER BY b.seat_index NULLS LAST, b.booked_at;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.admin_session_attendees(UUID) TO authenticated;

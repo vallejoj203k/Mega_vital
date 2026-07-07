@@ -2243,50 +2243,71 @@ class _ClassCalendarViewState extends State<_ClassCalendarView> {
               ),
             ]),
             const SizedBox(height: 14),
-            if (s.bookedNames.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Column(children: [
-                  const Icon(Icons.person_off_rounded,
-                      size: 32, color: AppColors.textMuted),
-                  const SizedBox(height: 8),
-                  Text('Sin reservas aún',
-                      style: AppTextStyles.bodySmall
-                          .copyWith(color: AppColors.textMuted)),
-                ]),
-              )
-            else
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 300),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: s.bookedNames.length,
-                  itemBuilder: (_, i) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(children: [
-                      Container(
-                        width: 26, height: 26,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text('${i + 1}',
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: color)),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                          child: Text(s.bookedNames[i],
-                              style: AppTextStyles.bodyMedium,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis)),
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: _service.fetchSessionAttendees(s.id),
+              builder: (ctx, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: CircularProgressIndicator(
+                        color: AppColors.primary, strokeWidth: 2),
+                  );
+                }
+                final attendees = snap.data ?? [];
+                if (attendees.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Column(children: [
+                      const Icon(Icons.person_off_rounded,
+                          size: 32, color: AppColors.textMuted),
+                      const SizedBox(height: 8),
+                      Text('Sin reservas aún',
+                          style: AppTextStyles.bodySmall
+                              .copyWith(color: AppColors.textMuted)),
                     ]),
+                  );
+                }
+                return ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 300),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: attendees.length,
+                    itemBuilder: (_, i) {
+                      final name = attendees[i]['user_name'] as String? ?? '—';
+                      final seat = attendees[i]['seat_index'] as int?;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(children: [
+                          Container(
+                            width: 26, height: 26,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: color.withOpacity(0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text('${i + 1}',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: color)),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                              child: Text(name,
+                                  style: AppTextStyles.bodyMedium,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis)),
+                          if (seat != null)
+                            Text('Puesto $seat',
+                                style: AppTextStyles.caption
+                                    .copyWith(color: color)),
+                        ]),
+                      );
+                    },
                   ),
-                ),
-              ),
+                );
+              },
+            ),
           ]),
         ),
         actions: [
