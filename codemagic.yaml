@@ -83,6 +83,33 @@ workflows:
       - name: Instalar dependencias
         script: flutter pub get
 
+      - name: Verificar íconos iOS (sin canal alfa)
+        script: |
+          python3 - <<'PYEOF'
+          import struct, sys, os
+          def has_alpha(path):
+              with open(path, 'rb') as f:
+                  f.read(8)
+                  ct = None; trns = False
+                  while True:
+                      d = f.read(8)
+                      if len(d) < 8: break
+                      length, ctype = struct.unpack('>I4s', d)
+                      ctype = ctype.decode('ascii')
+                      data = f.read(length); f.read(4)
+                      if ctype == 'IHDR': ct = data[9]
+                      if ctype == 'tRNS': trns = True
+              return ct in (4, 6) or (ct == 3 and trns)
+          icon_dir = 'ios/Runner/Assets.xcassets/AppIcon.appiconset'
+          bad = [f for f in os.listdir(icon_dir) if f.endswith('.png') and has_alpha(os.path.join(icon_dir, f))]
+          if bad:
+              print('ERROR: Íconos con canal alfa detectados (Apple los rechazará):')
+              for f in bad: print(f'  {f}')
+              print('Regenera los íconos desde una imagen fuente RGB sin alfa.')
+              sys.exit(1)
+          print(f'OK: {len(os.listdir(icon_dir))} íconos sin canal alfa.')
+          PYEOF
+
       - name: Resolver pods de iOS
         script: |
           cd ios
