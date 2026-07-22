@@ -3,15 +3,15 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
-// ── Supabase Storage ──────────────────────────────────────────────
-// Bucket público: exercise-animations  → videos (.mp4)
-// Bucket público: exercise-images      → fotos de máquinas (.jpg)
-// Misma estructura de carpetas: {folder}/{exerciseId}.mp4 / .jpg
+// ── Cloudflare R2 (egress gratis) ─────────────────────────────────
+// Bucket público: megavital-media
+// Estructura: exercise-animations/{folder}/{id}.mp4  (videos)
+//             exercise-images/{folder}/{id}.jpg       (fotos)
 const _kStorageBase =
-    'https://ntxbjwmkxnewzzducfzz.supabase.co/storage/v1/object/public/exercise-animations';
+    'https://pub-8ff0ad1a7d05499e9161f5d3198bd0e1.r2.dev/exercise-animations';
 
 const _kImageBase =
-    'https://ntxbjwmkxnewzzducfzz.supabase.co/storage/v1/object/public/exercise-images';
+    'https://pub-8ff0ad1a7d05499e9161f5d3198bd0e1.r2.dev/exercise-images';
 
 const _kPrefixToFolder = <String, String>{
   'pec': 'pectoral',
